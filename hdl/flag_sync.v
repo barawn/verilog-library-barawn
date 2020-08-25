@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`define DLYFF #1
 //////////////////////////////////////////////////////////////////////////////////
 //
 // Flag synchronizer, with feedback. Blatantly stolen from fpga4fun.com
@@ -12,13 +13,13 @@ module flag_sync(
     output out_clkB
     );
 
-	parameter CLKA="POSEDGE";
-	parameter CLKB="POSEDGE";
+	parameter CLKEDGEA="POSEDGE";
+	parameter CLKEDGEB="POSEDGE";
 
 	reg FlagToggle_clkA;
-    (* ASYNC_REG = "TRUE" *)
+        (* ASYNC_REG = "TRUE" *)
 	reg [2:0] SyncA_clkB;
-    (* ASYNC_REG = "TRUE" *)
+        (* ASYNC_REG = "TRUE" *)
 	reg [1:0] SyncB_clkA;
 
 	initial begin
@@ -28,22 +29,23 @@ module flag_sync(
 	end
 	
 	generate
-		if (CLKA=="POSEDGE") begin : A_POS_POL
-			always @(posedge clkA) if (in_clkA & ~busy_clkA) FlagToggle_clkA <= ~FlagToggle_clkA;
-			always @(posedge clkA) SyncB_clkA <= {SyncB_clkA[0],SyncA_clkB[1]};
+		if (CLKEDGEA=="POSEDGE") begin : A_POS_POL
+			always @(posedge clkA) if (in_clkA & ~busy_clkA) FlagToggle_clkA <= `DLYFF ~FlagToggle_clkA;
+			always @(posedge clkA) SyncB_clkA <= `DLYFF {SyncB_clkA[0],SyncA_clkB[1]};
 		end else begin : A_NEG_POL
-			always @(negedge clkA) if (in_clkA & ~busy_clkA) FlagToggle_clkA <= ~FlagToggle_clkA;
-			always @(negedge clkA) SyncB_clkA <= {SyncB_clkA[0],SyncA_clkB[2]};
+			always @(negedge clkA) if (in_clkA & ~busy_clkA) FlagToggle_clkA <= `DLYFF ~FlagToggle_clkA;
+			always @(negedge clkA) SyncB_clkA <= `DLYFF {SyncB_clkA[0],SyncA_clkB[2]};
 		end
 	endgenerate
 	generate
-		if (CLKB=="POSEDGE") begin : B_POS_POL
-			always @(posedge clkB) SyncA_clkB <= {SyncA_clkB[1:0], FlagToggle_clkA};
+		if (CLKEDGEB=="POSEDGE") begin : B_POS_POL
+			always @(posedge clkB) SyncA_clkB <= `DLYFF {SyncA_clkB[1:0], FlagToggle_clkA};
 		end else begin : B_NEG_POL
-			always @(negedge clkB) SyncA_clkB <= {SyncA_clkB[1:0], FlagToggle_clkA};
+			always @(negedge clkB) SyncA_clkB <= `DLYFF {SyncA_clkB[1:0], FlagToggle_clkA};
 		end
 	endgenerate
 
 	assign out_clkB = (SyncA_clkB[2] ^ SyncA_clkB[1]);
 	assign busy_clkA = FlagToggle_clkA ^ SyncB_clkA[1];
 endmodule
+`undef DLYFF
