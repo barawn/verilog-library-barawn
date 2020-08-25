@@ -149,12 +149,12 @@ module dual_prescaled_dsp_scalers( input fast_clk_i,
         // Note that we have to qualify the carryout by the count flag, because of the way
         // the DSP carry works during subtracts. 
         if (carry_reset) carryout0_captured <= `DLYFF 0;
-        else if (scalA_carryout[1] && scal_count_flag_rereg[0]) carryout0_captured <= `DLYFF 1'b1;
+        else if (scalA_carryout[`DUAL_DSP_CARRY0] && scal_count_flag_rereg[0]) carryout0_captured <= `DLYFF 1'b1;
 
         // This captures the high half-DSP's carry output. It's also
         // retained for an extra clock because it's needed a little longer.
         if (carry_reset) carryout1_captured[0] <= `DLYFF 0;
-        else if (scalA_carryout[3] && scal_count_flag_rereg[1]) carryout1_captured[0] <= `DLYFF 1'b1;
+        else if (scalA_carryout[`DUAL_DSP_CARRY1] && scal_count_flag_rereg[1]) carryout1_captured[0] <= `DLYFF 1'b1;
         // storage for carryout1
         carryout1_captured[1] <= `DLYFF carryout1_captured[0];
         
