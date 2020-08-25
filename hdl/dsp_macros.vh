@@ -49,3 +49,16 @@
 
 `define CONSTANT_MODE_ATTRS .ALUMODEREG(0),.INMODEREG(0),.OPMODEREG(0),.CARRYINSELREG(0)
 `define NO_MULT_ATTRS .USE_MULT("NONE"),.MREG(0)
+
+// In normal DSP mode the carry bit is 3
+`define DSP_CARRY 3
+
+// In SIMD24 mode the two carry bits are 1 and 3.
+`define DUAL_DSP_CARRY0 1
+`define DUAL_DSP_CARRY1 3
+
+// In FOUR12 mode the carry bits are 0/1/2/3
+`define QUAD_DSP_CARRY0 0
+`define QUAD_DSP_CARRY1 1
+`define QUAD_DSP_CARRY2 2
+`define QUAD_DSP_CARRY3 3
