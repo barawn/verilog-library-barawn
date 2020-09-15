@@ -34,7 +34,7 @@ module async_register #(parameter WIDTH=32,
 
    always @(posedge clkB) begin
       pipe_clkB <= `DLYFF reg_clkA;
-      if (update_reg_clkA) reg_clkB <= `DLYFF pipe_clkB;
+      if (update_reg_clkB) reg_clkB <= `DLYFF pipe_clkB;
    end
    
    flag_sync u_update_flag(.in_clkA(update_reg_clkA),
