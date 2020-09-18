@@ -53,6 +53,8 @@
 // for its implementation. Kindof ridiculous that this doesn't exist already.
 // This can be made into a fixed terminal count with a parameter. In that case tcount_i
 // and update_tcount_i are ignored.
+// If the parameter RESET_TCOUNT_AT_RESET is TRUE, the terminal count is reset at
+// rst_i as well, and must be updated.
 module dsp_counter_terminal_count(
         input           clk_i,
         input           rst_i,
@@ -64,7 +66,8 @@ module dsp_counter_terminal_count(
     
     parameter FIXED_TCOUNT = "FALSE";
     parameter FIXED_TCOUNT_VALUE = 0;
-        
+    parameter RESET_TCOUNT_AT_RESET = "TRUE";
+   
     // for simulation
     wire [47:0] current_count;
 
@@ -99,7 +102,7 @@ module dsp_counter_terminal_count(
                        .AUTORESET_PATDET("RESET_MATCH"),.MASK({48{1'b0}}),.SEL_PATTERN("C"),.USE_PATTERN_DETECT("PATDET")
                      )
                 u_counter( `A_UNUSED_PORTS, `B_UNUSED_PORTS, `D_UNUSED_PORTS,
-                           .C(tcount_i),.RSTC(rst_i),.CEC(update_tcount_i),
+                           .C(tcount_i),.RSTC(RESET_TCOUNT_AT_RESET == "TRUE" ? rst_i, 1'b0),.CEC(update_tcount_i),
                            .CEP(count_i),.RSTP(rst_or_update),
                            .CARRYIN(1'b1),.CARRYINSEL(`CARRYINSEL_CARRYIN),
                            .OPMODE(OPMODE),.ALUMODE(ALUMODE),.INMODE(INMODE),
