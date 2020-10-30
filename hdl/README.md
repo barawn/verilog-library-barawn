@@ -13,7 +13,7 @@
 * fast_csa32_adder.v : 3:2 compressor (with output FFs)
 * fast_csa53_adder.v : 5:3 compressor (with output FFs)
 * fast_csa63_adder.v : 6:3 compressor (with output FFs)
-* fast_csa82_adder.v : 8:2 3-stage carry-save adder for bitlengths 5+.
+* fast_csa82_adder.v : 8:2 3-stage carry-save adder for bitlengths 3+.
 
 The last three are all examples of carry-save adders, which means
 the outputs (called 'sum', 'carry', and 'ccarry') need to be

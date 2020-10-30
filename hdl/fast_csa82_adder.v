@@ -10,10 +10,16 @@
 // by 3 LUTs (which is more impressive than it seems, since if you did it *really*
 // naively, it'd be worse).
 //
-// This is parameterizable down to 5 bits of input. Below that, it doesn't work
-// because we use magic to reduce the bottom/top bits, and with 4 bits or less
-// those optimizations run into each other (you can do *better* than this for
-// 4 bits and less).
+// This is parameterizable down to 3 bits of input. Below that, it doesn't work
+// because we use magic to reduce the bottom/top bits, and with 2 bits or less
+// those optimizations run into each other. However with only 2 bits of input
+// you're better of implementing things *very* differently anyway.
+//
+// For anything higher than 3 bits this should be optimal. For 3 bits, you can
+// actually cut out the entire last compress stage by doing it in a 4:3 compress
+// in the middle stage. (Note that the third stage is NBITS-2 in width:
+// meaning it's the only one). For a 3-bit add this runs into the low-bit optimization
+// and the entire final stage would turn into registers.
 //
 // The outputs here (SUM/CARRY) should be added in a DSP.
 // As with any CSA they should be added (sum + (carry << 1) ).
@@ -48,6 +54,7 @@ module fast_csa82_adder #(parameter NBITS=5)(
     //            xyz00
     //            00xyz
     //            0xyz0
+
     // Low bit is actually 2->2 output. HOWEVER: let's just look at this. What we're doing is this.
     //             0x    0v
     //             0y -> v0
@@ -76,14 +83,21 @@ module fast_csa82_adder #(parameter NBITS=5)(
     // Again, remember that the carry output from the second stage has the weirdness
     // that it's LSB is NOT shifted up, but everything else IS.
     
-    // There's a target for optimization here: the fact that the NLSB for the
-    // middle 5:3 compressor is 4:3 means we're wasting a bit here. We should be
-    // able to reorganize things, but I haven't figured out an easy way to do it.
-    // Maybe a 6:3 compressor and a register for the low bits? That costs a LUT
-    // at stage 1 KINDOF. But stage 2's LSB becomes a 3:2, and the NLSB becomes
-    // a 3:2 at stage 2 (the 6:3 compressor's C, the NLSB's 5:3 and 3:2 sum output).
-    // The NNLSB is still a 5:3 compress.
-    // But that's WAY BETTER. Because now we've organized it at stage 3 such that
+    // But there's a target for optimization here: the fact that the NLSB for the
+    // middle 5:3 compressor is 4:3 means we're wasting a bit here. 
+    // Consider this reorganization. Instead of a 5:3 compressor for the LSB,
+    // we do a 6:3 compressor and just pass the two low bits. Now we have.
+    //            00xyz
+    //            0xyz0
+    //            xyz00
+    //            00xyz
+    //            0xy0z   
+    // The NNLSB is still a 5:3 compress, but we've reduced the two lowest bits
+    // to a 3:2 compress. So they become
+    //            ..wwss
+    //           ..wwcc0
+    //          ..ww0000
+    // That's WAY BETTER. Because now we've organized it at stage 3 such that
     // we have (now counting bits)
     // 2 outputs at B0 (do nothing).
     // 2 outputs at B1 (do nothing).
@@ -102,7 +116,36 @@ module fast_csa82_adder #(parameter NBITS=5)(
     //          .zyxwv = s
     //         .z0xwv0 = c
     // which we'll fix in the output. Note that we're back in carry-save format.
-        
+
+    // 3 BIT OPTIMIZATION
+    // For 3 bits we can note a bit of magic.
+    //            00xyz
+    //            0xyz0
+    //            xyz00
+    //            00xyz
+    //            0xy0z   
+    // Split off the top and bottom bits.
+    //            00xyz
+    //            00yz0    00wss    00wss
+    //            00z00 => 0wcc0 => wwcc0
+    //            00xyz    w0000
+    //            00y0z
+    //
+    //            00000
+    //            0x000
+    //            xy000 => abc000
+    //            00000
+    //            0x000
+    // The top 2 bits only range to 5, so we can represent them in 3 bits.
+    // Now add:
+    //
+    // abc000    0bcwss
+    // 000wss => awwcc0
+    // 0wwcc0
+    //
+    // The *only* reason this works is because there's an empty carry bit
+    // where the 4:3 compressor needs to dump its bit.
+   
     // This now means
     // stage 1 B0: 3LUT/5FF  stage2 B0: 1LUT/2FF  stage3 B0: 2FF
     // stage 1 B1: 3LUT/5FF  stage2 B1: 1LUT/2FF  stage3 B1: 2FF
@@ -169,9 +212,7 @@ module fast_csa82_adder #(parameter NBITS=5)(
     // xy        z      
     // xyz     xyz
     // xyz    xy00
-    //
-    
-    
+    // 
     // The way the bit depth expands here is strange.
     // The outputs from the first stage are all NBITS, but
     // of course the c's need to be upshifted by 1,
@@ -264,63 +305,129 @@ module fast_csa82_adder #(parameter NBITS=5)(
                                                     .CLK(CLK),
                                                     .CE(CE),
                                                     .RST(1'b0));
-    // The next-to-MSB is a 3:2 compressor, since it takes
-    // c_stage1_53[NBITS-1]
-    // c_stage1_32[NBITS-1]                            
-    // d_stage1_53[NBITS-2]
-    fast_csa32_adder #(.NBITS(1)) u_stage2_NMSB(.A(c_stage1_53[NBITS-1]),
-                                               .B(c_stage1_32[NBITS-1]),
-                                               .C(d_stage1_53[NBITS-2]),
-                                               .SUM( s_stage2_53[OUTBITS-2] ),
-                                               .CARRY(c_stage2_53[OUTBITS-2] ),
-                                               .CLK(CLK),
-                                               .CE(CE),
-                                               .RST(1'b0));
-    // And the MSB is just a FF, since it only has d_stage1_53[NBITS-1].                                               
-    FDRE #(.INIT(1'b0)) u_smsb(.D(d_stage1_53[NBITS-1]),.C(CLK),.CE(CE),.R(1'b0),.Q(s_stage2_53[OUTBITS-1]));
+    generate
+       if (NBITS > 3) begin : NOOPT
+	  // The next-to-MSB is a 3:2 compressor, since it takes
+	  // c_stage1_53[NBITS-1]
+	  // c_stage1_32[NBITS-1]                            
+	  // d_stage1_53[NBITS-2]
+	  fast_csa32_adder #(.NBITS(1)) u_stage2_NMSB(.A(c_stage1_53[NBITS-1]),
+						      .B(c_stage1_32[NBITS-1]),
+						      .C(d_stage1_53[NBITS-2]),
+						      .SUM( s_stage2_53[OUTBITS-2] ),
+						      .CARRY(c_stage2_53[OUTBITS-2] ),
+						      .CLK(CLK),
+						      .CE(CE),
+						      .RST(1'b0));
+	  // And the MSB is just a FF, since it only has d_stage1_53[NBITS-1].                                               
+	  FDRE #(.INIT(1'b0)) u_smsb(.D(d_stage1_53[NBITS-1]),.C(CLK),.CE(CE),.R(1'b0),.Q(s_stage2_53[OUTBITS-1]));
+	  
+	  // Again, our final stage now looks like:
+	  //          zyxwv = s
+	  //          yxwv0 = c
+	  //          x0000 = d
+	  // Remember the weirdness that came from the first-stage 6:3.
+	  // 
+	  // We want to compress that 3:2, which works for the fourth bit and up.    
+	  // But the bottom 3 bits map to
+	  //          yxwv
+	  //          xwv0
+	  //          0000
+	  // Now just add.
+	  //          yxwv
+	  //          xwv0
+	  // That's STILL just two outputs. So screw it. Just capture them.
+	  // Our final outputs then look like
+	  //          syxwv
+	  //         c0xwv0
+	  // Which is, of course, wonky looking, but it's fine. (There was always going to be extra 0s in the output, just depends on where).
+	  // Note where we begin each: the first 3:2 is at bit 4, and it takes s[4], c[3], and d[0].
+	  fast_csa32_adder #(.NBITS(OUTBITS-4)) u_stage3_32(.A(s_stage2_53[4 +: (OUTBITS-4)]),
+							    .B(c_stage2_53[3 +: (OUTBITS-4)]),
+							    .C(d_stage2_53[0 +: (OUTBITS-4)]),
+							    .SUM( SUM[4 +: (OUTBITS-4)] ),
+							    .CARRY( CARRY[4 +: (OUTBITS-4)] ),
+							    .CLK(CLK),
+							    .CE(CE),
+							    .RST(1'b0));
+	  // Now the bottom bits. Just grab those.
+	  FDRE #(.INIT(1'b0)) u_stage3_sb0(.D(s_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[0]));
+	  FDRE #(.INIT(1'b0)) u_stage3_cb0(.D(c_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[0]));
+	  
+	  FDRE #(.INIT(1'b0)) u_stage3_sb1(.D(s_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[1]));    
+	  FDRE #(.INIT(1'b0)) u_stage3_cb1(.D(c_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[1]));    
+	  
+	  FDRE #(.INIT(1'b0)) u_stage3_sb2(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[2]));    
+	  FDRE #(.INIT(1'b0)) u_stage3_cb2(.D(c_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[2]));    
+	  
+	  FDRE #(.INIT(1'b0)) u_stage3_sb3(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[3]));        
+	  // and this is the zero that results from the lack of merging.
+	  assign CARRY[3] = 1'b0;
 
-    // Again, our final stage now looks like:
-    //          zyxwv = s
-    //          yxwv0 = c
-    //          x0000 = d
-    // Remember the weirdness that came from the first-stage 6:3.
-    // 
-    // We want to compress that 3:2, which works for the fourth bit and up.    
-    // But the bottom 3 bits map to
-    //          yxwv
-    //          xwv0
-    //          0000
-    // Now just add.
-    //          yxwv
-    //          xwv0
-    // That's STILL just two outputs. So screw it. Just capture them.
-    // Our final outputs then look like
-    //          syxwv
-    //         c0xwv0
-    // Which is, of course, wonky looking, but it's fine. (There was always going to be extra 0s in the output, just depends on where).
-    // Note where we begin each: the first 3:2 is at bit 4, and it takes s[4], c[3], and d[0].
-    fast_csa32_adder #(.NBITS(OUTBITS-4)) u_stage3_32(.A(s_stage2_53[4 +: (OUTBITS-4)]),
-                                                     .B(c_stage2_53[3 +: (OUTBITS-4)]),
-                                                     .C(d_stage2_53[0 +: (OUTBITS-4)]),
-                                                     .SUM( SUM[4 +: (OUTBITS-4)] ),
-                                                     .CARRY( CARRY[4 +: (OUTBITS-4)] ),
-                                                     .CLK(CLK),
-                                                     .CE(CE),
-                                                     .RST(1'b0));
-    // Now the bottom bits. Just grab those.
-    FDRE #(.INIT(1'b0)) u_stage3_sb0(.D(s_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[0]));
-    FDRE #(.INIT(1'b0)) u_stage3_cb0(.D(c_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[0]));
-
-    FDRE #(.INIT(1'b0)) u_stage3_sb1(.D(s_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[1]));    
-    FDRE #(.INIT(1'b0)) u_stage3_cb1(.D(c_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[1]));    
-
-    FDRE #(.INIT(1'b0)) u_stage3_sb2(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[2]));    
-    FDRE #(.INIT(1'b0)) u_stage3_cb2(.D(c_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[2]));    
-
-    FDRE #(.INIT(1'b0)) u_stage3_sb3(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[3]));        
-    // and this is the zero that results from the lack of merging.
-    assign CARRY[3] = 1'b0;
-
-    // And that's it.
+	  // And that's it.
+       end else begin : OPT // block: NOOPT
+	  // For 3 bits, the low-bit optimization runs into the top. So we cheat, and save an entire stage.
+	  // This optimization doesn't make sense anywhere else.
+	  //
+	  // Note that this is replacing the 3:2 compressor above.
+	  //
+	  // We need a custom LUT for that, though, because 2 of the input bits are (effectively) a multi-bit value
+	  // (we'll use d_stage1_53[NBITS-1:NBITS-2]). We'll put those in bits 1:0.
+	  // The others are c_stage1_53[NBITS-1] and c_stage1_32[NBITS-1].
+	  //
+	  // 3 2 1 0  S C D
+	  // 0 0 0 0  0 0 0 1010 1100 0000
+	  // 0 0 0 1  1 0 0
+	  // 0 0 1 0  0 1 0
+	  // 0 0 1 1  1 1 0
+	  // 0 1 0 0  1 0 0 0101 0110 1000
+	  // 0 1 0 1  0 1 0 
+	  // 0 1 1 0  1 1 0
+	  // 0 1 1 1  0 0 1
+	  // 1 0 0 0  1 0 0 0101 0110 1000
+	  // 1 0 0 1  0 1 0 
+	  // 1 0 1 0  1 1 0
+	  // 1 0 1 1  0 0 1
+	  // 1 1 0 0  0 1 0 1010 0011 1100
+	  // 1 1 0 1  1 1 0
+	  // 1 1 1 0  0 0 1
+	  // 1 1 1 1  1 0 1
+	  localparam [31:0] A_CUST_43_INIT = 32'hA5A5A5A5;
+	  localparam [31:0] B_CUST_43_INIT = 32'h366C366C;
+	  localparam [15:0] C_CUST_43_INIT = 16'hC880;
+	  wire a_to_ff;
+	  wire b_to_ff;
+	  wire c_to_ff;	  
+	  LUT6_2 #(.INIT({B_CUST_43_INIT, A_CUST_43_INIT})) u_stage2_ablut(.I5(1'b1),
+									   .I4(1'b0),
+									   .I3(c_stage1_53[NBITS-1]),
+									   .I2(c_stage1_32[NBITS-1]),
+									   .I1(d_stage1_53[NBITS-1]),
+									   .I0(d_stage1_53[NBITS-2]),
+									   .O5(a_to_ff),
+									   .O6(b_to_ff));
+	  LUT4 #(.INIT(C_CUST_43_INIT)) u_stage2_clut(.I3(c_stage1_53[NBITS-1]),
+						      .I2(c_stage1_32[NBITS-1]),
+						      .I1(d_stage1_53[NBITS-1]),
+						      .I0(d_stage1_53[NBITS-2]),
+						      .O(c_to_ff));
+	  // Here's why this trick works. OUTBITS is *5*. So here are the bottom output bits.
+	  // These are really the outputs of a 3:2 compressor.
+	  assign SUM[1:0] =   s_stage2_53[1:0];
+	  assign CARRY[1:0] = c_stage2_53[1:0];
+	  // There's only *one* actual stage2 5:3 adder. We need a place to shove it's "D" output... but carry[3]'s available.
+	  // Normally we'd also have additional bits here: but we compressed them away early and made space.
+	  assign SUM[2] = s_stage2_53[2];
+	  assign CARRY[2] = c_stage2_53[2];
+	  assign CARRY[3] = d_stage2_53[0];
+	  // Now we have CARRY[4] and SUM[4:3] left over.
+	  // 'a' is the lowest bit.
+	  FDRE #(.INIT(1'b0)) u_aff(.D(a_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(SUM[3]));	  
+	  FDRE #(.INIT(1'b0)) u_bff(.D(b_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(SUM[4]));	  
+	  FDRE #(.INIT(1'b0)) u_cff(.D(c_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(CARRY[4]));
+	  // And that's it: one complete stage less.
+       end
+    endgenerate
+   
                                                                                               
 endmodule
