@@ -21,8 +21,10 @@
 // meaning it's the only one). For a 3-bit add this runs into the low-bit optimization
 // and the entire final stage would turn into registers.
 //
-// The outputs here (SUM/CARRY) should be added in a DSP.
-// As with any CSA they should be added (sum + (carry << 1) ).
+// The outputs here should be added in a DSP. They are NOT called SUM/CARRY
+// because unlike a normal CSA, they should be directly added together (OA + OB)
+// rather than carry being upshifted by 1. This is because there's an optimization
+// where one of the low bits is just carried forward, using up the unused FFs.
 module fast_csa82_adder #(parameter NBITS=5)(
         input [NBITS-1:0] A,
         input [NBITS-1:0] B,
@@ -34,8 +36,8 @@ module fast_csa82_adder #(parameter NBITS=5)(
         input [NBITS-1:0] H,
         input CLK,
         input CE,
-        output [(NBITS+2)-1:0] SUM,
-        output [(NBITS+2)-1:0] CARRY
+        output [(NBITS+3)-1:0] OA,
+        output [(NBITS+3)-1:0] OB
     );
     // 5:3 compressor (2LUTs/bit)  -+-5:3 compressor (2LUTs/bit)->3:2 compressor (1LUT/bit)
     // 3:2 compressor (1LUT/bit)    /
@@ -116,6 +118,7 @@ module fast_csa82_adder #(parameter NBITS=5)(
     //          .zyxwv = s
     //         .z0xwv0 = c
     // which we'll fix in the output. Note that we're back in carry-save format.
+    //
 
     // 3 BIT OPTIMIZATION
     // For 3 bits we can note a bit of magic.
@@ -212,6 +215,15 @@ module fast_csa82_adder #(parameter NBITS=5)(
     // xy        z      
     // xyz     xyz
     // xyz    xy00
+
+
+    // BUT WAIT. We can do better. We don't *need* the output to be in carry-save format.
+    // So the LSB does NOT need to be a 6:3 compressor, it can just be a 5:3 compressor,
+    // and we'll just carry the extra LSB forward twice and use *it* as the LSB in the
+    // carry output.
+    // This saves 1 LUT at stage 1, but costs 3FF total (not a big deal).
+    // Bringing us to 44LUT/88FF, or an even 11 slices.
+
     // 
     // The way the bit depth expands here is strange.
     // The outputs from the first stage are all NBITS, but
@@ -233,6 +245,11 @@ module fast_csa82_adder #(parameter NBITS=5)(
     wire [NBITS-1:0] d_stage1_53;
     wire [NBITS-1:0] s_stage1_32;
     wire [NBITS-1:0] c_stage1_32;
+    // This is the extra LSB bit, carried forward to avoid needing a 6:3 compressor
+    // at stage 1.
+    wire             x_lsb_stage1;
+    // and again at stage 2
+    wire             x_lsb_stage2;
 
     // wires to 3rd stage
     // These decrease because of our Wallace tree magic.
@@ -240,18 +257,18 @@ module fast_csa82_adder #(parameter NBITS=5)(
     wire [OUTBITS-2:0] c_stage2_53; // or NBITS+1
     wire [OUTBITS-5:0] d_stage2_53; // or NBITS-2
 
-    // Everything except the LSBs are 5:3 compressors.    
-    fast_csa53_adder #(.NBITS(NBITS-1)) u_stage1_53(.A(A[1 +: (NBITS-1)]),
-                                                    .B(B[1 +: (NBITS-1)]),
-                                                    .C(C[1 +: (NBITS-1)]),
-                                                    .D(D[1 +: (NBITS-1)]),
-                                                    .E(E[1 +: (NBITS-1)]),
+    // Everything is a 5:3 compressor.
+    fast_csa53_adder #(.NBITS(NBITS)) u_stage1_53(  .A(A),
+                                                    .B(B),
+                                                    .C(C),
+                                                    .D(D),
+                                                    .E(E),
                                               .CLK(CLK),
                                               .CE(CE),
                                               .RST(1'b0),
-                                              .SUM(s_stage1_53[1 +: (NBITS-1)]),
-                                              .CARRY(c_stage1_53[1 +: (NBITS-1)]),
-                                              .CCARRY(d_stage1_53[1 +: (NBITS-1)]));
+                                              .SUM(s_stage1_53),
+                                              .CARRY(c_stage1_53),
+                                              .CCARRY(d_stage1_53));
     // Everything except the LSB are 3:2 compressors.                                                  
     fast_csa32_adder #(.NBITS(NBITS-1)) u_stage1_32(.A(F[1 +: (NBITS-1)]),
                                                  .B(G[1 +: (NBITS-1)]),
@@ -260,22 +277,12 @@ module fast_csa82_adder #(parameter NBITS=5)(
                                              .RST(1'b0),
                                              .SUM(s_stage1_32[1 +: (NBITS-1)]),
                                              .CARRY(c_stage1_32[1 +: (NBITS-1)]));
-    // The LSB is a 6:3 compressor plus 2 FFs.
-    fast_csa63_adder #(.NBITS(1)) u_stage1_63(.A(A[0]),
-                                              .B(B[0]),
-                                              .C(C[0]),
-                                              .D(D[0]),
-                                              .E(E[0]),
-                                              .F(F[0]),
-                                              .CLK(CLK),.CE(CE),
-                                              .RST(1'b0),
-                                              .SUM(s_stage1_53[0]),
-                                              .CARRY(c_stage1_53[0]),
-                                              .CCARRY(d_stage1_53[0]));
     // again, these two are FAKE, they're both sums.                                             
     FDRE #(.INIT(1'b0)) u_glsb(.D(G[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(s_stage1_32[0]));
     FDRE #(.INIT(1'b0)) u_hlsb(.D(H[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(c_stage1_32[0]));
-                                             
+    // And this one is the extra LSB bit, carried forward.
+    FDRE #(.INIT(1'b0)) u_xlsb(.D(F[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(x_lsb_stage1));
+                                                 
     // Second stage.
     // Now the 2 low bits merge in 3:2 compressors. The mix here is a bit odd.
     // bit 0: s_stage1_32[0]/c_stage1_32[0]/s_stage1_53[0]
@@ -305,6 +312,8 @@ module fast_csa82_adder #(parameter NBITS=5)(
                                                     .CLK(CLK),
                                                     .CE(CE),
                                                     .RST(1'b0));
+    // And we have to again store the LSB.
+    FDRE #(.INIT(1'b0)) u_xlsb_2(.D(x_lsb_stage1),.C(CLK),.CE(CE),.R(1'b0),.Q(x_lsb_stage2));                                                    
     generate
        if (NBITS > 3) begin : NOOPT
 	  // The next-to-MSB is a 3:2 compressor, since it takes
@@ -345,24 +354,29 @@ module fast_csa82_adder #(parameter NBITS=5)(
 	  fast_csa32_adder #(.NBITS(OUTBITS-4)) u_stage3_32(.A(s_stage2_53[4 +: (OUTBITS-4)]),
 							    .B(c_stage2_53[3 +: (OUTBITS-4)]),
 							    .C(d_stage2_53[0 +: (OUTBITS-4)]),
-							    .SUM( SUM[4 +: (OUTBITS-4)] ),
-							    .CARRY( CARRY[4 +: (OUTBITS-4)] ),
+							    .SUM( OA[4 +: (OUTBITS-4)] ),
+							    .CARRY( OB[5 +: (OUTBITS-4)] ),
 							    .CLK(CLK),
 							    .CE(CE),
 							    .RST(1'b0));
 	  // Now the bottom bits. Just grab those.
-	  FDRE #(.INIT(1'b0)) u_stage3_sb0(.D(s_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[0]));
-	  FDRE #(.INIT(1'b0)) u_stage3_cb0(.D(c_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[0]));
+	  // One is the extra LSB we've been carrying. It gets stuck in OB[0].
+	  FDRE #(.INIT(1'b0)) u_stage3_xlsb(.D(x_lsb_stage2),.C(CLK),.CE(CE),.R(1'b0),.Q(OB[0]));
+
+	  FDRE #(.INIT(1'b0)) u_stage3_sb0(.D(s_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(OA[0]));
+	  FDRE #(.INIT(1'b0)) u_stage3_cb0(.D(c_stage2_53[0]),.C(CLK),.CE(CE),.R(1'b0),.Q(OB[1]));
 	  
-	  FDRE #(.INIT(1'b0)) u_stage3_sb1(.D(s_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[1]));    
-	  FDRE #(.INIT(1'b0)) u_stage3_cb1(.D(c_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[1]));    
+	  FDRE #(.INIT(1'b0)) u_stage3_sb1(.D(s_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(OA[1]));    
+	  FDRE #(.INIT(1'b0)) u_stage3_cb1(.D(c_stage2_53[1]),.C(CLK),.CE(CE),.R(1'b0),.Q(OB[2]));    
 	  
-	  FDRE #(.INIT(1'b0)) u_stage3_sb2(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[2]));    
-	  FDRE #(.INIT(1'b0)) u_stage3_cb2(.D(c_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(CARRY[2]));    
+	  FDRE #(.INIT(1'b0)) u_stage3_sb2(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(OA[2]));    
+	  FDRE #(.INIT(1'b0)) u_stage3_cb2(.D(c_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(OB[3]));    
 	  
-	  FDRE #(.INIT(1'b0)) u_stage3_sb3(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(SUM[3]));        
+	  FDRE #(.INIT(1'b0)) u_stage3_sb3(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(OA[3]));        
 	  // and this is the zero that results from the lack of merging.
-	  assign CARRY[3] = 1'b0;
+	  assign OB[3] = 1'b0;
+	  // and this is the missing top bit in the sum
+	  assign OA[(NBITS+3)-1] = 1'b0;
 
 	  // And that's it.
        end else begin : OPT // block: NOOPT
@@ -413,18 +427,21 @@ module fast_csa82_adder #(parameter NBITS=5)(
 						      .O(c_to_ff));
 	  // Here's why this trick works. OUTBITS is *5*. So here are the bottom output bits.
 	  // These are really the outputs of a 3:2 compressor.
-	  assign SUM[1:0] =   s_stage2_53[1:0];
-	  assign CARRY[1:0] = c_stage2_53[1:0];
+	  assign OA[1:0] =   s_stage2_53[1:0];
+	  assign OB[2:1] = c_stage2_53[1:0];
+	  assign OB[0] = x_lsb_stage2;
 	  // There's only *one* actual stage2 5:3 adder. We need a place to shove it's "D" output... but carry[3]'s available.
 	  // Normally we'd also have additional bits here: but we compressed them away early and made space.
-	  assign SUM[2] = s_stage2_53[2];
-	  assign CARRY[2] = c_stage2_53[2];
-	  assign CARRY[3] = d_stage2_53[0];
+	  assign OA[2] = s_stage2_53[2];
+	  assign OB[3] = c_stage2_53[2];
+	  assign OB[4] = d_stage2_53[0];
 	  // Now we have CARRY[4] and SUM[4:3] left over.
 	  // 'a' is the lowest bit.
-	  FDRE #(.INIT(1'b0)) u_aff(.D(a_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(SUM[3]));	  
-	  FDRE #(.INIT(1'b0)) u_bff(.D(b_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(SUM[4]));	  
-	  FDRE #(.INIT(1'b0)) u_cff(.D(c_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(CARRY[4]));
+	  FDRE #(.INIT(1'b0)) u_aff(.D(a_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(OA[3]));	  
+	  FDRE #(.INIT(1'b0)) u_bff(.D(b_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(OA[4]));	  
+	  FDRE #(.INIT(1'b0)) u_cff(.D(c_to_ff),.C(CLK),.CE(CE),.RST(1'b0),.Q(OB[5]));
+	  // and there's no top OA
+	  assign OA[5] = 1'b0;
 	  // And that's it: one complete stage less.
        end
     endgenerate
