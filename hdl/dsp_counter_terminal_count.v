@@ -67,7 +67,8 @@ module dsp_counter_terminal_count(
     parameter FIXED_TCOUNT = "FALSE";
     parameter FIXED_TCOUNT_VALUE = 0;
     parameter RESET_TCOUNT_AT_RESET = "TRUE";
-   
+    parameter HALT_AT_TCOUNT = "FALSE";
+    localparam AUTORESET = (HALT_AT_TCOUNT == "FALSE") ? "RESET_MATCH" : "NO_RESET";
     // for simulation
     wire [47:0] current_count;
 
@@ -88,7 +89,7 @@ module dsp_counter_terminal_count(
         if (FIXED_TCOUNT == "TRUE") begin : FIXED
             DSP48E1 #( `A_UNUSED_ATTRS, `B_UNUSED_ATTRS, `D_UNUSED_ATTRS, `CONSTANT_MODE_ATTRS, `NO_MULT_ATTRS,
                            .PREG(1'b1),.CREG(1'b1),.CARRYINREG(1'b0),
-                           .AUTORESET_PATDET("RESET_MATCH"),.MASK({48{1'b0}}),.SEL_PATTERN("PATTERN"),.PATTERN(FIXED_TCOUNT_VALUE),.USE_PATTERN_DETECT("PATDET")
+                           .AUTORESET_PATDET(AUTORESET),.MASK({48{1'b0}}),.SEL_PATTERN("PATTERN"),.PATTERN(FIXED_TCOUNT_VALUE),.USE_PATTERN_DETECT("PATDET")
                          )
                     u_counter( `A_UNUSED_PORTS, `B_UNUSED_PORTS, `C_UNUSED_PORTS, `D_UNUSED_PORTS,
                                .CEP(count_i),.RSTP(rst_i),
@@ -99,7 +100,7 @@ module dsp_counter_terminal_count(
         end else begin : VAR        
             DSP48E1 #( `A_UNUSED_ATTRS, `B_UNUSED_ATTRS, `D_UNUSED_ATTRS, `CONSTANT_MODE_ATTRS, `NO_MULT_ATTRS,
                        .PREG(1'b1),.CREG(1'b1),.CARRYINREG(1'b0),
-                       .AUTORESET_PATDET("RESET_MATCH"),.MASK({48{1'b0}}),.SEL_PATTERN("C"),.USE_PATTERN_DETECT("PATDET")
+                       .AUTORESET_PATDET(AUTORESET),.MASK({48{1'b0}}),.SEL_PATTERN("C"),.USE_PATTERN_DETECT("PATDET")
                      )
                 u_counter( `A_UNUSED_PORTS, `B_UNUSED_PORTS, `D_UNUSED_PORTS,
                            .C(tcount_i),.RSTC(RESET_TCOUNT_AT_RESET == "TRUE" ? rst_i : 1'b0),.CEC(update_tcount_i),
