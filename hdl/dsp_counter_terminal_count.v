@@ -61,7 +61,8 @@ module dsp_counter_terminal_count(
         input           count_i,
         input [47:0]    tcount_i,
         input           update_tcount_i,
-        output          tcount_reached_o
+        output          tcount_reached_o,
+        output [47:0]   count_o
     );
     
     parameter FIXED_TCOUNT = "FALSE";
@@ -69,7 +70,6 @@ module dsp_counter_terminal_count(
     parameter RESET_TCOUNT_AT_RESET = "TRUE";
     parameter HALT_AT_TCOUNT = "FALSE";
     localparam AUTORESET = (HALT_AT_TCOUNT == "FALSE") ? "RESET_MATCH" : "NO_RESET";
-    // for simulation
     wire [47:0] current_count;
 
     reg rst_or_update = 0;
@@ -111,5 +111,6 @@ module dsp_counter_terminal_count(
                            .PATTERNDETECT(tcount_reached_o),.P(current_count));    
        end
    endgenerate
+   assign count_o = current_count;
     
 endmodule
