@@ -9,6 +9,7 @@
 * dual_dsp_counters.v : Dual 24-bit counter packed in a DSP.
 * dsp_macros.vh : Verilog header with macros for DSP usage.
 * skidbuffer.v : A generic skid buffer (register slice) for AXI4-Stream.
+* pps_core.v : External/internal PPS module with external holdoff
 
 * fast_csa32_adder.v : 3:2 compressor (with output FFs)
 * fast_csa53_adder.v : 5:3 compressor (with output FFs)
