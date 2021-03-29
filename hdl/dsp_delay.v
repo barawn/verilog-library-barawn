@@ -7,6 +7,10 @@ module dsp_delay( input fast_clk_i,
                   input [15:0] delay_i,
                   output count_reached_o );
     parameter DELAY_SHIFT = 0;
+    // PIPELINE_RESET = "NONE" - just feed reset's rising edge detector into DSP with no delay (so reset same clock)
+    // PIPELINE_RESET = "SINGLE" - register the rising edge detect (reset *next* clock)
+    // PIPELINE_RESET = "DOUBLE" - register the reset, register the rising edge (reset *2nd* clock after)
+    parameter PIPELINE_RESET = "DOUBLE";
     // God damnit xilinx
     // Handle this within a generate clause.
     // This is an ISIM bug, not a synthesis/implementation bug.
@@ -22,17 +26,36 @@ module dsp_delay( input fast_clk_i,
         end
     endgenerate        
     wire 	delay_dsp_patterndetect;
-    (* KEEP = "TRUE" *)
-    reg local_reset = 0;    
-    reg reset_rereg = 0;
-    reg load_static_during_reset = 0;
-    reg reset_dsp = 0;
-    
+    wire    load_static_during_reset;
+    wire    local_reset;
+    reg     reset_rereg = 0;
     always @(posedge fast_clk_i) begin
-        local_reset <= `DLYFF fast_rst_i;
-        reset_rereg <= `DLYFF local_reset;
-        load_static_during_reset <= `DLYFF (local_reset && !reset_rereg);
+        reset_rereg <= local_reset;
     end
+    generate
+        if (PIPELINE_RESET == "NONE") begin : FL
+            assign local_reset = fast_rst_i;
+            assign load_static_during_reset = (local_reset && !reset_rereg);
+        end else begin : PIPE
+            (* KEEP = "TRUE" *)
+            reg load_static_during_reset_reg = 0;
+            always @(posedge fast_clk_i) begin : PR
+                load_static_during_reset_reg <= (local_reset && !reset_rereg);
+            end
+            assign load_static_during_reset = load_static_during_reset_reg;
+            if (PIPELINE_RESET == "SINGLE") begin : SP
+                assign local_reset = fast_rst_i;
+            end else begin : DP
+                (* KEEP = "TRUE" *)
+                reg local_reset_reg = 0;
+                always @(posedge fast_clk_i) begin : DPR
+                    local_reset_reg <= fast_rst_i;
+                end
+                assign local_reset = local_reset_reg;
+            end
+        end
+    endgenerate
+        
     // just flag reset the DSPs.
     DSP48E1 #(`A_UNUSED_ATTRS, `B_UNUSED_ATTRS, `D_UNUSED_ATTRS,`NO_MULT_ATTRS,`CONSTANT_MODE_ATTRS,
                 .CREG(1'b1),.CARRYINREG(1'b0),
