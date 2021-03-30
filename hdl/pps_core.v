@@ -37,6 +37,7 @@ module pps_core(
     wire ext_pps_holdoff;
     (* ASYNC_REG = "TRUE" *)
     reg [1:0] int_sel_resync = {2{1'b0}};
+    wire use_internal_pps_clk = (USE_INTERNAL_PPS == "TRUE") ? int_sel_i : 1'b0;
     wire use_internal_pps = (USE_INTERNAL_PPS == "TRUE") ? int_sel_resync[1] : 1'b0;
     wire internal_pps;
     reg pps_flag = 0;
@@ -134,8 +135,8 @@ module pps_core(
             flag_sync u_intpps_sync(.in_clkA(internal_pps_clk),.clkA(int_clk_i),.out_clkB(internal_pps),.clkB(ext_clk_i));
             if (USE_DSPS == "TRUE") begin : INTPPSDSP
                 dsp_counter_terminal_count #(.HALT_AT_TCOUNT("FALSE"),.FIXED_TCOUNT("TRUE"),.FIXED_TCOUNT_VALUE(INTERNAL_FREQ))
-                    u_intpps(.clk_i(int_clk_i),.rst_i(!use_internal_pps),.count_i(1'b1),
-                             .tcount_reached_o(internal_pps));
+                    u_intpps(.clk_i(int_clk_i),.rst_i(!use_internal_pps_clk),.count_i(1'b1),
+                             .tcount_reached_o(internal_pps_clk));
             end else begin : INTPPSLOGIC
                 // just... make this big. synthesis should trim it.
                 reg [47:0] int_counter = {48{1'b0}};
