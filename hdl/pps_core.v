@@ -48,7 +48,7 @@ module pps_core(
     
         if (use_internal_pps) pps_flag <= internal_pps;
         else begin
-            if (!ext_pps_holdoff) pps_flag <= ext_pps_resync[0] && !ext_pps_resync[0];
+            if (!ext_pps_holdoff) pps_flag <= ext_pps_resync[0] && !ext_pps_resync[1];
             else pps_flag <= 1'b0;
         end
     end
