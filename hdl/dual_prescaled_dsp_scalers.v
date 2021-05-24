@@ -16,13 +16,24 @@
 // like we're negating the SIMD benefits, but it also acts as a clock-domain cross, storage registers,
 // and allows the first DSP to run free), capture the carryout from the first DSP and if those
 // carryouts are set, replace the scaler output with FFFFFF.
-module dual_prescaled_dsp_scalers( input fast_clk_i,
-                                   input fast_rst_i,
-                                   input [15:0] prescale_i,
-                                   input [1:0] count_i,
-                                   input update_i,
+//
+// prescale_en_i is the load-enable for each prescaler.
+// fast_rst_i acts to both reset the scaler and load the prescale values.
+// fast_rst_done_o is a flag indicating that the load is complete.
+// update_i indicates when the accumulation period is done, and value_valid_o
+// tells you when the final value is ready after an update.
+//
+// This module's been implemented at 400 MHz, hence the "fast"
+// names and the obsessively huge amount of pipelining.
+module dual_prescaled_dsp_scalers( input         fast_clk_i,
+                                   input 	 fast_rst_i,
+                                   output    fast_rst_done_o,
+				   input [1:0]   prescale_en_i,
+                                   input [15:0]  prescale_i,
+                                   input [1:0] 	 count_i,
+                                   input 	 update_i,
                                    output [47:0] value_o,
-                                   output value_valid_o );
+                                   output 	 value_valid_o );
     parameter PIPELINE_INPUT = "TRUE";
     wire [1:0] local_count_fabric;
     wire [1:0] local_count_dsp;
@@ -121,15 +132,21 @@ module dual_prescaled_dsp_scalers( input fast_clk_i,
     reg [1:0] scal_count_flag_rereg = {2{1'b0}};
     
     reg reset_rereg = 0;
-    reg load_static_during_reset = 0;
+    reg [1:0] load_static_during_reset = 0;
 
     reg carry_reset = 0;
     
+    reg [1:0] fast_rst_done = 2'b00;
+    assign fast_rst_done_o = fast_rst_done[1];
+        
     always @(posedge fast_clk_i) begin    
         // Generate a flag to indicate that reset has begun. This loads the static values.
         reset_rereg <= `DLYFF fast_rst_i;
-        load_static_during_reset <= `DLYFF (fast_rst_i && !reset_rereg);
-    
+        load_static_during_reset[0] <= `DLYFF (fast_rst_i && !reset_rereg && prescale_en_i[0]);
+        load_static_during_reset[1] <= `DLYFF (fast_rst_i && !reset_rereg && prescale_en_i[1]);
+
+        fast_rst_done <= {fast_rst_done[0], fast_rst_i && !reset_rereg};        
+       
         // Reset scalA during reset, and also after clock 3 of the scaler capture process
         // (after PCOUT has been captured in scalB
         if (fast_rst_i) scalA_reset <= `DLYFF 1;
@@ -149,12 +166,12 @@ module dual_prescaled_dsp_scalers( input fast_clk_i,
         // Note that we have to qualify the carryout by the count flag, because of the way
         // the DSP carry works during subtracts. 
         if (carry_reset) carryout0_captured <= `DLYFF 0;
-        else if (scalA_carryout[`DUAL_DSP_CARRY0] && scal_count_flag_rereg[0]) carryout0_captured <= `DLYFF 1'b1;
+        else if (scalA_carryout[1] && scal_count_flag_rereg[0]) carryout0_captured <= `DLYFF 1'b1;
 
         // This captures the high half-DSP's carry output. It's also
         // retained for an extra clock because it's needed a little longer.
         if (carry_reset) carryout1_captured[0] <= `DLYFF 0;
-        else if (scalA_carryout[`DUAL_DSP_CARRY1] && scal_count_flag_rereg[1]) carryout1_captured[0] <= `DLYFF 1'b1;
+        else if (scalA_carryout[3] && scal_count_flag_rereg[1]) carryout1_captured[0] <= `DLYFF 1'b1;
         // storage for carryout1
         carryout1_captured[1] <= `DLYFF carryout1_captured[0];
         
@@ -193,7 +210,7 @@ module dual_prescaled_dsp_scalers( input fast_clk_i,
                         .A(scalA_a_in),
                         .CEA2(1'b0),
                         .B(scalA_b_in),
-                        .CEB2(load_static_during_reset),
+                        .CEB2(load_static_during_reset[0]),
                         .CLK(fast_clk_i),
                         .CECTRL(1'b1),
                         .OPMODE( scalA_opmode ),
@@ -204,7 +221,7 @@ module dual_prescaled_dsp_scalers( input fast_clk_i,
                         .CECARRYIN(1'b0),
                         .RSTALLCARRYIN(1'b0),
                         .C(scalA_c_in),
-                        .CEC(load_static_during_reset),
+                        .CEC(load_static_during_reset[1]),
                         .CEP(1'b1),
                         .RSTP(scalA_reset),
                         .CARRYOUT(scalA_carryout),
