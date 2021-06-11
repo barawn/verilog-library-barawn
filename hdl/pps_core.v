@@ -34,7 +34,8 @@ module pps_core(
     
 
     wire [1:0] ext_pps_resync;
-    wire ext_pps_holdoff;
+    reg ext_pps_holdoff = 0;
+    wire ext_pps_holdoff_reached;
     (* ASYNC_REG = "TRUE" *)
     reg [1:0] int_sel_resync = {2{1'b0}};
     wire use_internal_pps_clk = (USE_INTERNAL_PPS == "TRUE") ? int_sel_i : 1'b0;
@@ -51,6 +52,9 @@ module pps_core(
             if (!ext_pps_holdoff) pps_flag <= ext_pps_resync[0] && !ext_pps_resync[1];
             else pps_flag <= 1'b0;
         end
+        
+        if (pps_flag) ext_pps_holdoff <= 1'b1;
+        else if (ext_pps_holdoff_reached) ext_pps_holdoff <= 1'b0;                
     end
     
     generate
@@ -112,19 +116,19 @@ module pps_core(
                 power_on_update <= {power_on_update[1:0],1'b1};
             end
             dsp_counter_terminal_count #(.HALT_AT_TCOUNT("TRUE"),.FIXED_TCOUNT("FALSE"),.RESET_TCOUNT_AT_RESET("FALSE"))
-                u_holdoff(.clk_i(ext_clk_i),.rst_i(pps_flag),.count_i(!ext_pps_holdoff),
+                u_holdoff(.clk_i(ext_clk_i),.rst_i(pps_flag),.count_i(ext_pps_holdoff),
                           .update_tcount_i(ext_holdoff_wr_i || !power_on_update[2]),
                           .tcount_i( holdoff_count ),
-                          .tcount_reached_o(ext_pps_holdoff));
+                          .tcount_reached_o(ext_pps_holdoff_reached));
         end else begin : HLGC
             reg [HOLDOFF_SHIFT+8-1:0] holdoff_counter = {(HOLDOFF_SHIFT+8){1'b0}};
             reg [HOLDOFF_SHIFT+8-1:0] holdoff_count_reg = {(HOLDOFF_SHIFT+8){1'b0}};            
-            assign ext_pps_holdoff = (holdoff_counter == holdoff_count_reg);
+            assign ext_pps_holdoff_reached = (holdoff_counter == holdoff_count_reg);
             always @(posedge ext_clk_i) begin : HLDCNT
                 if (ext_holdoff_wr_i) holdoff_count_reg <= holdoff_count[0 +: HOLDOFF_SHIFT+8];
                 if (pps_flag) holdoff_counter <= {(HOLDOFF_SHIFT+8){1'b0}};
                 else begin
-                    if (!ext_pps_holdoff) holdoff_counter <= holdoff_counter + 1;
+                    if (ext_pps_holdoff) holdoff_counter <= holdoff_counter + 1;
                 end
             end
         end
