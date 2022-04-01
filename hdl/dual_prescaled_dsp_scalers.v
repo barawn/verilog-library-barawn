@@ -35,6 +35,7 @@ module dual_prescaled_dsp_scalers( input         fast_clk_i,
                                    output [47:0] value_o,
                                    output 	 value_valid_o );
     parameter PIPELINE_INPUT = "TRUE";
+        
     wire [1:0] local_count_fabric;
     wire [1:0] local_count_dsp;
     
@@ -201,6 +202,7 @@ module dual_prescaled_dsp_scalers( input         fast_clk_i,
     // Z is always P.
     //
     // ALUMODE is Z-(X+Y+CIN). Since our numbers are negative, we actually count up.
+    wire [47:0] dspA_P;
     wire [6:0] scalA_opmode = { `Z_OPMODE_P, {2{local_count_dsp[1]}}, {2{local_count_dsp[0]}} };
     DSP48E1 #(.AREG(1'b0),.ACASCREG(1'b0), `D_UNUSED_ATTRS, `NO_MULT_ATTRS,
               .ALUMODEREG(0),.INMODEREG(0),.OPMODEREG(1),.CARRYINSELREG(0),
@@ -225,6 +227,7 @@ module dual_prescaled_dsp_scalers( input         fast_clk_i,
                         .CEP(1'b1),
                         .RSTP(scalA_reset),
                         .CARRYOUT(scalA_carryout),
+                        .P(dspA_P),
                         .PCOUT(scalA_pcout));
 
     DSP48E1 #(.AREG(1'b0),.ACASCREG(1'b0),.BCASCREG(1'b0),.BREG(1'b0),.CREG(1'b0), `D_UNUSED_ATTRS,`NO_MULT_ATTRS,.CARRYINREG(1'b0),
@@ -246,8 +249,7 @@ module dual_prescaled_dsp_scalers( input         fast_clk_i,
                             .CEP(scalB_cep),
                             .RSTP(1'b0),
                             .P(scalB_out));
-
-    
+                            
     assign value_o = scalB_out;
     assign value_valid_o = scal_valid;
 
