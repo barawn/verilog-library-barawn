@@ -374,7 +374,7 @@ module fast_csa82_adder #(parameter NBITS=5)(
 	  
 	  FDRE #(.INIT(1'b0)) u_stage3_sb3(.D(s_stage2_53[2]),.C(CLK),.CE(CE),.R(1'b0),.Q(OA[3]));        
 	  // and this is the zero that results from the lack of merging.
-	  assign OB[3] = 1'b0;
+	  assign OB[4] = 1'b0;
 	  // and this is the missing top bit in the sum
 	  assign OA[(NBITS+3)-1] = 1'b0;
 

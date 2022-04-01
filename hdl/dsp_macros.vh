@@ -46,6 +46,7 @@
 `define C_UNUSED_ATTRS .CREG(1'b1)
 `define D_UNUSED_PORTS .D({25{1'b1}}),.CED(1'b0),.RSTD(1'b0)
 `define D_UNUSED_ATTRS .DREG(1'b1),.USE_DPORT("FALSE")
+`define DE2_UNUSED_ATTRS .DREG(1'b1),.AMULTSEL("A")
 
 `define CONSTANT_MODE_ATTRS .ALUMODEREG(0),.INMODEREG(0),.OPMODEREG(0),.CARRYINSELREG(0)
 `define NO_MULT_ATTRS .USE_MULT("NONE"),.MREG(0)
@@ -62,3 +63,7 @@
 `define QUAD_DSP_CARRY1 1
 `define QUAD_DSP_CARRY2 2
 `define QUAD_DSP_CARRY3 3
+
+// This is a helper function to pick off the A/B inputs when used as a 48-bit input
+`define DSP_AB_A( val ) val[ 18 +: 30 ]
+`define DSP_AB_B( val ) val[ 0 +: 18 ]
