@@ -30,3 +30,6 @@ proc open_project args {
     }
 }
 ```
+
+The location of the init.tcl should follow here:
+https://support.xilinx.com/s/article/53090?language=en_US
