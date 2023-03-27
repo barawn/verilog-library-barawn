@@ -28,7 +28,7 @@ module clk_div_ce #(parameter [4:0] CLK_DIVIDE=31,
    reg 			    q_rereg = 0;
    wire 		    q;
    wire 		    d_in = !q;   
-   SRLC32E #(.INIT(32'h0))  u_srl(.D(d_in),.Q(q),.A(CLK_DIVIDE),.CLK(clk));
+   SRLC32E #(.INIT(32'h0))  u_srl(.D(d_in),.CE(1'b1),.Q(q),.A(CLK_DIVIDE),.CLK(clk));
    always @(posedge clk) q_rereg <= `DLYFF q;
 
    assign ce = (EXTRA_DIV2 == "TRUE") ? (q && !q_rereg) : q ^ q_rereg;
