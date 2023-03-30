@@ -4,7 +4,9 @@
 //
 // adc_out/adc_valid need to go to the ILA. Configure the ILA to have a "trigger out" port!!
 // 2 ports, 1 with a 12-bit width (adc_out), 1 with a single-bit width (adc_valid).
+// The adc_out input port should be DATA ONLY.
 // Then hook up trig_out to trigger_in, and trigger_ack to trig_ack.
+// Also configure "Capture Control" enabled.
 //
 // You need to create 2 IP cores. I don't include the XCIs here because that will lock you to
 // a specific Vivado IP version.
@@ -14,6 +16,14 @@
 //
 // Then when you want to *use* this: MAKE SURE THE ILA IS IN TRIGGER OUTPUT MODE (it starts up as DISABLED)
 // Then just trigger on "adc_valid" being 0 or something. Doesn't matter, you're forcing a trigger to occur.
+// Also set up the capture to only acquire when adc_valid = 1.
+//
+// If you need to *trigger* on the ADC stream, that's harder, but not impossible. You need to add 8 additional
+// TRIGGER-ONLY input ports to the ILA (12-bits) and turn the 128-bit output into 8x 12-bit inputs
+// (grabbing the high 12 bits of every 16 bit word). Feed those 8x inputs into the trigger only input ports of
+// the ADC. Now in Hardware Manager, configure those 8 samples to each have their own identical trigger with a giant OR of all of them.
+// there's your trigger.
+// Awkward, horrible, but that's what it is.
 module adc_ila_transfer(
         input [127:0] adc_in,
         input adc_clk,

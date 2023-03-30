@@ -11,6 +11,8 @@
 * skidbuffer.v : A generic skid buffer (register slice) for AXI4-Stream.
 * pps_core.v : External/internal PPS module with external holdoff
 
+* adc_ila_transfer.v : Rescale a full-bandwidth (8 samples/clock) ADC output to 1 sample/clock for input to an ILA using external trigger.
+
 * fast_csa32_adder.v : 3:2 compressor (with output FFs)
 * fast_csa53_adder.v : 5:3 compressor (with output FFs)
 * fast_csa63_adder.v : 6:3 compressor (with output FFs)
