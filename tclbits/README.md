@@ -11,9 +11,15 @@ trying to check in/recreate the project file every time. There are
 "guards" inside the functions to prevent adding the same function
 multiple times.
 
+**Note**: You should create a project_init.tcl file for your project which
+__contains__ the text in the get_repo_dir.tcl. get_repo_dir allows scripts
+to quickly reorient themselves to the repository directory.
+
+* get_repo_dir.tcl - This file should be copied and pasted into your
+  project_init.tcl.
+
 * utility.tcl - This file contains a bunch of utility procedures to simplify
-  Tcl scripts, including finding files (relative to the base project
-  directory) and adding scripts/include directories to the projects.
+  Tcl scripts, including adding scripts/include directories to the projects.
 
 * try_harder.tcl - This file can be used as a post-route Tcl script to,
   well... just try harder. If Vivado's route attempt fails, sometimes
