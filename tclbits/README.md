@@ -16,7 +16,11 @@ is provided in the default project_init.tcl below assuming you
 have a Vivado_init.tcl which provides for per-project initialization.
 
 * project_init_template.tcl - Basic project initialization file. Copy this to
-  project_init.tcl in your project's repository directory.
+  project_init.tcl in your project's repository directory. Read to figure
+  out what you might want.
+
+* project_deinit_template.tcl - Basic project deinitialization script. Read
+  to figure out what you might want.
 
 * utility.tcl - This file contains a bunch of utility procedures to simplify
   Tcl scripts, including adding scripts/include directories to the projects.
@@ -27,3 +31,11 @@ have a Vivado_init.tcl which provides for per-project initialization.
   (which now has route information), and it'll try to replace the failing
   elements (and then route, obviously).
 
+* repo_files.tcl - This file contains functions for managing the files in
+  a Git-managed repository. After sourcing this file, in your
+  project_init.tcl, you can call "check_all" at the end and it will update
+  the state of your project files to the repo state at open every time.
+  Similarly calling "save_all" at the end of project_deinit.tcl will
+  save the state of your project files to the file list files every
+  time you close the project. (Calling save_all periodically isn't a bad
+  idea anyway though).
