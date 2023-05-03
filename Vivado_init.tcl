@@ -34,6 +34,7 @@ proc close_project args {
     if {[file exists $projdeinit] == 1} {
 	source $projdeinit
     }
+    close_project_builtin {*}$args
 }
 
 set_param general.maxThreads 16
