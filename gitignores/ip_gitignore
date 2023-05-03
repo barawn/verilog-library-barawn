@@ -1,0 +1,9 @@
+# This is the gitignore for the "ip/" subdirectory.
+#
+# By default ignore everything.
+*
+# Don't ignore directories.
+!*/
+# Don't ignore .gitignore and .xci files.
+!.gitignore
+!*.xci

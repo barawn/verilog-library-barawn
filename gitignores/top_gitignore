@@ -1,0 +1,4 @@
+vivado_project/
+example_designs/
+*~
+hs_err*
