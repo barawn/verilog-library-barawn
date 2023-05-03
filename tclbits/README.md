@@ -11,12 +11,12 @@ trying to check in/recreate the project file every time. There are
 "guards" inside the functions to prevent adding the same function
 multiple times.
 
-**Note**: You should create a project_init.tcl file for your project which
-__contains__ the text in the get_repo_dir.tcl. get_repo_dir allows scripts
-to quickly reorient themselves to the repository directory.
+**Note**: To use these you must have the "get_repo_dir" proc. This
+is provided in the default project_init.tcl below assuming you
+have a Vivado_init.tcl which provides for per-project initialization.
 
-* get_repo_dir.tcl - This file should be copied and pasted into your
-  project_init.tcl.
+* project_init_template.tcl - Basic project initialization file. Copy this to
+  project_init.tcl in your project's repository directory.
 
 * utility.tcl - This file contains a bunch of utility procedures to simplify
   Tcl scripts, including adding scripts/include directories to the projects.
