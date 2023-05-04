@@ -60,3 +60,18 @@ proc set_post_route_tcl { proutescr } {
     set_script proutescr "STEPS.ROUTE_DESIGN.TCL.POST" "utils_1" "impl_1"
 }
 
+# Utility function for adding IP repository. 
+proc add_ip_repository { iprep } {
+    if {string equal [file pathtype $iprep] "absolute"} {
+	set iprepf $iprep
+    } else {
+	set iprepf [file join [get_repo_dir] $iprep]
+    }
+    set ipreps [get_property ip_repo_paths [current_project]]
+    if {$iprepf in $ipreps} {
+	# do nothing
+    } else {
+	lappend $ipreps $iprepf
+	set_property ip_repo_paths $ipreps [current_project]
+    }
+}
