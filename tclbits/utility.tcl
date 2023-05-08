@@ -62,7 +62,7 @@ proc set_post_route_tcl { proutescr } {
 
 # Utility function for adding IP repository. 
 proc add_ip_repository { iprep } {
-    if {string equal [file pathtype $iprep] "absolute"} {
+    if {[string equal [file pathtype $iprep] "absolute"]} {
 	set iprepf $iprep
     } else {
 	set iprepf [file join [get_repo_dir] $iprep]
