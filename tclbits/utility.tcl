@@ -36,7 +36,7 @@ proc set_script { scr property_name fileset_name run_name } {
 # NOTE: This only works if you don't change the filesets and default
 # run types. Which I never ever ever do.
 proc set_pre_synthesis_tcl { prescr } {
-    set_script prescr "STEPS.SYNTH_DESIGN.TCL.PRE" "utils_1" "synth_1"
+    set_script $prescr "STEPS.SYNTH_DESIGN.TCL.PRE" "utils_1" "synth_1"
 }
 
 # As above, for post-implementation init script
@@ -47,17 +47,17 @@ proc set_pre_synthesis_tcl { prescr } {
 # NOTE: This only works if you don't change the filesets and default
 # run types. Which I never ever ever do.
 proc set_post_implementation_init_tcl { pinitscr } {
-    set_script pinitscr "STEPS.INIT_DESIGN.TCL.POST" "utils_1" "impl_1"
+    set_script $pinitscr "STEPS.INIT_DESIGN.TCL.POST" "utils_1" "impl_1"
 }
 
 # As above, for post-place script
 proc set_post_place_tcl { pplacescr } {
-    set_script pplacescr "STEPS.PLACE_DESIGN.TCL.POST" "utils_1" "impl_1"
+    set_script $pplacescr "STEPS.PLACE_DESIGN.TCL.POST" "utils_1" "impl_1"
 }
 
 # As above, for post-route script
 proc set_post_route_tcl { proutescr } {
-    set_script proutescr "STEPS.ROUTE_DESIGN.TCL.POST" "utils_1" "impl_1"
+    set_script $proutescr "STEPS.ROUTE_DESIGN.TCL.POST" "utils_1" "impl_1"
 }
 
 # Utility function for adding IP repository. 
