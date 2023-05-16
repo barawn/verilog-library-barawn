@@ -1,4 +1,5 @@
 `ifndef INTERFACES_VH_
+`define INTERFACES_VH_
 //
 // This file contains macro defines for interface connections.
 // We do this because it helps ensure that the interfaces are defined
@@ -627,7 +628,7 @@
   wire [ data_width - 1:0] prefix``dat_i``suffix;                   \
   wire [ data_width - 1:0] prefix``dat_o``suffix;                   \
   wire [ address_width - 1:0] prefix``adr_o``suffix;                \
-  wire [ (data_width/8)-1:0] prefix``sel_o``suffix;                 \ 
+  wire [ (data_width/8)-1:0] prefix``sel_o``suffix;                 \
   wire prefix``cyc_o``suffix;                                       \
   wire prefix``stb_o``suffix;                                       \
   wire prefix``we_o``suffix;                                        \
