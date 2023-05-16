@@ -23,13 +23,13 @@
 // AXI4-Stream minimal interface: TDATA/TVALID/TREADY. //
 /////////////////////////////////////////////////////////
 
-`define DEFINE_AXI4S_MIN_IFV( prefix , suffix, width )          \
+`define DEFINE_AXI4S_MIN_IFV( prefix , width, suffix )          \
     wire [ width - 1:0] prefix``tdata``suffix;                  \
     wire prefix``tvalid``suffix;                                \
     wire prefix``tready``suffix
 
 `define DEFINE_AXI4S_MIN_IF( prefix , width )                   \
-    `DEFINE_AXI4S_MIN_IFV( prefix, `NO_SUFFIX , width )
+    `DEFINE_AXI4S_MIN_IFV( prefix, width, `NO_SUFFIX )
 
 `define CONNECT_AXI4S_MIN_IFV( port_prefix , if_prefix , if_suffix )            \
     .``port_prefix``tdata ( if_prefix``tdata``if_suffix ),                      \
@@ -53,8 +53,8 @@
 /////////////////////////////////////////////////////////////////////
 // AXI4-Stream nominal interface: TDATA/TVALID/TREADY/TKEEP/TLAST. //
 /////////////////////////////////////////////////////////////////////
-`define DEFINE_AXI4S_IFV( prefix, suffix, width )   \
-    `DEFINE_AXI4S_MIN_IFV( prefix, suffix, width ); \
+`define DEFINE_AXI4S_IFV( prefix, width, suffix )   \
+    `DEFINE_AXI4S_MIN_IFV( prefix, width, suffix ); \
     wire [ (width/8) - 1:0] prefix``tkeep``suffix;  \
     wire prefix``tlast``suffix
 
@@ -90,7 +90,7 @@
 // holy crap this saves an utter boatload of typing        //
 /////////////////////////////////////////////////////////////
 // convenience define
-`define DEFINE_SPLIT_IFV_DMA( prefix, suffix, idx )                         \
+`define DEFINE_SPLIT_IFV_DMA( prefix, idx, suffix )                         \
     wire [255:0]    prefix``dma``idx``_from_host_data;                      \
     wire [13:0]     prefix``dma``idx``_from_host_ctrl;                      \
     wire            prefix``dma``idx``_from_host_valid;                     \
@@ -115,15 +115,15 @@
     wire            prefix``target_read_data_valid``suffix;                 \
     wire [7:0]      prefix``target_read_ctrl``suffix;                       \
     wire [7:0]      prefix``target_read_data_ctrl``suffix;                  \
-    `DEFINE_SPLIT_IFV_DMA( prefix , suffix, 0);                             \
-    `DEFINE_SPLIT_IFV_DMA( prefix , suffix, 1);                             \
-    `DEFINE_SPLIT_IFV_DMA( prefix , suffix, 2)
+    `DEFINE_SPLIT_IFV_DMA( prefix , 0, suffix);                             \
+    `DEFINE_SPLIT_IFV_DMA( prefix , 1, suffix);                             \
+    `DEFINE_SPLIT_IFV_DMA( prefix , 2, suffix)
 
 `define DEFINE_SPLIT_IF( prefix )                                       \
     `DEFINE_SPLIT_IFV( prefix, `NO_SUFFIX )    
 
 // convenience function for DMA
-`define CONNECT_SPLIT_IFV_DMA( port_prefix , if_prefix, if_suffix, idx )                                        \
+`define CONNECT_SPLIT_IFV_DMA( port_prefix , if_prefix, idx, if_suffix )                                        \
     .``port_prefix``dma``idx``_from_host_data       ( if_prefix``dma``idx``_from_host_data``if_suffix ),        \
     .``port_prefix``dma``idx``_from_host_ctrl       ( if_prefix``dma``idx``_from_host_ctrl``if_suffix ),        \
     .``port_prefix``dma``idx``_from_host_valid      ( if_prefix``dma``idx``_from_host_valid``if_suffix ),       \
@@ -149,9 +149,9 @@
     .``port_prefix``target_read_data_valid          ( if_prefix``target_read_data_valid``if_suffix ),   \
     .``port_prefix``target_read_ctrl                ( if_prefix``target_read_ctrl``if_suffix ),         \
     .``port_prefix``target_read_data_ctrl           ( if_prefix``target_read_data_ctrl``if_suffix ),    \
-    `CONNECT_SPLIT_IFV_DMA( port_prefix, if_prefix, if_suffix, 0 ),                                     \
-    `CONNECT_SPLIT_IFV_DMA( port_prefix, if_prefix, if_suffix, 1 ),                                     \
-    `CONNECT_SPLIT_IFV_DMA( port_prefix, if_prefix, if_suffix, 2 )
+    `CONNECT_SPLIT_IFV_DMA( port_prefix, if_prefix, 0, if_suffix ),                                     \
+    `CONNECT_SPLIT_IFV_DMA( port_prefix, if_prefix, 1, if_suffix ),                                     \
+    `CONNECT_SPLIT_IFV_DMA( port_prefix, if_prefix, 2, if_suffix )
 
 `define CONNECT_SPLIT_IF( port_prefix, if_prefix )  \
     `CONNECT_SPLIT_IFV( port_prefix, if_prefix, `NO_SUFFIX )
@@ -254,7 +254,7 @@
 // modules. We don't do this for the define or port definition
 // macros because unused ports can just be ignored.
 //
-`define DEFINE_AXI4L_IFV( prefix , suffix , address_width, data_width )             \
+`define DEFINE_AXI4L_IFV( prefix , address_width, data_width, suffix  )             \
     wire    [ address_width -1:0]       prefix``awaddr``suffix;                     \
     wire                                prefix``awvalid``suffix;                    \
     wire                                prefix``awready``suffix;                    \
@@ -274,7 +274,7 @@
     wire                                prefix``rready``suffix
 
 `define DEFINE_AXI4L_IF( prefix , address_width, data_width )                       \
-    `DEFINE_AXI4L_IFV( prefix , `NO_SUFFIX , address_width, data_width )
+    `DEFINE_AXI4L_IFV( prefix , address_width, data_width, `NO_SUFFIX )
 
 `define CONNECT_AXI4L_IFV( port_prefix, if_prefix , if_suffix )             \
     `CONNECT_AXI4L_AW_IFV( port_prefix, if_prefix , if_suffix ),            \
@@ -367,7 +367,7 @@
 // 3-bit A[R/W]size
 // N-bit A[R/W]user
 // 1-bit [R/W]last
-`define DEFINE_AXI4_IFV( prefix , suffix , address_width, data_width , id_width, user_width )   \
+`define DEFINE_AXI4_IFV( prefix , address_width, data_width , id_width, user_width, suffix  )   \
     `DEFINE_AXI4L_IFV( prefix, suffix, address_width, data_width );                             \
     wire [1:0] prefix``awburst``suffix;                                                         \
     wire [3:0] prefix``awcache``suffix;                                                         \
@@ -393,7 +393,7 @@
     wire prefix``wlast``suffix
     
 `define DEFINE_AXI4_IF( prefix , address_width, data_width, id_width, user_width )              \
-    `DEFINE_AXI4_IFV( prefix , `NO_SUFFIX , address_width, data_width , id_width, user_width )
+    `DEFINE_AXI4_IFV( prefix , address_width, data_width , id_width, user_width, `NO_SUFFIX )
 
 `define CONNECT_AXI4_IFV( port_prefix, if_prefix , if_suffix )             \
     `CONNECT_AXI4_AW_IFV( port_prefix, if_prefix , if_suffix ),            \
