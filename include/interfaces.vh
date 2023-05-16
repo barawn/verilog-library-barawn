@@ -60,7 +60,7 @@
     wire prefix``tlast``suffix
 
 `define DEFINE_AXI4S_IF( prefix, width )            \
-    `DEFINE_AXI4S_IFV( prefix, `NO_SUFFIX, width )
+    `DEFINE_AXI4S_IFV( prefix, width, `NO_SUFFIX )
 
 `define CONNECT_AXI4S_IFV( port_prefix, if_prefix, if_suffix )      \
     `CONNECT_AXI4S_MIN_IFV( port_prefix, if_prefix, if_suffix ),        \
