@@ -701,6 +701,127 @@
 // Create target ports in a module
 `define TARGET_NAMED_PORTS_WB_IF( port_prefix, address_width, data_width ) \
     `NAMED_PORTS_WB_IF( port_prefix, address_width, data_width, WB_HOST )
-    
+
+////////////////////////////////////////////////
+// DRP interface.
+// Xilinx uses the DRP interface for its static logic
+// reconfiguration ports (MMCM, PLL, transceivers).
+//
+// However it does NOT name things consistently in many
+// IP cores, so guess what, we get lots of "specialty"
+// connects!
+//
+// The *standard* interface definition is all lowercase:
+// drpaddr[ addr_width-1:0] - address out from host
+// drpen        - cycle indicator from host
+// drpdi[15:0]  - data output from host (input to static logic)
+// drpdo[15:0]  - data input to host (output from static logic)
+// drprdy       - DRP interface ready from static logic
+// drpwe        - write enable from host
+//
+// Specialty connects:
+// CONNECT_IBERT_DRP_IF/V: connect to in-system IBERT IP
+// CONNECT_MMCM_UPPER_DRP_IF/V: connect to upper-case MMCM (base objects)
+// CONNECT_MMCM_LOWER_DRP_IF/V: connect to lower-case MMCM (clocking wizard)
+// CONNECT_GT_DRP_IF/V: connect to transceiver directly (upper case)
+// CONNECT_GTW_DRP_IF/V: connect to *non-common* GT wizard
+//
+// The "common" version of the GT wizard requires more work - basically
+// I need to start making tools to convert a vector of interfaces
+// into flat arrays (e.g. instead of drpdi[15:0][3:0] you have
+// drpdi[4*16-1:0] with 0 = [15:0], 1=[31:16], etc.) and back again.
+//////////////////////////////////////////////////
+
+`define DEFINE_DRP_IFV( prefix, addr_width, suffix )              \
+  wire [ addr_width -1 :0] prefix``drpaddr``suffix;              \
+  wire prefix``drpen``suffix;                                    \
+  wire [15:0] prefix``drpdi``suffix;                             \
+  wire [15:0] prefix``drpdo``suffix;                             \
+  wire prefix``drprdy``suffix;                                   \
+  wire prefix``drpwe``suffix
+
+`define DEFINE_DRP_IF( prefix ) \
+  `DEFINE_DRP_IFV( prefix , `NO_SUFFIX )
+
+`define CONNECT_DRP_IFV( port_prefix, if_prefix, if_suffix )    \
+  .``port_prefix``drpaddr( if_prefix``drpaddr``if_suffix ),          \
+  .``port_prefix``drpen( if_prefix``drpen``if_suffix ),              \
+  .``port_prefix``drpdi( if_prefix``drpdi``if_suffix ),              \
+  .``port_prefix``drpdo( if_prefix``drpdo``if_suffix ),              \
+  .``port_prefix``drprdy( if_prefix``drprdy``if_suffix ),            \
+  .``port_prefix``drpwe( if_prefix``drpwe``if_suffix )
+
+`define CONNECT_DRP_IF( port_prefix, if_prefix ) \
+  `CONNECT_DRP_IFV( port_prefix, if_prefix, `NO_SUFFIX )
+
+//// CUSTOM CONNECTS FOR SPECIFIC IP: for custom logic use above naming
+`define CONNECT_IBERT_DRP_IFV( port_prefix, if_prefix, if_suffix )   \
+   .``port_prefix``drpaddr_o( if_prefix``drpaddr``if_suffix ),   \
+   .``port_prefix``drpen_o( if_prefix``drpen``if_suffix ),       \
+   .``port_prefix``drpdi_o( if_prefix``drpdi``if_suffix ),       \
+   .``port_prefix``drpdo_i( if_prefix``drpdo``if_suffix ),       \
+   .``port_prefix``drprdy_i( if_prefix``drprdy``if_suffix ),     \
+   .``port_prefix``drpwe_o( if_prefix``drpwe``if_suffix )
+
+`define CONNECT_IBERT_DRP_IF( port_prefix, if_prefix ) \
+   `CONNECT_IBERT_DRP_IF( port_prefix, if_prefix, `NO_SUFFIX )
+
+`define CONNECT_MMCM_UPPER_DRP_IFV( if_prefix, if_suffix ) \
+   .DADDR( if_prefix``drpaddr``if_suffix ),                \
+   .DEN( if_prefix``drpen``if_suffix ),                    \
+   .DI( if_prefix``drpdi``if_suffix ),                     \
+   .DO( if_prefix``drpdo``if_suffix ),                     \
+   .DRDY( if_prefix``drprdy``if_suffix ),                  \
+   .DWE( if_prefix``drpwe``if_suffix )
+
+`define CONNECT_MMCM_UPPER_DRP_IF( if_prefix ) \
+   `CONNECT_MMCM_UPPER_DRP_IFV( if_prefix, `NO_SUFFIX )
+
+`define CONNECT_MMCM_LOWER_DRP_IFV( if_prefix, if_suffix ) \
+   .daddr( if_prefix``drpaddr``if_suffix ),                \
+   .den( if_prefix``drpen``if_suffix ),                    \
+   .di( if_prefix``drpdi``if_suffix ),                     \
+   .do( if_prefix``drpdo``if_suffix ),                     \
+   .drdy( if_prefix``drprdy``if_suffix ),                  \
+   .dwe( if_prefix``drpwe``if_suffix )
+
+`define CONNECT_MMCM_LOWER_DRP_IF( if_prefix ) \
+   `CONNECT_MMCM_LOWER_DRP_IFV( if_prefix, `NO_SUFFIX )
+
+`define CONNECT_GT_DRP_IFV( if_prefix, if_suffix ) \
+  .DRPADDR( if_prefix``drpaddr``if_suffix ),       \
+  .DRPEN( if_prefix``drpen``if_suffix ),           \
+  .DRPDI( if_prefix``drpdi``if_suffix ),           \
+  .DRPDO( if_prefix``drpdo``if_suffix ),           \
+  .DRPRDY( if_prefix``drprdy``if_suffix ),         \
+  .DRPWE( if_prefix``drpwe``if_suffix )
+
+`define CONNECT_GT_DRP_IF( if_prefix ) \
+  `CONNECT_GT_DRP_IF( if_prefix, `NO_SUFFIX )
+
+`define CONNECT_GTW_DRP_IFV( if_prefix, if_suffix ) \
+  .drpaddr_in( if_prefix``drpaddr``if_suffix ), \
+  .drpen_in( if_prefix``drpen``if_suffix ), \
+  .drpdi_in( if_prefix``drpdi``if_suffix ), \
+  .drpdo_out( if_prefix``drpdo``if_suffix ), \
+  .drprdy_out( if_prefix``drprdy``if_suffix ), \
+  .drpwe_out( if_prefix``drpwe``if_suffix )
+
+`define CONNECT_GTW_DRP_IF( if_prefix ) \
+  `CONNECT_GT_DRP_IF( if_prefix, `NO_SUFFIX )
+
+`define NAMED_PORTS_DRP_IF( port_prefix , addr_width , fromhost_type, tohost_type ) \
+  fromhost_type [ addr_width - 1:0] port_prefix``drpaddr , \
+  fromhost_type port_prefix``drpen , \
+  fromhost_type [15:0] port_prefix``drpdi , \
+  tohost_type [15:0] port_prefix``drpdo , \
+  tohost_type port_prefix``drprdy , \
+  fromhost_type port_prefix``drpwe
+
+`define HOST_NAMED_PORTS_DRP_IF( port_prefix, addr_width ) \
+  `NAMED_PORTS_DRP_IF( port_prefix, addr_width, output , input )
+
+`define TARGET_NAMED_PORTS_DRP_IF( port_prefix, addr_width ) \
+  `NAMED_PORTS_DRP_IF( port_prefix, addr_width, input , output )
 
 `endif // INTERFACES_VH_

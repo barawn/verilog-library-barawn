@@ -21,6 +21,7 @@ standard types:
 * AXI4-Lite
 * AXI4
 * WISHBONE
+* DRP
 
 plus several “proprietary” interfaces used by the former Dini group firmware.
 
@@ -106,3 +107,11 @@ stream_sink u_sink( .aclk(aclk),
                     .aresetn(aresetn),
                     `CONNECT_AXI4S_MIN_IF( s_axis_ , stream64_ ));
 ```
+
+## Notes
+
+interfaces.vh is both getting big and also a bit boilerplate. I might start separating
+the interfaces into their own files along with a common header, and then have "interfaces.vh"
+include them all.
+
+Not sure how to cut down on the boilerplate more, we'll see.
