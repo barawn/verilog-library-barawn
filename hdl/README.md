@@ -7,7 +7,7 @@
 * dsp_delay.v : DSP-based variable delay generation
 * dual_prescaled_dsp_scalers.v : Dual 24-bit scalers packed in a DSP with linear prescale.
 * dual_dsp_counters.v : Dual 24-bit counter packed in a DSP.
-* dsp_macros.vh : Verilog header with macros for DSP usage.
+
 * skidbuffer.v : A generic skid buffer (register slice) for AXI4-Stream.
 * pps_core.v : External/internal PPS module with external holdoff
 
@@ -29,3 +29,10 @@ to balance logic usage and reduce register count).
 Note that not all of these are by me (skidbuffer.v), and some
 were informed by publically-available ideas but implemented
 by me (flag_sync.v).
+
+Note: dsp_macros.vh was moved over to the include directory.
+
+## Convenience modules
+
+* wbs_dummy.v : WISHBONE dummy slave module. Always acks, returns 0.
+* wbm_dummy.v : WISHBONE dummy master module. Never initiates.
