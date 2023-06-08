@@ -10,7 +10,7 @@ module wbm_dummy #( parameter ADDRESS_WIDTH = 16,
    ( 
      // Handy thing about the interface defines is that parameters
      // are fine since they just get text-substituted.
-     `HOST_NAMED_PORTS_WB_IF( wb, ADDRESS_WIDTH, DATA_WIDTH )
+     `HOST_NAMED_PORTS_WB_IF( wb_ , ADDRESS_WIDTH, DATA_WIDTH )
      );
 
    assign wb_cyc_o = 1'b0;

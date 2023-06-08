@@ -12,7 +12,7 @@ module wbs_dummy #( parameter ADDRESS_WIDTH = 16,
    ( 
      // Handy thing about the interface defines is that parameters
      // are fine since they just get text-substituted.
-     `TARGET_NAMED_PORTS_WB_IF( wb, ADDRESS_WIDTH, DATA_WIDTH )
+     `TARGET_NAMED_PORTS_WB_IF( wb_ , ADDRESS_WIDTH, DATA_WIDTH )
      );
 
    assign wb_ack_o = wb_cyc_i && wb_stb_i;
