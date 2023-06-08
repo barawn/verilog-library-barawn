@@ -8,6 +8,9 @@
 * dual_prescaled_dsp_scalers.v : Dual 24-bit scalers packed in a DSP with linear prescale.
 * dual_dsp_counters.v : Dual 24-bit counter packed in a DSP.
 
+* wishbone_arbiter.v : Arbitrate multiple WISHBONE busses based on cyc
+* round_robin_arbiter.v : Public-domain round robin arbiter.
+
 * skidbuffer.v : A generic skid buffer (register slice) for AXI4-Stream.
 * pps_core.v : External/internal PPS module with external holdoff
 
