@@ -688,7 +688,7 @@
     `WB_SRC_NAMED_PORT( port_prefix , [address_width-1:0], adr, port_type ), \
     `WB_SRC_NAMED_PORT( port_prefix , [(data_width/8)-1:0], sel, port_type ), \
     `WB_SRC_NAMED_PORT( port_prefix , `NO_PREFIX, cyc, port_type ), \
-    `WB_SRC_NAMED_PORT( port_prefix , `NO_PREFIX, sel, port_type ), \
+    `WB_SRC_NAMED_PORT( port_prefix , `NO_PREFIX, stb, port_type ), \
     `WB_SRC_NAMED_PORT( port_prefix , `NO_PREFIX, we, port_type ), \
     `WB_SNK_NAMED_PORT( port_prefix , `NO_PREFIX, ack, port_type ), \
     `WB_SNK_NAMED_PORT( port_prefix , `NO_PREFIX, rty, port_type ), \
