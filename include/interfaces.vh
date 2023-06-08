@@ -700,7 +700,7 @@
     
 // Create target ports in a module
 `define TARGET_NAMED_PORTS_WB_IF( port_prefix, address_width, data_width ) \
-    `NAMED_PORTS_WB_IF( port_prefix, address_width, data_width, WB_HOST )
+    `NAMED_PORTS_WB_IF( port_prefix, address_width, data_width, WB_TARGET )
 
 ////////////////////////////////////////////////
 // DRP interface.
