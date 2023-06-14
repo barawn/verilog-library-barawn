@@ -1,0 +1,304 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<wave_config>
+   <wave_state>
+   </wave_state>
+   <db_ref_list>
+      <db_ref path="dsp_timed_counter_tb_behav.wdb" id="1">
+         <top_modules>
+            <top_module name="dsp_timed_counter_tb" />
+            <top_module name="glbl" />
+         </top_modules>
+      </db_ref>
+   </db_ref_list>
+   <zoom_setting>
+      <ZoomStartTime time="0.000 ns"></ZoomStartTime>
+      <ZoomEndTime time="164.201 ns"></ZoomEndTime>
+      <Cursor1Time time="1,000.000 ns"></Cursor1Time>
+   </zoom_setting>
+   <column_width_setting>
+      <NameColumnWidth column_width="240"></NameColumnWidth>
+      <ValueColumnWidth column_width="96"></ValueColumnWidth>
+   </column_width_setting>
+   <WVObjectSize size="21" />
+   <wave_markers>
+      <marker time="626910" label="" />
+   </wave_markers>
+   <wvobject fp_name="/dsp_timed_counter_tb/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/count" type="logic">
+      <obj_property name="ElementShortName">count</obj_property>
+      <obj_property name="ObjectShortName">count</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/interval" type="array">
+      <obj_property name="ElementShortName">interval[23:0]</obj_property>
+      <obj_property name="ObjectShortName">interval[23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/load_interval" type="logic">
+      <obj_property name="ElementShortName">load_interval</obj_property>
+      <obj_property name="ObjectShortName">load_interval</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/count_out" type="array">
+      <obj_property name="ElementShortName">count_out[23:0]</obj_property>
+      <obj_property name="ObjectShortName">count_out[23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/count_out_valid" type="logic">
+      <obj_property name="ElementShortName">count_out_valid</obj_property>
+      <obj_property name="ObjectShortName">count_out_valid</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/clk" type="logic">
+      <obj_property name="ElementShortName">clk</obj_property>
+      <obj_property name="ObjectShortName">clk</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/count_in" type="logic">
+      <obj_property name="ElementShortName">count_in</obj_property>
+      <obj_property name="ObjectShortName">count_in</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/interval_in" type="array">
+      <obj_property name="ElementShortName">interval_in[23:0]</obj_property>
+      <obj_property name="ObjectShortName">interval_in[23:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/interval_load" type="logic">
+      <obj_property name="ElementShortName">interval_load</obj_property>
+      <obj_property name="ObjectShortName">interval_load</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/count_out" type="array">
+      <obj_property name="ElementShortName">count_out[24:0]</obj_property>
+      <obj_property name="ObjectShortName">count_out[24:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/count_out_valid" type="logic">
+      <obj_property name="ElementShortName">count_out_valid</obj_property>
+      <obj_property name="ObjectShortName">count_out_valid</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_C" type="array">
+      <obj_property name="ElementShortName">dsp_C[47:0]</obj_property>
+      <obj_property name="ObjectShortName">dsp_C[47:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_AB" type="array">
+      <obj_property name="ElementShortName">dsp_AB[47:0]</obj_property>
+      <obj_property name="ObjectShortName">dsp_AB[47:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_CEC" type="logic">
+      <obj_property name="ElementShortName">dsp_CEC</obj_property>
+      <obj_property name="ObjectShortName">dsp_CEC</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P" type="array">
+      <obj_property name="ElementShortName">dsp_P[47:0]</obj_property>
+      <obj_property name="ObjectShortName">dsp_P[47:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="vbus169" type="vbus">
+      <obj_property name="label">low_alu</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="Radix">SIGNEDDECRADIX</obj_property>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[23]" type="logic">
+         <obj_property name="ElementShortName">[23]</obj_property>
+         <obj_property name="ObjectShortName">[23]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[22]" type="logic">
+         <obj_property name="ElementShortName">[22]</obj_property>
+         <obj_property name="ObjectShortName">[22]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[21]" type="logic">
+         <obj_property name="ElementShortName">[21]</obj_property>
+         <obj_property name="ObjectShortName">[21]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[20]" type="logic">
+         <obj_property name="ElementShortName">[20]</obj_property>
+         <obj_property name="ObjectShortName">[20]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[19]" type="logic">
+         <obj_property name="ElementShortName">[19]</obj_property>
+         <obj_property name="ObjectShortName">[19]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[18]" type="logic">
+         <obj_property name="ElementShortName">[18]</obj_property>
+         <obj_property name="ObjectShortName">[18]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[17]" type="logic">
+         <obj_property name="ElementShortName">[17]</obj_property>
+         <obj_property name="ObjectShortName">[17]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[16]" type="logic">
+         <obj_property name="ElementShortName">[16]</obj_property>
+         <obj_property name="ObjectShortName">[16]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[15]" type="logic">
+         <obj_property name="ElementShortName">[15]</obj_property>
+         <obj_property name="ObjectShortName">[15]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[14]" type="logic">
+         <obj_property name="ElementShortName">[14]</obj_property>
+         <obj_property name="ObjectShortName">[14]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[13]" type="logic">
+         <obj_property name="ElementShortName">[13]</obj_property>
+         <obj_property name="ObjectShortName">[13]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[12]" type="logic">
+         <obj_property name="ElementShortName">[12]</obj_property>
+         <obj_property name="ObjectShortName">[12]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[11]" type="logic">
+         <obj_property name="ElementShortName">[11]</obj_property>
+         <obj_property name="ObjectShortName">[11]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[10]" type="logic">
+         <obj_property name="ElementShortName">[10]</obj_property>
+         <obj_property name="ObjectShortName">[10]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[9]" type="logic">
+         <obj_property name="ElementShortName">[9]</obj_property>
+         <obj_property name="ObjectShortName">[9]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[8]" type="logic">
+         <obj_property name="ElementShortName">[8]</obj_property>
+         <obj_property name="ObjectShortName">[8]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[7]" type="logic">
+         <obj_property name="ElementShortName">[7]</obj_property>
+         <obj_property name="ObjectShortName">[7]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[6]" type="logic">
+         <obj_property name="ElementShortName">[6]</obj_property>
+         <obj_property name="ObjectShortName">[6]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[5]" type="logic">
+         <obj_property name="ElementShortName">[5]</obj_property>
+         <obj_property name="ObjectShortName">[5]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[4]" type="logic">
+         <obj_property name="ElementShortName">[4]</obj_property>
+         <obj_property name="ObjectShortName">[4]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[3]" type="logic">
+         <obj_property name="ElementShortName">[3]</obj_property>
+         <obj_property name="ObjectShortName">[3]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[2]" type="logic">
+         <obj_property name="ElementShortName">[2]</obj_property>
+         <obj_property name="ObjectShortName">[2]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[1]" type="logic">
+         <obj_property name="ElementShortName">[1]</obj_property>
+         <obj_property name="ObjectShortName">[1]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[0]" type="logic">
+         <obj_property name="ElementShortName">[0]</obj_property>
+         <obj_property name="ObjectShortName">[0]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="vbus144" type="vbus">
+      <obj_property name="label">high_alu</obj_property>
+      <obj_property name="DisplayName">label</obj_property>
+      <obj_property name="Radix">UNSIGNEDDECRADIX</obj_property>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[47]" type="logic">
+         <obj_property name="ElementShortName">[47]</obj_property>
+         <obj_property name="ObjectShortName">[47]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[46]" type="logic">
+         <obj_property name="ElementShortName">[46]</obj_property>
+         <obj_property name="ObjectShortName">[46]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[45]" type="logic">
+         <obj_property name="ElementShortName">[45]</obj_property>
+         <obj_property name="ObjectShortName">[45]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[44]" type="logic">
+         <obj_property name="ElementShortName">[44]</obj_property>
+         <obj_property name="ObjectShortName">[44]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[43]" type="logic">
+         <obj_property name="ElementShortName">[43]</obj_property>
+         <obj_property name="ObjectShortName">[43]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[42]" type="logic">
+         <obj_property name="ElementShortName">[42]</obj_property>
+         <obj_property name="ObjectShortName">[42]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[41]" type="logic">
+         <obj_property name="ElementShortName">[41]</obj_property>
+         <obj_property name="ObjectShortName">[41]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[40]" type="logic">
+         <obj_property name="ElementShortName">[40]</obj_property>
+         <obj_property name="ObjectShortName">[40]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[39]" type="logic">
+         <obj_property name="ElementShortName">[39]</obj_property>
+         <obj_property name="ObjectShortName">[39]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[38]" type="logic">
+         <obj_property name="ElementShortName">[38]</obj_property>
+         <obj_property name="ObjectShortName">[38]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[37]" type="logic">
+         <obj_property name="ElementShortName">[37]</obj_property>
+         <obj_property name="ObjectShortName">[37]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[36]" type="logic">
+         <obj_property name="ElementShortName">[36]</obj_property>
+         <obj_property name="ObjectShortName">[36]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[35]" type="logic">
+         <obj_property name="ElementShortName">[35]</obj_property>
+         <obj_property name="ObjectShortName">[35]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[34]" type="logic">
+         <obj_property name="ElementShortName">[34]</obj_property>
+         <obj_property name="ObjectShortName">[34]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[33]" type="logic">
+         <obj_property name="ElementShortName">[33]</obj_property>
+         <obj_property name="ObjectShortName">[33]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[32]" type="logic">
+         <obj_property name="ElementShortName">[32]</obj_property>
+         <obj_property name="ObjectShortName">[32]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[31]" type="logic">
+         <obj_property name="ElementShortName">[31]</obj_property>
+         <obj_property name="ObjectShortName">[31]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[30]" type="logic">
+         <obj_property name="ElementShortName">[30]</obj_property>
+         <obj_property name="ObjectShortName">[30]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[29]" type="logic">
+         <obj_property name="ElementShortName">[29]</obj_property>
+         <obj_property name="ObjectShortName">[29]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[28]" type="logic">
+         <obj_property name="ElementShortName">[28]</obj_property>
+         <obj_property name="ObjectShortName">[28]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[27]" type="logic">
+         <obj_property name="ElementShortName">[27]</obj_property>
+         <obj_property name="ObjectShortName">[27]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[26]" type="logic">
+         <obj_property name="ElementShortName">[26]</obj_property>
+         <obj_property name="ObjectShortName">[26]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[25]" type="logic">
+         <obj_property name="ElementShortName">[25]</obj_property>
+         <obj_property name="ObjectShortName">[25]</obj_property>
+      </wvobject>
+      <wvobject fp_name="/dsp_timed_counter_tb/uut/dsp_P[24]" type="logic">
+         <obj_property name="ElementShortName">[24]</obj_property>
+         <obj_property name="ObjectShortName">[24]</obj_property>
+      </wvobject>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/u_dsp/qx_o_mux" type="array">
+      <obj_property name="ElementShortName">qx_o_mux[47:0]</obj_property>
+      <obj_property name="ObjectShortName">qx_o_mux[47:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/u_dsp/qy_o_mux" type="array">
+      <obj_property name="ElementShortName">qy_o_mux[47:0]</obj_property>
+      <obj_property name="ObjectShortName">qy_o_mux[47:0]</obj_property>
+   </wvobject>
+   <wvobject fp_name="/dsp_timed_counter_tb/uut/u_dsp/qz_o_mux" type="array">
+      <obj_property name="ElementShortName">qz_o_mux[47:0]</obj_property>
+      <obj_property name="ObjectShortName">qz_o_mux[47:0]</obj_property>
+   </wvobject>
+</wave_config>
