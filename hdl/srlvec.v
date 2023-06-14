@@ -30,7 +30,8 @@ module srlvec #(parameter NBITS=8,
 			.A(a),
 			.Q(dout[i]));
 	 end
-      endgenerate
+      end // block: BL
+   endgenerate
 endmodule // srlvec
 
 	 
