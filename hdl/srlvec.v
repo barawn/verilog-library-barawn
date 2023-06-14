@@ -27,7 +27,10 @@ module srlvec #(parameter NBITS=8,
 	    SRL16E u_bv(.D(din[i]),
 			.CE(ce),
 			.CLK(clk),
-			.A(a),
+			.A0(a[0]),
+			.A1(a[1]),
+			.A2(a[2]),
+			.A3(a[3]),
 			.Q(dout[i]));
 	 end
       end // block: BL
