@@ -7,6 +7,7 @@
 * dsp_delay.v : DSP-based variable delay generation
 * dual_prescaled_dsp_scalers.v : Dual 24-bit scalers packed in a DSP with linear prescale.
 * dual_dsp_counters.v : Dual 24-bit counter packed in a DSP.
+* dsp_timed_counter.v : 24-bit up-counter that counts for a dynamically programmable interval from a single DSP.
 
 * wishbone_arbiter.v : Arbitrate multiple WISHBONE busses based on cyc
 * round_robin_arbiter.v : Public-domain round robin arbiter.
