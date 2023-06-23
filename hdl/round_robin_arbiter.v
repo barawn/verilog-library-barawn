@@ -46,13 +46,14 @@ begin
 end
 
 generate
-for (i=2;i<N;i=i+1)
+for (i=2;i<N;i=i+1) begin : ROTATE_LOOP
 always @ (posedge clk) 
-begin : ROTATE_LOOP
+begin
 	if (!rst_n)
 		rotate_ptr[i] <= 1'b1;
 	else if (update_ptr)
 		rotate_ptr[i] <= grant[N-1] | (|grant[i-1:0]);
+end
 end
 endgenerate
 
