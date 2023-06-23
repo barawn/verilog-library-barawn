@@ -9,8 +9,20 @@
 //
 // Note: this trick could also be done in quad SIMD mode to generate 3x 12-bit timers with a 12-bit
 // interval as well, but because the widths are so different we leave that as a separate module.
+//
+// Parameters:
+// MODE = "NORMAL" (default) - counter intervals run freely, count_out_valid is a flag (1-cycle high)
+//                             and count_out is only valid for one cycle.
+// MODE = "ACKNOWLEDGE"      - counter counts for one interval, and stops until a reset
+//                             comes in, at which point it starts again. count_out_valid is *not*
+//                             a flag - it goes high when the interval is reached and then
+//                             clears after reset.
+//                             NOTE: interval_load also acts as a reset.
 module dsp_timed_counter( // main clock
                           input clk,
+                          // Unused in normal mode. In acknowledge mode, clears the counter
+                          // to start the next sequence (interval_load also resets).
+                          input rst,
                           // count when this is 1
                           input count_in,
                           // interval to count over (number of clocks)
@@ -22,6 +34,8 @@ module dsp_timed_counter( // main clock
                           // count is valid
                           output        count_out_valid
     );
+    
+    parameter MODE = "NORMAL";
     
     // We use a single DSP in TWO24 mode.
     //
@@ -49,6 +63,8 @@ module dsp_timed_counter( // main clock
     //
     // That's basically it. So we get:
     //
+    // MODE="NORMAL" INTERVAL AND LOAD CASE:
+    // 
     // clk  CEC C       CREG        XLOW    XHIGH   PLOW    PHIGH   PATTERNDETECT   OPMODE      interval#
     // 0    1   4       X           1       X       X       X       0               010_00_11   X
     // 1    0   X       4           1       1       0       0       0               010_00_11   1
@@ -65,7 +81,36 @@ module dsp_timed_counter( // main clock
     // NOTE: Setting an interval of 0 actually results in an interval of 2^24. We allow this use case
     // by expanding the output by using the top CARRYOUT. This DOES NOT result in a "false valid" at CEC because
     // the PATTERNDETECT register is ALSO reset by RSTP.
-    
+    //
+    // OPTIONAL ACKNOWLEDGE:
+    // In some cases we may want to "hold" the output to be captured in a different domain.
+    // In order to support this, "!PATTERNDETECT" is used to DISABLE CEP, and RSTP is
+    // generated also by the incoming acknowledge. This results in:
+    //
+    // MODE="ACKNOWLEDGE" INTERVAL AND LOAD CASE:
+    // 
+    // clk  CEC C       CREG        XLOW    XHIGH   PLOW    PHIGH   PATTERNDETECT   ACK OPMODE      interval#
+    // 0    1   4       X           1       X       X       X       0               0   010_00_11   X
+    // 1    0   X       4           1       1       0       0       0               0   010_00_11   1
+    // 2    0   X       4           1       0       1       1       0               0   010_00_11   1
+    // 3    0   X       4           1       1       2       1       0               0   010_00_11   1
+    // 4    0   X       4           1       0       3       2       0               0   010_00_11   1
+    // 5    0   X       4           1       x       4       2       1               0   000_00_11   x
+    // Note here the output is valid (PATTERNDETECT=1) so CEP is 0 and we do not change.
+    // 6    0   X       4           1       x       4       2       1               0   010_00_11   x
+    // 7    0   X       4           1       x       4       2       1               1   010_00_11   x
+    // At this point ACK comes in and resets the P register, clearing PATTERNDETECT.
+    // 8    0   X       4           1       1       0       0       0               0   010_00_11   2
+    // 9    0   X       4           1       1       1       1       0               0   000_00_11   2
+    // 10   0   X       4           1       1       2       2       0               0   000_00_11   2
+    // 11   0   X       4           1       1       3       3       0               0   000_00_11   2
+    // 12   0   X       4           1       x       4       4       1               0   000_00_11   x
+    //
+    // ACKNOWLEDGE mode obviously requires an extra LUT but it's not like this is a significant
+    // cost compared to an entire extra set of registers needed for the clock crossing.
+    // Also note that ACKNOWLEDGE mode has dead periods when the data is being transferred over,
+    // and in addition obviously a timing exception needs to be made for that path since the data
+    // is always static.
     wire [3:0]          dsp_CARRYOUT;
     wire [47:0]         dsp_AB = { {23{1'b0}}, count_in, 24'h1 };
     wire [47:0]         dsp_C = { {24{1'b0}}, interval_in };
@@ -76,7 +121,18 @@ module dsp_timed_counter( // main clock
     wire [6:0]          dsp_OPMODE = { 1'b0, !dsp_PATTERNDETECT, 3'b000, 2'b11 };
     wire [3:0]          dsp_ALUMODE = `ALUMODE_SUM_ZXYCIN;
     wire [2:0]          dsp_CARRYINSEL = `CARRYINSEL_CARRYIN;
-
+    
+    wire                dsp_RSTP;
+    wire                dsp_CEP;
+    generate
+        if (MODE == "ACKNOWLEDGE") begin : ACK
+            assign dsp_RSTP = dsp_CEC || rst;
+            assign dsp_CEP = !dsp_PATTERNDETECT;
+        end else begin : NRM // NORMAL mode
+            assign dsp_RSTP = dsp_CEC;
+            assign dsp_CEP = 1'b1;
+        end 
+    endgenerate
     // Note: we register both A and B to improve timing, because
     // the interval is free-running anyway. All this does is shift the input
     // relative to the interval by 1.
@@ -102,7 +158,7 @@ module dsp_timed_counter( // main clock
                        `D_UNUSED_PORTS,
                        .CEA2(1'b1),
                        .CEB2(1'b1),
-                       .CEP(1'b1),
+                       .CEP(dsp_CEP),
                        .CEC(dsp_CEC),
                        .CEM(1'b0),
                        .CECTRL(1'b0),
@@ -111,7 +167,7 @@ module dsp_timed_counter( // main clock
                        .RSTA(1'b0),
                        .RSTB(1'b0),
                        .RSTC(1'b0),
-                       .RSTP( dsp_CEC ),
+                       .RSTP( dsp_RSTP ),
                        .RSTM(1'b0),
                        .RSTCTRL(1'b0),
                        .RSTINMODE(1'b0),
