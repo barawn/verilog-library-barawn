@@ -665,7 +665,7 @@
     
 // Connect host-named interface to target-named port
 `define CONNECT_WBS_IFMV( port_prefix, if_prefix, suffix ) \
-  `CONNECT_WB_IF( port_prefix, if_prefix, WB_TARGET, WB_HOST, suffix)
+  `CONNECT_WB_IFV( port_prefix, if_prefix, WB_TARGET, WB_HOST, suffix)
 
 `define CONNECT_WBS_IFM( port_prefix, if_prefix ) \
   `CONNECT_WB_IFV( port_prefix, if_prefix, WB_TARGET, WB_HOST, `NO_SUFFIX)
