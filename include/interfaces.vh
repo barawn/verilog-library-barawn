@@ -572,33 +572,34 @@
     prefix``name``_o``suffix                                 \
   `endif
 
-`define BUILD_WB_SRC_PORT( prefix, name, thistype , suffix ) \
+// ports never need suffices
+`define BUILD_WB_SRC_PORT( prefix, name, thistype ) \
   `ifdef thistype                                            \
-    .``prefix``name``_o``suffix                                 \
+    .``prefix``name``_o                                 \
   `else                                                      \
-    .``prefix``name``_i``suffix                                 \
+    .``prefix``name``_i                                 \
   `endif
 
-`define BUILD_WB_SNK_PORT( prefix, name, thistype , suffix ) \
+`define BUILD_WB_SNK_PORT( prefix, name, thistype ) \
   `ifdef thistype                                            \
-    .``prefix``name``_i``suffix                                 \
+    .``prefix``name``_i                                 \
   `else                                                      \
-    .``prefix``name``_o``suffix                                 \
+    .``prefix``name``_o                                 \
   `endif
 
 // Now we can do
-// `BUILD_WB_SRC_PORT( pprefix , adr , WB_HOST , `NO_SUFFIX) ( `BUILD_WB_SRC_NAME( iprefix , adr, WB_HOST , `NO_SUFFIX ) ),
+// `BUILD_WB_SRC_PORT( pprefix , adr , WB_HOST ) ( `BUILD_WB_SRC_NAME( iprefix , adr, WB_HOST , `NO_SUFFIX ) ),
 // and this will autogenerate the directions for a host port to host named connection.
 
 // Macro for the above. ptype is the port type, ctype is the connection type.
 `define WB_SRC_CONNECTV( pfx , ipfx, nm, ptype , ctype , sfx )        \
-  `BUILD_WB_SRC_PORT( pfx , nm , ptype , sfx ) ( `BUILD_WB_SRC_NAME( ipfx , nm , ctype , sfx ) )
+  `BUILD_WB_SRC_PORT( pfx , nm , ptype ) ( `BUILD_WB_SRC_NAME( ipfx , nm , ctype , sfx ) )
 
 `define WB_SRC_CONNECT( pfx , ipfx, nm, ptype, ctype ) \
   `WB_SRC_CONNECTV( pfx , ipfx, nm, ptype, ctype, `NO_SUFFIX )
 
 `define WB_SNK_CONNECTV( pfx , ipfx, nm, ptype , ctype , sfx )        \
-  `BUILD_WB_SNK_PORT( pfx , nm , ptype , sfx ) ( `BUILD_WB_SNK_NAME( ipfx , nm , ctype , sfx ) )
+  `BUILD_WB_SNK_PORT( pfx , nm , ptype ) ( `BUILD_WB_SNK_NAME( ipfx , nm , ctype , sfx ) )
 
 `define WB_SNK_CONNECT( pfx , ipfx, nm, ptype, ctype ) \
   `WB_SRC_CONNECTV( pfx , ipfx, nm, ptype, ctype, `NO_SUFFIX )
