@@ -36,6 +36,9 @@ module dsp_timed_counter( // main clock
     );
     
     parameter MODE = "NORMAL";
+    // allow clock-cross designations
+    parameter CLKTYPE_SRC = "NONE";
+    parameter CLKTYPE_DST = "NONE";
     
     // We use a single DSP in TWO24 mode.
     //
@@ -136,6 +139,7 @@ module dsp_timed_counter( // main clock
     // Note: we register both A and B to improve timing, because
     // the interval is free-running anyway. All this does is shift the input
     // relative to the interval by 1.
+    (* CUSTOM_CC_SRC = CLKTYPE_SRC, CUSTOM_CC_DST = CLKTYPE_DST *)
     DSP48E1 #(  .ALUMODEREG(0),
                 .CARRYINSELREG(0),
                 .OPMODEREG(0),
