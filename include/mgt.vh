@@ -23,4 +23,30 @@
    .gt_txprbsforceerr(1'b0),          \
    .gt_txprbssel(4'h0)
 
+// For GTP transceivers there's no in-system IBERT module
+// (jerks). But we can still pick off the ports the vast
+// majority of people won't use.
+`DEFINE UNUSED_GTP_DEBUG_AURORA_PORTS \
+  .gt0_txchardispmode_in(2'b00),      \
+  .gt0_txchardispval_in(2'b00),       \
+  .gt0_txmaincursor_in(7'b0000000),   \
+  .gt0_txpolarity_in(1'b0),           \
+  .gt0_rxlpmhfhold_in(1'b0),          \
+  .gt0_rxlpmlfhold_in(1'b0),          \
+  .gt0_rxlpmreset_in(1'b0),           \
+  .gt0_rxlpmhfovrden_in(1'b0),        \
+  .gt0_rxcdrhold_in(1'b0),            \
+  .gt0_eyescanreset_in(1'b0),         \
+  .gt0_eyescantrigger_in(1'b0),       \
+  .gt0_rxprbssel_in(3'b000),          \
+  .gt0_rxprbscntreset_in(1'b0),       \
+  .gt0_rxpcsreset_in(1'b0),           \
+  .gt0_rxpmareset_in(1'b0),           \
+  .gt0_rxbufreset_in(1'b0),           \
+  .gt0_txprbsforceerr_in(1'b0),       \
+  .gt0_txprbssel_in(3'b000),          \
+  .gt0_txpcsreset_in(1'b0),           \
+  .gt0_txinhibit_in(1'b0),            \
+  .gt0_txpmareset_in(1'b0)
+
 `endif
