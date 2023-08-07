@@ -725,7 +725,8 @@
 // CONNECT_MMCM_UPPER_DRP_IF/V: connect to upper-case MMCM (base objects)
 // CONNECT_MMCM_LOWER_DRP_IF/V: connect to lower-case MMCM (clocking wizard)
 // CONNECT_GT_DRP_IF/V: connect to transceiver directly (upper case)
-// CONNECT_GTW_DRP_IF/V: connect to *non-common* GT wizard (eg aurora)
+// CONNECT_GTW_DRP_IF/V: connect to *non-common* GT wizard (eg aurora).
+//                       note some of these use no prefix!
 //
 // The "common" version of the GT wizard requires more work - basically
 // I need to start making tools to convert a vector of interfaces
@@ -800,16 +801,16 @@
 `define CONNECT_GT_DRP_IF( if_prefix ) \
   `CONNECT_GT_DRP_IFV( if_prefix, `NO_SUFFIX )
 
-`define CONNECT_GTW_DRP_IFV( if_prefix, if_suffix ) \
-  .drpaddr_in( if_prefix``drpaddr``if_suffix ), \
-  .drpen_in( if_prefix``drpen``if_suffix ), \
-  .drpdi_in( if_prefix``drpdi``if_suffix ), \
-  .drpdo_out( if_prefix``drpdo``if_suffix ), \
-  .drprdy_out( if_prefix``drprdy``if_suffix ), \
-  .drpwe_out( if_prefix``drpwe``if_suffix )
+`define CONNECT_GTW_DRP_IFV( port_prefix, if_prefix, if_suffix ) \
+  .``port_prefix``drpaddr_in( if_prefix``drpaddr``if_suffix ), \
+  .``port_prefix``drpen_in( if_prefix``drpen``if_suffix ), \
+  .``port_prefix``drpdi_in( if_prefix``drpdi``if_suffix ), \
+  .``port_prefix``drpdo_out( if_prefix``drpdo``if_suffix ), \
+  .``port_prefix``drprdy_out( if_prefix``drprdy``if_suffix ), \
+  .``port_prefix``drpwe_out( if_prefix``drpwe``if_suffix )
 
-`define CONNECT_GTW_DRP_IF( if_prefix ) \
-  `CONNECT_GTW_DRP_IFV( if_prefix, `NO_SUFFIX )
+`define CONNECT_GTW_DRP_IF( port_prefix, if_prefix ) \
+  `CONNECT_GTW_DRP_IFV( port_prefix, if_prefix, `NO_SUFFIX )
 
 `define NAMED_PORTS_DRP_IF( port_prefix , addr_width , fromhost_type, tohost_type ) \
   fromhost_type [ addr_width - 1:0] port_prefix``drpaddr , \
