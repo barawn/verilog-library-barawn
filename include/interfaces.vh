@@ -741,8 +741,8 @@
   wire prefix``drprdy``suffix;                                   \
   wire prefix``drpwe``suffix
 
-`define DEFINE_DRP_IF( prefix ) \
-  `DEFINE_DRP_IFV( prefix , `NO_SUFFIX )
+`define DEFINE_DRP_IF( prefix, addr_width ) \
+  `DEFINE_DRP_IFV( prefix , addr_width, `NO_SUFFIX )
 
 `define CONNECT_DRP_IFV( port_prefix, if_prefix, if_suffix )    \
   .``port_prefix``drpaddr( if_prefix``drpaddr``if_suffix ),          \
