@@ -18,7 +18,11 @@
 
 // Dumb macros so that empty prefixes/suffixes don't look weird
 `define NO_PREFIX
+
 `define NO_SUFFIX
+
+// Concatenation macro
+`define CONCAT( a, b ) a``b
 
 /////////////////////////////////////////////////////////
 // AXI4-Stream minimal interface: TDATA/TVALID/TREADY. //
@@ -803,11 +807,11 @@
 
 `define CONNECT_GTW_DRP_IFV( port_prefix, if_prefix, if_suffix ) \
   .``port_prefix``drpaddr_in( if_prefix``drpaddr``if_suffix ), \
-  .``port_prefix``drpen_in( if_prefix``drpen``if_suffix ), \
-  .``port_prefix``drpdi_in( if_prefix``drpdi``if_suffix ), \
-  .``port_prefix``drpdo_out( if_prefix``drpdo``if_suffix ), \
-  .``port_prefix``drprdy_out( if_prefix``drprdy``if_suffix ), \
-  .``port_prefix``drpwe_out( if_prefix``drpwe``if_suffix )
+  .``port_prefix``drpen_in ( if_prefix``drpen``if_suffix ), \
+  .``port_prefix``drpdi_in ( if_prefix``drpdi``if_suffix ), \
+  .``port_prefix``drpdo_out ( if_prefix``drpdo``if_suffix ), \
+  .``port_prefix``drprdy_out ( if_prefix``drprdy``if_suffix ), \
+  .``port_prefix``drpwe_in ( if_prefix``drpwe``if_suffix )
 
 `define CONNECT_GTW_DRP_IF( port_prefix, if_prefix ) \
   `CONNECT_GTW_DRP_IFV( port_prefix, if_prefix, `NO_SUFFIX )
