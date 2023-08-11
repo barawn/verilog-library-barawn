@@ -12,9 +12,12 @@
 // if clkB is 100 MHz and clkA is 200 MHz, UPDATE_PERIOD
 // should be at least 6.
 //
+// CLKATYPE/CLKBTYPE exist for auto-clockcross methods
 module async_register #(parameter WIDTH=32, 
 			parameter [4:0] UPDATE_PERIOD=31,
-			parameter DOUBLE_PERIOD="FALSE")
+			parameter DOUBLE_PERIOD="FALSE",
+			parameter CLKATYPE="NONE",
+			parameter CLKBTYPE="NONE")
    (input 	       clkA,
     input [WIDTH-1:0]  in_clkA,
     input 	       clkB,
@@ -23,10 +26,11 @@ module async_register #(parameter WIDTH=32,
    wire 	       update_reg_clkA;
    wire 	       update_reg_clkB;
 
+   (* CUSTOM_CC_SRC = CLKATYPE *)
    reg [WIDTH-1:0]     reg_clkA = {WIDTH{1'b0}};
    // sigh, I wish there was a 'async reg for simulation only'
    // if this tries to pack them it's a waste of time.
-   (* ASYNC_REG = "TRUE" *)
+   (* ASYNC_REG = "TRUE", CUSTOM_CC_DST = CLKBTYPE *)
    reg [WIDTH-1:0]     pipe_clkB = {WIDTH{1'b0}};
    reg [WIDTH-1:0]     reg_clkB = {WIDTH{1'b0}};
 
