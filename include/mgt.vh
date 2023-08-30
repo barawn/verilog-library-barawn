@@ -26,7 +26,7 @@
 // For GTP transceivers there's no in-system IBERT module
 // (jerks). But we can still pick off the ports the vast
 // majority of people won't use.
-`DEFINE UNUSED_GTP_DEBUG_AURORA_PORTS \
+`define UNUSED_GTP_DEBUG_AURORA_PORTS \
   .gt0_txchardispmode_in(2'b00),      \
   .gt0_txchardispval_in(2'b00),       \
   .gt0_txmaincursor_in(7'b0000000),   \
