@@ -61,7 +61,7 @@ proc set_post_route_tcl { proutescr } {
 }
 
 # As above, for pre-write bistream
-proc set_pre_write_bitstream { pwritescr } {
+proc set_pre_write_bitstream_tcl { pwritescr } {
     set_script $pwritescr "STEPS.WRITE_BITSTREAM.TCL.PRE" "utils_1" "impl_1"
 }
 
