@@ -60,6 +60,11 @@ proc set_post_route_tcl { proutescr } {
     set_script $proutescr "STEPS.ROUTE_DESIGN.TCL.POST" "utils_1" "impl_1"
 }
 
+# As above, for pre-write bistream
+proc set_pre_write_bitstream { pwritescr } {
+    set_script $pwritescr "STEPS.WRITE_BITSTREAM.TCL.PRE" "utils_1" "impl_1"
+}
+
 # Utility function for adding IP repository. 
 proc add_ip_repository { iprep } {
     if {[string equal [file pathtype $iprep] "absolute"]} {
