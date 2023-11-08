@@ -267,7 +267,8 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 
                 wire [25:0] a_i11_13 = `QCONV( i13_x2, 14, 0, 17, 9);
                 wire [25:0] d_i11_13 = `QCONV( i11 , 13, 0, 17, 9);
-                wire [47:0] c_i11_13 = `QCONV(i13 , 13, 0, 24, 24);                
+                // we want to insert i13 << 7 >> 15 = i13 >> 8 so treat as Q5.8
+                wire [47:0] c_i11_13 = `QCONV(i13 , 5, 8, 24, 24);                
                 // just define this, it's unused
                 assign c_i9[i] = {48{1'b0}};
                 
@@ -295,7 +296,8 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 end
                 wire [25:0] a_i11_13 = `QCONV(xin_store[(i+3) % 8], 12, 0, 17, 9);
                 wire [25:0] d_i11_13 = `QCONV(xin01_minus_i13, 15, 0, 17, 9);
-                assign c_i9[i] = `QCONV(i13, 13, 0, 24, 24);
+                // we want to insert i13 << 7 >> 15 = i13 >> 8 so treat as Q5.8
+                assign c_i9[i] = `QCONV(i13, 5, 8, 24, 24);
                 // PREADD_REG here puts us at z^-8, which is where our input is.
                 fir_dsp_core #(.AREG(2),.DREG(0),.CREG(1),.PREG(1),.PREADD_REG(1),
                                .SUBTRACT_A("FALSE"),
