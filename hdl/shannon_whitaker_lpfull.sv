@@ -117,10 +117,11 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
             
             assign a_i15 = `QCONV( xin[(i+7)%8] , 12, 0, 17, 9 );
             assign d_i15 = `QCONV( xin[(i+1)%8] , 12, 0, 17, 9 );
+            // i16 is (16384/32768) = 0.5, so it's >> 1. So just treat it as a Q11.1 input.
             if (i == 7) begin : B0CT
-                assign c_i15 = `QCONV( xin_store[i] , 12, 0, 24, 24 );                
+                assign c_i15 = `QCONV( xin_store[i] , 11, 1, 24, 24 );                
             end else begin : B0C
-                assign c_i15 = `QCONV( xin[i], 12, 0, 24, 24 );
+                assign c_i15 = `QCONV( xin[i], 11, 1, 24, 24 );
             end
             
             fir_dsp_core #(.AREG( (i==0 || i==7) ? 2 : 1),
@@ -184,7 +185,7 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                            .DREG(1),
                            .CREG((i==3 || i == 4) ? 1 : 0),
                            .USE_C((i==3 || i==4) ? "TRUE" : "FALSE"),
-                           .ADD_PCIN("FALSE"),
+                           .ADD_PCIN("TRUE"),
                            .PREG(i==0 || i >2 ? 1 : 0))
                 u_i9( .clk_i(clk_i),
                        .a_i(a_i9),
@@ -441,6 +442,7 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 u_i5_7( .clk_i(clk_i),
                         .a_i(a_i5_7),
                         .b_i(b_coeff5_7),
+                        .c_i(c_i5_7[i]),
                         .d_i(d_i5_7),
                         .pcin_i( i11_13_to_i5_7[i] ),
                         .pcout_o( i5_7_to_i1_3[i] ));
