@@ -566,8 +566,11 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
             // bit5: AREG 2 DREG 1 CREG 1 MULT_REG 0
             // bit6: AREG 2 DREG 1 CREG 1 MULT_REG 0
             // bit7: AREG 1 DREG 1 CREG 1 MULT_REG 0
+            
+            // we do NOT subtract A for DSP1/3
+            // We're multiplying by -23, and then adding 128 for i3 to get 105.
             fir_dsp_core #(.ADD_PCIN("TRUE"),
-                           .SUBTRACT_A("TRUE"),
+                           .SUBTRACT_A("FALSE"),
                            .AREG( (i==5 || i==6) ? 2 : 1),
                            .DREG(1),
                            .CREG(1),
