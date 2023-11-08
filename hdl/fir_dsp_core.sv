@@ -89,7 +89,7 @@ module fir_dsp_core #(
                        .PREG(PREG),
                        .A_INPUT( "DIRECT" ),
                        .B_INPUT( "DIRECT" ),
-                       .PREADDSEL("A"),
+                       .PREADDINSEL("A"),
                        .AMULTSEL("AD"),
                        .BMULTSEL("B"),
                        .USE_MULT("MULTIPLY"))
@@ -129,7 +129,7 @@ module fir_dsp_core #(
                        .PREG(PREG),
                        .A_INPUT( "DIRECT" ),
                        .B_INPUT( "DIRECT" ),
-                       .PREADDSEL("A"),
+                       .PREADDINSEL("A"),
                        .AMULTSEL("AD"),
                        .BMULTSEL("B"),
                        .USE_MULT("MULTIPLY"))
