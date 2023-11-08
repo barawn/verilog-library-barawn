@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`define DLYFF #0.1
 module shannon_whitaker_lpfull #(parameter NBITS=12,
                                  parameter OUTQ_INT = 12,
                                  parameter OUTQ_FRAC = 0,
@@ -57,6 +58,22 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
         genvar i;
         
         for (i=0;i<NSAMPS;i=i+1) begin : BIT
+            // CREATE THE DELAYS
+            reg [11:0] samp_store = {12{1'b0}};
+            // we want z^-32: we get z^-8 from store
+            // z^-16 from second FF
+            // we need z^-16 again, so that's A=1
+            wire [11:0] samp_srldelay;
+            srlvec #(.NBITS(12)) u_delay(.clk(clk_i),.ce(1'b1),.a(1),.din(samp_store),.dout(samp_srldelay));
+            reg [11:0] samp_delay = {12{1'b0}};
+            always @(posedge clk_i) begin : DLYS
+                samp_store <= xin[i];
+                samp_delay <= samp_srldelay;
+            end
+            assign xin_store[i] = samp_store;
+            assign xin_delay[i] = samp_delay;
+            
+            
             ///////////////////////////////////////////////////
             //                   TAP 15/16                   //
             ///////////////////////////////////////////////////
@@ -155,13 +172,13 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
             // PREG is set for 5/6 to delay them for the next DSP.
             wire [25:0] a_i9;
             wire [25:0] d_i9;
-            wire [47:0] c_i9;
+            // c_i9 is globally declared
             if (i == 0 || i == 7) begin : I9_B0_B7
-                assign a_i9 = `QCONV( xin[i+1 % 8], 12, 0, 17, 9);
+                assign a_i9 = `QCONV( xin[(i+1) % 8], 12, 0, 17, 9);
             end else begin : I9_B2_B6
-                assign a_i9 = `QCONV( xin_store[i+1 % 8], 12, 0, 17, 9);
+                assign a_i9 = `QCONV( xin_store[(i+1) % 8], 12, 0, 17, 9);
             end         
-            assign d_i9 = `QCONV( xin[i+7 % 8], 12, 0, 17, 9);
+            assign d_i9 = `QCONV( xin[(i+7) % 8], 12, 0, 17, 9);
             // The C input for i9 is declared globally to allow it to be used later in the chain.
             fir_dsp_core #(.AREG(2),
                            .DREG(1),
@@ -243,13 +260,13 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 wire [13:0] i13_x2 = { i13, 1'b0 };
                 reg [12:0] i11 = {13{1'b0}};
                 always @(posedge clk_i) begin : PREADD_11_13
-                    i13 = {xin[i+3 %8][11],xin[i+3 % 8]} + {xin_store[i+5 % 8][11],xin_store[i+5 % 8]};
-                    i11 = {xin[i+5 %8][11],xin[i+5 % 8]} + {xin_store[i+3 % 8][11],xin_store[i+3 % 8]};                    
+                    i13 = {xin[(i+3) %8][11],xin[(i+3) % 8]} + {xin_store[(i+5) % 8][11],xin_store[(i+5) % 8]};
+                    i11 = {xin[(i+5) %8][11],xin[(i+5) % 8]} + {xin_store[(i+3) % 8][11],xin_store[(i+3) % 8]};                    
                 end
                 
                 wire [25:0] a_i11_13 = `QCONV( i13_x2, 14, 0, 17, 9);
                 wire [25:0] d_i11_13 = `QCONV( i11 , 13, 0, 17, 9);
-                wire [47:0] c_i11_i13 = `QCONV(i13 , 13, 0, 24, 24);                
+                wire [47:0] c_i11_13 = `QCONV(i13 , 13, 0, 24, 24);                
                 // just define this, it's unused
                 assign c_i9[i] = {48{1'b0}};
                 
@@ -271,11 +288,11 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 reg [14:0] xin01_minus_i13 = {15{1'b0}};
                 always @(posedge clk_i) begin : PREADD
                     // generates (xin[6/7]+xin[0/1])z^-8
-                    i13 <= {xin[i+3 % 8][11],xin[i+3 % 8]} + {xin[i+5 % 8][11], xin[i+5 % 8] };
+                    i13 <= {xin[(i+3)% 8][11],xin[i+3 % 8]} + {xin[(i+5) % 8][11], xin[(i+5) % 8] };
                     // generates (xin[6/7]+xin[0/1])z^-16 + xin[0/1]z^-8
-                    xin01_minus_i13 <= { {3{xin[i+5 % 8][11]}}, xin[i+5 % 8]} - { i13[12], i13, 1'b0 }  ;
+                    xin01_minus_i13 <= { {3{xin[(i+5) % 8][11]}}, xin[(i+5) % 8]} - { i13[12], i13, 1'b0 }  ;
                 end
-                wire [25:0] a_i11_13 = `QCONV(xin_store[i+3 % 8], 12, 0, 17, 9);
+                wire [25:0] a_i11_13 = `QCONV(xin_store[(i+3) % 8], 12, 0, 17, 9);
                 wire [25:0] d_i11_13 = `QCONV(xin01_minus_i13, 15, 0, 17, 9);
                 assign c_i9[i] = `QCONV(i13, 13, 0, 24, 24);
                 // PREADD_REG here puts us at z^-8, which is where our input is.
@@ -285,7 +302,7 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                     u_i11_13( .clk_i(clk_i),
                               .a_i(a_i11_13),
                               .b_i(b_coeff11_13),
-                              .d_i(d_i11_i13),
+                              .d_i(d_i11_13),
                               .pcin_i( i9_to_i11_13[i] ),
                               .pcout_o(i11_13_to_i5_7[i]));
             end
@@ -370,10 +387,10 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 // AREG 2, DREG 0, PREADD_REG = 1
                 reg [13:0] ainstore = {14{1'b0}};
                 always @(posedge clk_i) begin : I5_7_07_PREADD
-                    aincalc <= `DLYFF { xin[i+7 % 8][11], xin[i+7 % 8], 1'b0 } -
-                                         { {2{xin[i+5 % 8][11]}}, xin[i+5 % 8] };
-                    dincalc <= `DLYFF { xin[i+1 % 8][11], xin[i+1 % 8], 1'b0 } -
-                                         { {2{xin[i+3 % 8][11]}}, xin[i+3 % 8] };
+                    aincalc <= `DLYFF { xin[(i+7) % 8][11], xin[(i+7) % 8], 1'b0 } -
+                                         { {2{xin[(i+5) % 8][11]}}, xin[(i+5) % 8] };
+                    dincalc <= `DLYFF { xin[(i+1) % 8][11], xin[(i+1) % 8], 1'b0 } -
+                                         { {2{xin[(i+3) % 8][11]}}, xin[(i+3) % 8] };
                     ainstore <= aincalc;                                         
                 end
                 assign a_i5_7 = `QCONV(ainstore, 14, 0, 17, 9);
@@ -382,10 +399,10 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 // AREG 1, DREG 0, PREADD_REG = 1
                 reg [13:0] ainstore = {14{1'b0}};
                 always @(posedge clk_i) begin : I5_7_12_PREADD
-                    aincalc <= `DLYFF { xin[i+7 % 8][11], xin[i+7 % 8], 1'b0 } -
-                                      { {2{xin_store[i+5 % 8][11]}}, xin_store[i+5 % 8] };
-                    dincalc <= `DLYFF { xin[i+1 % 8][11], xin[i+1 % 8], 1'b0 } -
-                                        { {2{xin[i+3 % 8][11]}}, xin[i+3 % 8] };
+                    aincalc <= `DLYFF { xin[(i+7) % 8][11], xin[(i+7) % 8], 1'b0 } -
+                                      { {2{xin_store[(i+5) % 8][11]}}, xin_store[(i+5) % 8] };
+                    dincalc <= `DLYFF { xin[(i+1) % 8][11], xin[(i+1) % 8], 1'b0 } -
+                                        { {2{xin[(i+3) % 8][11]}}, xin[(i+3) % 8] };
                     ainstore <= aincalc;
                 end
                 assign a_i5_7 = `QCONV(ainstore, 14, 0, 17, 9);
@@ -394,10 +411,10 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 // AREG 2, DREG 0, PREADD_REG 1, MULT_REG 1
                 // 3/4 don't need the store.
                 always @(posedge clk_i) begin : I5_7_34_PREADD
-                    aincalc <= `DLYFF { xin[i+7 % 8][11], xin[i+7 % 8], 1'b0 } -
-                                         { {2{xin[i+5 % 8][11]}}, xin[i+5 % 8] };
-                    dincalc <= `DLYFF { xin[i+1 % 8][11], xin[i+1 % 8], 1'b0 } -
-                                         { {2{xin[i+3 % 8][11]}}, xin[i+3 % 8] };                
+                    aincalc <= `DLYFF { xin[(i+7) % 8][11], xin[(i+7) % 8], 1'b0 } -
+                                         { {2{xin[(i+5) % 8][11]}}, xin[(i+5) % 8] };
+                    dincalc <= `DLYFF { xin[(i+1) % 8][11], xin[(i+1) % 8], 1'b0 } -
+                                         { {2{xin[(i+3) % 8][11]}}, xin[(i+3) % 8] };                
                 end
                 assign a_i5_7 = `QCONV(aincalc, 14, 0, 17, 9);
                 assign d_i5_7 = `QCONV(dincalc, 14, 0, 17, 9);
@@ -405,10 +422,10 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 // AREG 2, DREG 0, PREADD_REG 1
                 // and 5/6 don't need the store, but do need to work with stores as inputs
                 always @(posedge clk_i) begin : I5_7_56_PREADD
-                    aincalc <= `DLYFF { xin_store[i+7 % 8][11], xin_store[i+7 % 8], 1'b0 } -
-                                      { {2{xin_store[i+5 % 8][11]}}, xin_store[i+5 % 8] };
-                    dincalc <= `DLYFF { xin_store[i+1 % 8][11], xin_store[i+1 % 8], 1'b0 } -
-                                        { {2{xin[i+3 % 8][11]}}, xin[i+3 % 8] };
+                    aincalc <= `DLYFF { xin_store[(i+7) % 8][11], xin_store[(i+7) % 8], 1'b0 } -
+                                      { {2{xin_store[(i+5) % 8][11]}}, xin_store[(i+5) % 8] };
+                    dincalc <= `DLYFF { xin_store[(i+1) % 8][11], xin_store[(i+1) % 8], 1'b0 } -
+                                        { {2{xin[(i+3) % 8][11]}}, xin[(i+3) % 8] };
                 end
                 assign a_i5_7 = `QCONV(aincalc, 14, 0, 17, 9);
                 assign d_i5_7 = `QCONV(dincalc, 14, 0, 17, 9);
@@ -423,10 +440,10 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                             .ADD_PCIN("TRUE"))
                 u_i5_7( .clk_i(clk_i),
                         .a_i(a_i5_7),
-                        .b_i(b_coeff57),
+                        .b_i(b_coeff5_7),
                         .d_i(d_i5_7),
-                        .pcin( i11_13_to_i5_7[i] ),
-                        .pcout( i5_7_to_i1_3[i] ));
+                        .pcin_i( i11_13_to_i5_7[i] ),
+                        .pcout_o( i5_7_to_i1_3[i] ));
                                     
             // DELAY AFTER i5_7
             // 0: z^-16  (PREG=1)
@@ -511,26 +528,26 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
             // Then we do (xin5_store+xin3_delay) = i3 z^-8 (=xin[5]z^-16 + xin[3]z^-40)
             //            (xin7_store+xin1_delay) = i1 z^-8 (=xin[7]z^-16 + xin[3]z^-40)
                 always @(posedge clk_i) begin : I1_3_07_PREADD
-                    i3 <= {xin_store[i+5 % 8][11],xin_store[i+5 % 8]} +
-                          {xin_delay[i+3 % 8][11],xin_delay[i+3 % 8]};
-                    i1 <= {xin_store[i+7 % 8][11],xin_store[i+7 % 8]} +
-                          {xin_delay[i+1 % 8][11],xin_delay[i+1 % 8]};
+                    i3 <= {xin_store[(i+5) % 8][11],xin_store[(i+5) % 8]} +
+                          {xin_delay[(i+3) % 8][11],xin_delay[(i+3) % 8]};
+                    i1 <= {xin_store[(i+7) % 8][11],xin_store[(i+7) % 8]} +
+                          {xin_delay[(i+1) % 8][11],xin_delay[(i+1) % 8]};
                 end
             end else if (i== 1 || i == 2 || i == 5 || i == 6) begin : I1_3_12
                 // 1/2 and 5/6 add store/delay and xin/delay
                 always @(posedge clk_i) begin : I1_3_07_PREADD
-                    i3 <= {xin_store[i+5 % 8][11],xin_store[i+5 % 8]} +
-                          {xin_delay[i+3 % 8][11],xin_delay[i+3 % 8]};
-                    i1 <= {xin[i+7 % 8][11],xin[i+7 % 8]} +
-                          {xin_delay[i+1 % 8][11],xin_delay[i+1 % 8]};
+                    i3 <= {xin_store[(i+5) % 8][11],xin_store[(i+5) % 8]} +
+                          {xin_delay[(i+3) % 8][11],xin_delay[(i+3) % 8]};
+                    i1 <= {xin[(i+7) % 8][11],xin[(i+7) % 8]} +
+                          {xin_delay[(i+1) % 8][11],xin_delay[(i+1) % 8]};
                 end                
             end else if (i== 3 || i == 4) begin : I1_3_34
                 // 3/4 add xin/delay and xin/delay
                 always @(posedge clk_i) begin : I1_3_07_PREADD
-                    i3 <= {xin[i+5 % 8][11],xin[i+5 % 8]} +
-                          {xin_delay[i+3 % 8][11],xin_delay[i+3 % 8]};
-                    i1 <= {xin[i+7 % 8][11],xin[i+7 % 8]} +
-                          {xin_delay[i+1 % 8][11],xin_delay[i+1 % 8]};
+                    i3 <= {xin[(i+5) % 8][11],xin[(i+5) % 8]} +
+                          {xin_delay[(i+3) % 8][11],xin_delay[(i+3) % 8]};
+                    i1 <= {xin[(i+7) % 8][11],xin[(i+7) % 8]} +
+                          {xin_delay[(i+1) % 8][11],xin_delay[(i+1) % 8]};
                 end                
             end
             
@@ -555,7 +572,7 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                            .USE_C( (i==3 || i==4) ? "FALSE" : "TRUE"))
                 u_i1_3( .clk_i(clk_i),
                         .a_i(a_i1_3),
-                        .b_i(b_coeff13),
+                        .b_i(b_coeff1_3),
                         .d_i(d_i1_3),
                         .c_i(c_i1_3),
                         .pcin_i( i5_7_to_i1_3[i] ),
