@@ -53,7 +53,24 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
     wire [47:0] i9_to_i11_13[7:0];
     wire [47:0] i11_13_to_i5_7[7:0];
     wire [47:0] i5_7_to_i1_3[7:0];
-        
+
+
+    // Our first attempt here assumed that we could do a full 2x DSP add so long as everything was input registered.
+    // That... doesn't work.
+    // Let's assume that in order to do that we need to have the *mults* registered.
+    // Luckily we have VERY FEW of these to deal with now.
+    // Our "2-clock runs" (no PREG) are
+    // BIT 0: i15 -> i9
+    // BIT 1: i9 -> i11_13
+    // BIT 2: i9 -> i11_13
+    // BIT 7: i15 -> i9
+    // That's it.      
+    //
+    // For each of these just strip AREG/DREG back 1 and add MULT_REG and see what happens.
+    // i15:
+    // AREG = 1 for everyone
+    // DREG = 0 for i==0/i==7
+    // MULT_REG = 1 for i==0/i==7
     generate
         genvar i;
         
@@ -124,8 +141,11 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
                 assign c_i15 = `QCONV( xin[i], 11, 1, 24, 24 );
             end
             
-            fir_dsp_core #(.AREG( (i==0 || i==7) ? 2 : 1),
-                           .DREG(1),
+//            fir_dsp_core #(.AREG( (i==0 || i==7) ? 2 : 1),
+            fir_dsp_core #(.AREG(1),
+//                           .DREG(1),
+                           .DREG( (i==0 || i==7) ? 0 : 1),
+                           .MULT_REG( (i==0 || i==7) ? 1 : 0),
                            .CREG(1),
                            .USE_C("TRUE"),
                            .ADD_PCIN("FALSE"),
@@ -181,8 +201,10 @@ module shannon_whitaker_lpfull #(parameter NBITS=12,
             end         
             assign d_i9 = `QCONV( xin[(i+7) % 8], 12, 0, 17, 9);
             // The C input for i9 is declared globally to allow it to be used later in the chain.
-            fir_dsp_core #(.AREG(2),
-                           .DREG(1),
+            // Bits 1 and 2 need AREG=1/DREG=0/MULT_REG=1 to allow the 2 DSP calculation.
+            fir_dsp_core #(.AREG((i==1 || i==2) ? 1 : 2),
+                           .DREG((i==1 || i==2) ? 0 : 1),
+                           .MULT_REG((i==1 || i==2) ? 1 : 0),
                            .CREG((i==3 || i == 4) ? 1 : 0),
                            .USE_C((i==3 || i==4) ? "TRUE" : "FALSE"),
                            .ADD_PCIN("TRUE"),
