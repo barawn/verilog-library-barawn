@@ -18,7 +18,10 @@ module shannon_whitaker_lpfull_tb;
           samples[0] };
 
     wire [11:0] outsample[7:0];
+    wire [11:0] outsampleB[7:0];
     wire [12*8-1:0] outsample_arr;
+    wire [12*8-1:0] outsampleB_arr;
+    
     reg [11:0] pretty_insample = {12{1'b0}};    
     reg [11:0] pretty_sample = {12{1'b0}};
     integer pi;
@@ -36,12 +39,16 @@ module shannon_whitaker_lpfull_tb;
         genvar j;
         for (j=0;j<8;j=j+1) begin : DEVEC
             assign outsample[j] = outsample_arr[12*j +: 12];
+            assign outsampleB[j] = outsampleB_arr[12*j +: 12];
         end
     endgenerate
-        
-    shannon_whitaker_lpfull uut(.clk_i(clk),
+            
+    shannon_whitaker_lpfull_v2 uut(.clk_i(clk),
                                 .in_i(sample_arr),
                                 .out_o(outsample_arr));
+    shannon_whitaker_lpfull uutB(.clk_i(clk),
+                                 .in_i(sample_arr),
+                                 .out_o(outsampleB_arr));
 
     initial begin
         #500;
@@ -51,6 +58,14 @@ module shannon_whitaker_lpfull_tb;
         @(posedge clk);
         #0.01;
         samples[0] = 0;
+        #100;
+        @(posedge clk);
+        #0.01;
+        samples[1] = 1000;
+        @(posedge clk);
+        #0.01;
+        samples[1] = 0;
+        
     end    
 
 endmodule
