@@ -9,7 +9,9 @@
 * dual_dsp_counters.v : Dual 24-bit counter packed in a DSP.
 * dsp_timed_counter.v : 24-bit up-counter that counts for a dynamically programmable interval from a single DSP.
 * fir_dsp_core.sv : DSP stripped to its basics for generic FIR filters. Note that additional clever things can be done that this core doesn't support: it's just (a+d)*b + c, with a cascade option, everything constantly clocked and no resets.
-* shannon_whitaker_lpfull.sv : a Shannon-Whitaker low-pass filter (cutoff at fs/2)  optimized for resource usage.
+* shannon_whitaker_lpfull.sv : a Shannon-Whitaker low-pass filter (cutoff at fs/2)  optimized for resource usage. Early version.
+* shannon_whitaker_lpfull_v2.sv : Second version of the SW LP filter (improved timing at cost of 1 clock extra latency).
+* ternary_mult23_12.sv : Multiply a 12-bit number by 23 using a ternary add (yes, this seems very specific, it's for a second version of the SW lowpass)
 
 * wishbone_arbiter.v : Arbitrate multiple WISHBONE busses based on cyc
 * round_robin_arbiter.v : Public-domain round robin arbiter.
