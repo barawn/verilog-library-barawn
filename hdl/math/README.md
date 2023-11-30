@@ -5,7 +5,16 @@
 * fast_csa53_adder.v : 5:3 compressor (with output FFs)
 * fast_csa63_adder.v : 6:3 compressor (with output FFs)
 * fast_csa82_adder.v : 8:2 3-stage carry-save adder for bitlengths 3+.
-* 
+
+* nr_sqrt.sv : Calculate square root based on non-restoring algorithm.
+  Extremely cheap (only requires basically 2x NBIT length registers
+  plus a few extra FFs), takes NBIT/2 clocks to finish.
+* floorshift_log2.sv : Calculate approximate log2(input) serially
+  using the floor-shift method (piecewise linear between powers of 2).
+  Also extremely cheap (requires (NBIT+log2(NBIT)+configurable fractional
+  number of bits) registers, takes NBIT clocks to finish. Note that
+  the algorithm is intrinsically variable-latency, but this module
+  fixes the latency to the longest possible.
 
 The fast_csa modules are all examples of carry-save adders, which means
 the outputs (called 'sum', 'carry', and 'ccarry') need to be
