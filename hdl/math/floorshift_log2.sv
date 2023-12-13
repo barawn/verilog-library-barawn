@@ -30,7 +30,15 @@
 // 
 // The output is convergently rounded to the number of fractional bits
 // requested.
-module floorshift_log2 #(parameter FRAC_BITS=8)(
+//
+// Note that the reason for keeping this simple is that *this*
+// representation can be improved afterwards trivially. Consider
+// if we have N=a2^3 + b2^2 + c2^1 + d2^0 - if a=1, then we know
+// log2(N) = 3 + log2(b2^2 + c2^1 + d2^0)/2^3
+//
+// Because we don't mess with the bottom bits, the fractional bits
+// can be corrected via a LUT if desired.
+module floorshift_log2 #(parameter FRAC_BITS=8, parameter ROUND="TRUE")(
         input clk_i,
         input [19:0] in_i,
         input calc_i,
@@ -70,9 +78,10 @@ module floorshift_log2 #(parameter FRAC_BITS=8)(
     end
 
     // convergent round on the bottom bit
-    assign out_o = {count_reg, frac_reg[2 +: (FRAC_BITS-1)],
-                    |frac_reg[1:0]
-                   };
+    assign out_o = (ROUND=="TRUE") ? 
+		   {count_reg, frac_reg[2 +: (FRAC_BITS-1)],
+                    |frac_reg[1:0] } :
+		   {count_reg, frac_reg[1 +: (FRAC_BITS)]};   
     // change this to give fixed latency
     assign valid_o = valid;
 endmodule
