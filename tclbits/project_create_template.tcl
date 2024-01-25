@@ -7,7 +7,7 @@
 # Modified AGAIN to make it easier to change!
 
 # Set the project name
-set _xil_proj_name_ "firmware-helix-mtrig"
+set _xil_proj_name "firmware-helix-mtrig"
 set _this_part xc7a200tfbg676-2
 
 # Set the reference directory for source file relative paths (by default the value is script directory path)
