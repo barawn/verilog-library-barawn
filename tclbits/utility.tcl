@@ -6,13 +6,17 @@
 # add_include_dir "include"
 #
 proc add_include_dir { idir } {
-    puts "Adding $idir to include directories"
-    set incdir [file join [get_repo_dir] $idir]
+    if {[string equal [file pathtype $idir] "absolute"]} {
+	set incdir $idir
+    } else {
+	set incdir [file join [get_repo_dir] $idir]
+    }
     set incdirlist [get_property include_dirs [current_fileset]]
     if {$incdir in $incdirlist} {
 	puts "Skipping directory include, already done"
     } else {
-	lappend $incdirlist $incdir
+	puts "Adding $idir to include directories"	
+	lappend incdirlist $incdir	
 	set_property include_dirs $incdirlist [current_fileset]
     }
 }
@@ -76,7 +80,7 @@ proc add_ip_repository { iprep } {
     if {$iprepf in $ipreps} {
 	# do nothing
     } else {
-	lappend $ipreps $iprepf
+	lappend ipreps $iprepf
 	set_property ip_repo_paths $ipreps [current_project]
     }
 }

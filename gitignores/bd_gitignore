@@ -7,3 +7,8 @@
 # Don't ignore .gitignore and .bd files.
 !.gitignore
 !*.bd
+# Ignore subdirectories named "ip"
+# Some block diagrams include sub-block diagrams in the IP section.
+# We don't need those, they get recreated.
+ip/
+*/ip/

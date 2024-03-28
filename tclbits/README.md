@@ -22,6 +22,8 @@ have a Vivado_init.tcl which provides for per-project initialization.
 * project_deinit_template.tcl - Basic project deinitialization script. Read
   to figure out what you might want.
 
+* project_create_template.tcl - This is the basic empty project creation script.
+
 * utility.tcl - This file contains a bunch of utility procedures to simplify
   Tcl scripts, including adding scripts/include directories to the projects.
 
