@@ -15,6 +15,7 @@ Files in this directory:
 * dual_dsp_counters.v : Dual 24-bit counter packed in a DSP.
 * dsp_timed_counter.v : 24-bit up-counter that counts for a dynamically programmable interval from a single DSP.
 * fir_dsp_core.sv : DSP stripped to its basics for generic FIR filters. Note that additional clever things can be done that this core doesn't support: it's just (a+d)*b + c, with a cascade option, everything constantly clocked and no resets.
+* obufds_autoinv.v/ibufds_autoinv.v : utility modules for correctly hooking up differential inputs/outputs via parameter control when the P/Ns might be swapped
 
 * wishbone_arbiter.v : Arbitrate multiple WISHBONE busses based on cyc
 * round_robin_arbiter.v : Public-domain round robin arbiter.
