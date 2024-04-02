@@ -15,7 +15,9 @@
 // If you're wondering about the logic here, which doesn't look like a square:
 // it's because of the offset. 
 // NBITS MUST BE > 8
-module square_5bit_accumulator #(parameter NBITS=27)(
+// ONLY THE TOP NBITS-8 BITS HAVE A RESET VALUE BOTTOM ONES ARE IGNORED
+module square_5bit_accumulator #(parameter NBITS=24,
+                                 parameter [NBITS-1:0] RESET_VALUE = {NBITS{1'b0}})(
         input clk_i,
         input [3:0] in_i,
         input ce_i,
@@ -49,11 +51,13 @@ module square_5bit_accumulator #(parameter NBITS=27)(
     // we're going to use a full slice anyway.
     
     // So first create the "top" register: contains all bits except 8.
-    reg [NBITS-8-1:0] top_register = {(NBITS-8){1'b0}};
+    reg [NBITS-8-1:0] top_register = RESET_VALUE[8 +: (NBITS-8)];
     // carry output from the custom logic. acts as an up-counter input.
     wire top_carry_in;
     
-    // here's the accumulator
+    // here's the accumulator. note we DO NOT HAVE a reset value for the bottom 8!
+    // The reason is that it complicates the packing, and we DON'T NEED IT
+    // since in our use case we reset to 2^17 * 0.125 = 2^14.
     wire [7:0] bottom_register;
     
     wire [6:0] custom_logic;
@@ -93,6 +97,9 @@ module square_5bit_accumulator #(parameter NBITS=27)(
     // DI[5]: A[6]
     LUT5 #(.INIT(32'h07FFF800)) u_bit6(.I0(in_i[0]),.I1(in_i[1]),.I2(in_i[2]),.I3(in_i[3]),.I4(bottom_register[6]),.O(custom_logic[6]));
 
+    // these are ALL rst_i's, with no initializer, since the
+    // bottom 8 bits of the reset value are ignored!!!!
+
     // just use 2 carry4's, Xilinx is weird
     wire [3:0] c0_di = bottom_register[3:0];
     wire [3:0] c0_s = custom_logic[3:0];
@@ -116,7 +123,7 @@ module square_5bit_accumulator #(parameter NBITS=27)(
     FDRE u_br7(.D(c1_o[3]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[7]));
     
     always @(posedge clk_i) begin
-        if (rst_i) top_register <= {(NBITS-8){1'b0}};
+        if (rst_i) top_register <= RESET_VALUE[8 +: (NBITS-8)];
         else if (ce_i) top_register <= top_register + c1_co[3];
     end        
 
