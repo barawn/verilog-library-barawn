@@ -1,25 +1,32 @@
 # Utility procedures
 
-# Procedure to add an include dir.
-# Pass a path relative to the base project (repository) directory.
-# e.g. do
-# add_include_dir "include"
-#
-proc add_include_dir { idir } {
+# utility function. Use add_include_dir unless necessary
+proc add_include_dir_to_fileset { idir fileset } {
     if {[string equal [file pathtype $idir] "absolute"]} {
 	set incdir $idir
     } else {
 	set incdir [file join [get_repo_dir] $idir]
     }
-    set incdirlist [get_property include_dirs [current_fileset]]
+    set incdirlist [get_property include_dirs $fileset ]
     if {$incdir in $incdirlist} {
 	puts "Skipping directory include, already done"
     } else {
 	puts "Adding $idir to include directories"	
 	lappend incdirlist $incdir	
-	set_property include_dirs $incdirlist [current_fileset]
+	set_property include_dirs $incdirlist $fileset
     }
 }
+
+# Procedure to add an include dir.
+# Pass a path relative to the base project (repository) directory.
+# e.g. do
+# add_include_dir "include"
+proc add_include_dir { idir } {
+    add_include_dir_to_fileset $idir [current_fileset]
+    add_include_dir_to_fileset $idir [get_filesets sim_1]
+}
+
+
 
 # Utility function for setting a script. Shortens
 # the convenience functions below.
