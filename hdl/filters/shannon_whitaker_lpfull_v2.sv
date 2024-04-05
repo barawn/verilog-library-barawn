@@ -328,7 +328,7 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                                .USE_C("FALSE"))
                     u_i15(.clk_i(clk_i),
                           .acin_i( i9_to_i15_acin ),
-                          .d_i(`QCONV(xin_delay[i-1], 12, 0, 17, 9)),
+                          .d_i(`QCONV(xin[i-1], 12, 0, 17, 9)),
                           .b_i(b_coeff15),
                           .pcin_i( i9_to_i15 ),
                           .pcout_o( i15_to_i11_13 ));
