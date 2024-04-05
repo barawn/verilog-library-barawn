@@ -46,7 +46,17 @@ proc dump_ip_files { impl_filename sim_filename } {
 }
 
 proc save_all {} {
-    dump_files "sources_1" "sources.txt" "IS_GENERATED==0"
+    # The IP exclusion here prevents things from being double-included
+    # in both sources.txt and ips.txt. The reason why this matters
+    # is that when an IP file is created it is present in get_ips
+    # but _not_ in sources_1. Once the design build completes and it
+    # realizes it can *cache* the build, it becomes present in
+    # sources_1.
+    # So what happens is that the IP file disappears and reappears
+    # from sources.txt pointlessly.
+    # This has no harm on the project but leads to stupidity in
+    # the git history.
+    dump_files "sources_1" "sources.txt" "IS_GENERATED==0 && FILE_TYPE != IP"
     dump_files "constrs_1" "constraints.txt"
     dump_files "sim_1" "simulation.txt"
     dump_ip_files "ips.txt" "simips.txt"
