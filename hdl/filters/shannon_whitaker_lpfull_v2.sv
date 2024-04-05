@@ -347,7 +347,7 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                 // A11 inputs are xin_store[i-5] and xin[i-3]
                 always @(posedge clk_i) begin : PREADD_11_13
                     A13 <= { xin[i-5][NBITS-1], xin[i-5] } +
-                           { xin_store[i-3][NBITS-1], xin[i-3] };
+                           { xin_store[i-3][NBITS-1], xin_store[i-3] };
                     A11 <= { xin_store[i-5][NBITS-1], xin_store[i-5] } +
                            { xin[i-3][NBITS-1], xin[i-3] };
                 end
