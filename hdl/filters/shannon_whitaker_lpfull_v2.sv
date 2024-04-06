@@ -429,7 +429,7 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                 // merge the long-delay samples. Sign extend first
                 // Long delays are xin_delay[i-1] and xin_delay[i-3]
                 wire [NBITS+1:0] A_long_in0_x2 = 
-                    { xin_delay[i-1][NBITS-1], xin_delay[i-1] };
+              { xin_delay[i-1][NBITS-1], xin_delay[i-1], 1'b0 };
                 wire [NBITS+1:0] A_long_in1 = 
                     { {2{ xin_delay[i-3][NBITS-1]}}, xin_delay[i-3] };
                 reg [NBITS+1:0] A_long = {NBITS+2{1'b0}};
