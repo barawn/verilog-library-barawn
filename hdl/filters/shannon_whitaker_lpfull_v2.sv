@@ -104,8 +104,8 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                         A13 <= { xin[i+3][NBITS-1], xin[i+3] } +
                                { xin_store[i+5][NBITS-1], xin_store[i+5] };
                         // sign extend and add
-                        A11 <= { xin_store[i+5][NBITS-1], xin_store[i+5] } +
-                               { xin[i+3][NBITS-1], xin[i+3] };
+                      A11 <= { xin_store[i+3][NBITS-1], xin_store[i+3] } +
+                      { xin[i+5][NBITS-1], xin[i+5] };
                     end
                     // AD/C/PREG=1
                     // A/D/MREG=0
@@ -328,7 +328,7 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                                .USE_C("FALSE"))
                     u_i15(.clk_i(clk_i),
                           .acin_i( i9_to_i15_acin ),
-                          .d_i(`QCONV(xin_delay[i-1], 12, 0, 17, 9)),
+                          .d_i(`QCONV(xin_store[i-1], 12, 0, 17, 9)),
                           .b_i(b_coeff15),
                           .pcin_i( i9_to_i15 ),
                           .pcout_o( i15_to_i11_13 ));
@@ -347,7 +347,7 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                 // A11 inputs are xin_store[i-5] and xin[i-3]
                 always @(posedge clk_i) begin : PREADD_11_13
                     A13 <= { xin[i-5][NBITS-1], xin[i-5] } +
-                           { xin_store[i-3][NBITS-1], xin[i-3] };
+                           { xin_store[i-3][NBITS-1], xin_store[i-3] };
                     A11 <= { xin_store[i-5][NBITS-1], xin_store[i-5] } +
                            { xin[i-3][NBITS-1], xin[i-3] };
                 end
@@ -429,7 +429,7 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                 // merge the long-delay samples. Sign extend first
                 // Long delays are xin_delay[i-1] and xin_delay[i-3]
                 wire [NBITS+1:0] A_long_in0_x2 = 
-                    { xin_delay[i-1][NBITS-1], xin_delay[i-1] };
+              { xin_delay[i-1][NBITS-1], xin_delay[i-1], 1'b0 };
                 wire [NBITS+1:0] A_long_in1 = 
                     { {2{ xin_delay[i-3][NBITS-1]}}, xin_delay[i-3] };
                 reg [NBITS+1:0] A_long = {NBITS+2{1'b0}};
