@@ -385,10 +385,12 @@ module shannon_whitaker_lpfull_v2 #(parameter NBITS=12,
                 // 7   xin_store[i-1] xin_delay[i-7]
                 // A3 is made of
                 // xin_store[i-3] xin_delay[i-5]
-                wire [NBITS-1:0] A1_in0 = (i == 7) ?
+                
+                // These are NBITS length! They're sign extended!
+                wire [NBITS:0] A1_in0 = (i == 7) ?
                     { xin_store[i-1][NBITS-1], xin_store[i-1] } :
                     { xin[i-1][NBITS-1], xin[i-1] };
-                wire [NBITS-1:0] A1_in1 =
+                wire [NBITS:0] A1_in1 =
                     { xin_delay[(i+1)%8][NBITS-1], xin_delay[(i+1)%8] };
 
                 always @(posedge clk_i) begin : PREADD_1_3
