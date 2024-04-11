@@ -35,6 +35,7 @@ module fir_dsp_core #(
         parameter USE_ACOUT = "FALSE",
         parameter SUBTRACT_A = "FALSE",
         parameter SUBTRACT_C = "FALSE",
+	parameter USE_D = "TRUE",
         parameter PREADD_REG = 0,
         parameter MULT_REG = 0,
         parameter ACASCREG = 1,
@@ -61,10 +62,16 @@ module fir_dsp_core #(
         input update_i
     );
     
-    // INMODE is always either D+A2 or D-A2 
+    // INMODE is always either D+A2 or D-A2, or just +/-A2.
+    // A2 gets selected when AMULTSEL is just A instead of AD
     // D+A2 = 00100
     // D-A2 = 01100
-    localparam [4:0] INMODE = (SUBTRACT_A == "TRUE") ? 5'b01100 : 5'b00100;
+    // A2   = 00000
+    // -A2  = 01000
+    localparam [4:0] INMODE = { 1'b0,
+				(SUBTRACT_A == "TRUE") ? 1'b1 : 1'b0,
+				(USE_D == "TRUE") ? 1'b1 : 1'b0,
+				2'b00 };
 
     localparam [1:0] W_MUX = (USE_C == "TRUE") ? 2'b11 : 2'b00;
     localparam [2:0] Z_MUX = (ADD_PCIN == "TRUE") ? 3'b001 : 3'b000;
@@ -73,16 +80,29 @@ module fir_dsp_core #(
     
     localparam ADREG = PREADD_REG;
     localparam MREG = MULT_REG;
-    
+
     // cascade input option
     localparam LOCAL_ACASCREG = (AREG == 0) ? 0 : 1;
     localparam MY_ACASCREG = (USE_ACOUT == "TRUE") ? ACASCREG : LOCAL_ACASCREG;
-    // extend by 1, but top bits can stay zero
-    wire [29:0] DSP_A = { {3{1'b0}}, a_i[25], a_i };
-    wire [26:0] DSP_D = { d_i[25], d_i };
+   
+    // Dport usage, for low power
+    localparam  AMULTSEL = (USE_D == "TRUE") ? "AD" : "A";
+    localparam  MY_DREG = (USE_D == "TRUE") ? DREG : 1'b1;
+    wire	       CED = (USE_D == "TRUE") ? 1'b1 : 1'b0;
+
+    // Cport usage, for low power
+    localparam  MY_CREG = (USE_C == "TRUE") ? CREG : 1'b1;
+    wire		CEC = (USE_C == "TRUE") ? 1'b1 : 1'b0;
+   
+
+   
+    // extend by 4 or 1. Extend by 4 b/c if we don't use Dport, gets passed to multiplier
+    wire [29:0] DSP_A = { {4{a_i[25]}}, a_i };
+    // if we don't use Dport tie everything high for lowest leakage
+    wire [26:0]	DSP_D = (USE_D == "TRUE") ? { d_i[25], d_i } : {27{1'b1}};   
     wire [17:0] DSP_B = b_i;
     // if we're subtracting, we need to flip C
-    wire [47:0] DSP_C = (SUBTRACT_C == "TRUE") ? ~c_i : c_i;        
+    wire [47:0] DSP_C = (USE_C == "TRUE") ? ((SUBTRACT_C == "TRUE") ? ~c_i : c_i) : {48{1'b1}} ;        
     // and if we're subtracting C, we need to pass 1 to carryin to handle the two's complement
     wire CARRYIN = (SUBTRACT_C == "TRUE") ? 1 : 0;
     // the reason we need a billion damn options is b/c you CANNOT hook up a cascade input
@@ -102,14 +122,14 @@ module fir_dsp_core #(
 			   .B_INPUT("CASCADE"),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
@@ -124,9 +144,9 @@ module fir_dsp_core #(
 				    .BCOUT( bcout_o ),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .PCIN(pcin_i),
                                     .CLK(clk_i),
                                     .P(p_o),
@@ -146,15 +166,15 @@ module fir_dsp_core #(
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .B_INPUT( "DIRECT" ),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
@@ -169,9 +189,9 @@ module fir_dsp_core #(
 				    .BCOUT( bcout_o ),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .PCIN(pcin_i),
                                     .CLK(clk_i),
                                     .P(p_o),
@@ -194,15 +214,15 @@ module fir_dsp_core #(
                            .BCASCREG(1),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .B_INPUT( "CASCADE" ),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
@@ -217,9 +237,9 @@ module fir_dsp_core #(
 				    .BCOUT(bcout_o),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .PCIN(pcin_i),
                                     .CLK(clk_i),
                                     .P(p_o),
@@ -239,15 +259,15 @@ module fir_dsp_core #(
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .B_INPUT( "DIRECT" ),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
@@ -262,9 +282,9 @@ module fir_dsp_core #(
 				    .BCOUT(bcout_o),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .PCIN(pcin_i),
                                     .CLK(clk_i),
                                     .P(p_o),
@@ -289,15 +309,15 @@ module fir_dsp_core #(
                            .BCASCREG(1),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .B_INPUT( "CASCADE" ),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
@@ -312,9 +332,9 @@ module fir_dsp_core #(
 				    .BCOUT(bcout_o),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .CLK(clk_i),
                                     .P(p_o),
                                     .CEP(1'b1),
@@ -334,15 +354,15 @@ module fir_dsp_core #(
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .B_INPUT( "DIRECT" ),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
@@ -357,9 +377,9 @@ module fir_dsp_core #(
 				    .BCOUT( bcout_o ),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .CLK(clk_i),
                                     .P(p_o),
                                     .CEP(1'b1),
@@ -381,15 +401,15 @@ module fir_dsp_core #(
                            .BCASCREG(1),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .B_INPUT( "CASCADE" ),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
@@ -404,9 +424,9 @@ module fir_dsp_core #(
 				    .BCOUT(bcout_o),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .CLK(clk_i),
                                     .P(p_o),
                                     .CEP(1'b1),
@@ -426,15 +446,15 @@ module fir_dsp_core #(
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
                            .CARRYINSELREG(1'b0),
-                           .CREG(CREG),
-                           .DREG(DREG),
+                           .CREG(MY_CREG),
+                           .DREG(MY_DREG),
                            .INMODEREG(1'b0),
                            .MREG(MREG),
                            .OPMODEREG(1'b0),
                            .PREG(PREG),
                            .B_INPUT( "DIRECT" ),
                            .PREADDINSEL("A"),
-                           .AMULTSEL("AD"),
+                           .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
@@ -449,9 +469,9 @@ module fir_dsp_core #(
 				    .BCOUT(bcout_o),
                                     .C(DSP_C),
                                     .CARRYIN(CARRYIN),
-                                    .CEC(1'b1),
+                                    .CEC(CEC),
                                     .D(DSP_D),
-                                    .CED(1'b1),
+                                    .CED(CED),
                                     .CLK(clk_i),
                                     .P(p_o),
                                     .CEP(1'b1),
