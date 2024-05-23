@@ -28,6 +28,8 @@
 // LOADABLE_B can either be HEAD, BODY, TAIL, or NONE (default)
 // BODY/TAIL both use BCIN.
 // Note that if you only have 1 just use HEAD.
+//
+// CLKTYPE allows cross-clock for coeff_dat using CUSTOM_CC_DST
 module fir_dsp_core #(
         parameter ADD_PCIN = "FALSE",
         parameter USE_C = "TRUE",
@@ -43,7 +45,8 @@ module fir_dsp_core #(
         parameter CREG = 1,
         parameter DREG = 1,
         parameter PREG = 1,
-	parameter LOADABLE_B = "NONE"
+	parameter LOADABLE_B = "NONE",
+	parameter CLKTYPE = "NONE"
     )(
         input clk_i,
         input [29:0] acin_i,
@@ -157,6 +160,7 @@ module fir_dsp_core #(
                                     .ALUMODE(ALUMODE));		  
                end else begin : APCSCIN // block: ABPCSCIN
 		// A, P have cascade inputs
+		(* CUSTOM_CC_DST = CLKTYPE *)
 		DSP48E2 #( .ACASCREG( MY_ACASCREG ),
                            .A_INPUT( "CASCADE" ),
                            .ADREG( ADREG ),
@@ -250,6 +254,7 @@ module fir_dsp_core #(
                                     .ALUMODE(ALUMODE));                
 	       end else begin : PCSCIN // block: BPCSCIN
 		// P has cascade input
+		(* CUSTOM_CC_DST = CLKTYPE *)		
                 DSP48E2 #( .ACASCREG( MY_ACASCREG ),
                            .A_INPUT( "DIRECT" ),
                            .ADREG( ADREG ),
@@ -345,6 +350,7 @@ module fir_dsp_core #(
 		end // block: ABCSCIN
 	        else begin : ACSCIN
 		   // A has cascade inputs
+		   (* CUSTOM_CC_DST = CLKTYPE *)
                    DSP48E2 #( .ACASCREG( MY_ACASCREG ),
                            .A_INPUT( "CASCADE" ),
                            .ADREG( ADREG ),
@@ -437,6 +443,7 @@ module fir_dsp_core #(
 		end // block: BCSCIN
 	        else begin : NCSCIN
 		   // No one has cascade inputs
+		(* CUSTOM_CC_DST = CLKTYPE *)
                 DSP48E2 #( .ACASCREG( MY_ACASCREG ),
                            .A_INPUT( "DIRECT" ),
                            .ADREG( ADREG ),
