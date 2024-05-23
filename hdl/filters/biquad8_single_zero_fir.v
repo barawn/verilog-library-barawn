@@ -101,10 +101,11 @@ module biquad8_single_zero_fir #(parameter NBITS=16,
 	 wire [47:0]	  fir_out;
 
 	 // note that these automatically store the actual data in ranges that won't overflow
-	 wire [29:0]	  dsp0_A = { (A_BITS-AD_FRAC_BITS-(NBITS-NFRAC)) {llast_samp[NBITS-1]}, llast_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
-	 wire [26:0]	  dsp0_D = { (D_BITS-AD_FRAC_BITS-(NBITS-NFRAC)) {this_samp[NBITS-1]}, this_samp,   {(AD_FRAC_BITS-NFRAC){1'b0}} };
-	 
-	 wire [29:0]	  dsp1_A = { (A_BITS-AD_FRAC_BITS-(NBITS-NFRAC)) {last_samp[NBITS-1]}, last_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
+	 localparam A_SIGNEXTEND = ( A_BITS - AD_FRAC_BITS - (NBITS-NFRAC));
+	 localparam D_SIGNEXTEND = ( D_BITS - AD_FRAC_BITS - (NBITS-NFRAC));
+	 wire [29:0]	  dsp0_A = { {A_SIGNEXTEND{llast_samp[NBITS-1]}}, llast_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
+	 wire [26:0]	  dsp0_D = { {D_SIGNEXTEND{this_samp[NBITS-1]}}, this_samp,   {(AD_FRAC_BITS-NFRAC){1'b0}} };	 
+	 wire [29:0]	  dsp1_A = { {A_SIGNEXTEND{last_samp[NBITS-1]}}, last_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
 	 	 
 	 fir_dsp_core #(.USE_C("FALSE"),
 			.AREG( i < 2 ? 2 : 1),
