@@ -10,7 +10,9 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 			 parameter NFRAC=2,  // input number of fractional bits
 			 parameter NSAMP=8,  // number of samples
 			 parameter OUTBITS=16, // output scaling
-			 parameter OUTFRAC=2)
+			 parameter OUTFRAC=2,
+			 parameter WBCLKTYPE = "NONE",
+			 parameter CLKTYPE = "NONE")
    (    
     // wishbone side
     input		       wb_clk_i,
@@ -18,18 +20,14 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 			       `TARGET_NAMED_PORTS_WB_IF( wb_ , 7, 32),
     
     // data side
-    input		       clk,
+    input		       clk_i,
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
     output [OUTBITS*NSAMP-1:0] dat_o
-    );
-
-   parameter		       WBCLKTYPE = "PSCLK";
-   parameter		       CLKTYPE = "ACLK";
-     
+    );     
    
-   `define ADDR_MATCH( in, val) (in[7:2] == val[7:2])
+   `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
    
    reg			       pending = 0;
    reg			       pending_rereg = 0;
@@ -51,6 +49,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
       
    reg			       update_wbclk = 0;   
    wire			       update_clk;   
+   flag_sync u_updatesync(.in_clkA(update_wbclk),.out_clkB(update_clk),.clkA(wb_clk_i),.clkB(update_clk));
    reg			       update = 0;
 
    reg			       read_ack = 0;
@@ -85,7 +84,11 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    end   
    
    assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
-
+   assign wb_err_o = 1'b0;
+   assign wb_rty_o = 1'b0;
+   // whatever, there's no readback
+   assign wb_dat_o = {32{1'b0}};
+   
    biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
 			     .NSAMP(NSAMP),.OUTBITS(OUTBITS),
 			     .OUTFRAC(OUTFRAC))
