@@ -49,7 +49,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
       
    reg			       update_wbclk = 0;   
    wire			       update_clk;   
-   flag_sync u_updatesync(.in_clkA(update_wbclk),.out_clkB(update_clk),.clkA(wb_clk_i),.clkB(update_clk));
+   flag_sync u_updatesync(.in_clkA(update_wbclk),.out_clkB(update_clk),.clkA(wb_clk_i),.clkB(clk_i));
    reg			       update = 0;
 
    reg			       read_ack = 0;
