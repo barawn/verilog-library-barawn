@@ -5,7 +5,8 @@
 // to allow the control interface to be in a different
 // domain.
 // we have 16 of these guys so we peel off lots of the
-// space and just make this 7 bits
+// space and just make this 7 bits.
+// 7 bits (5 real bits) gives us 32 registers
 module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 			 parameter NFRAC=2,  // input number of fractional bits
 			 parameter NSAMP=8,  // number of samples
@@ -27,17 +28,33 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     output [OUTBITS*NSAMP-1:0] dat_o
     );     
    
-   `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
+   // ok so 00 = update
+   //       04 = fir
+   //       08 = reserved
+   //       0C = reserved
+   //       10 = F chain
+   //       14 = G chain
+   //       18 = F cross-link
+   //       1C = G cross-link
    
+   `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
+   `define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
+      
    reg			       pending = 0;
    reg			       pending_rereg = 0;
 
    (* CUSTOM_CC_SRC = WBCLKTYPE *)
    reg [17:0]		       coeff_hold = {18{1'b0}};
    (* CUSTOM_CC_SRC = WBCLKTYPE *)
-   reg			       coeff_wr_hold = 0;
+   reg			       coeff_fir_wr_hold = 0;
+   (* CUSTOM_CC_SRC = WBCLKTYPE *)
+   reg                 coeff_polefir_wr_hold = 0;
    (* CUSTOM_CC_DST = CLKTYPE *)
-   reg			       coeff_wr = 0;   
+   reg			       coeff_fir_wr = 0;   
+   (* CUSTOM_CC_DST = CLKTYPE *)
+   reg                 coeff_polefir_wr = 0;  
+   (* CUSTOM_CC_SRC = WBCLKTYPE *)
+   reg [1:0]           coeff_polefir_addr = {2{1'b0}};
 
    wire			       wr_wbclk = pending && !pending_rereg;   
    wire			       wr_clk;
@@ -68,19 +85,28 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
       update_wbclk <= global_update_i || (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[0]);
             
       if (wb_cyc_i && wb_stb_i && wb_we_i) begin
-	 if (`ADDR_MATCH(wb_adr_i, 7'h04)) begin
-	    coeff_hold <= wb_dat_i[17:0];
-            coeff_wr_hold <= 1;
-	 end else begin
-	    coeff_wr_hold <= 0;
-	 end	 
+          // just always capture it
+          coeff_hold <= wb_dat_i[17:0];
+          if (`ADDR_MATCH(wb_adr_i, 7'h04)) begin
+               coeff_fir_wr_hold <= 1;
+          end else begin
+               coeff_fir_wr_hold <= 0;
+          end	 
+          // just check if adr_i[6:4] == 1
+          if (`ADDR_MATCH_MASK(wb_adr_i, 7'h10, 7'h70 )) begin
+               coeff_polefir_wr_hold <= 1;
+               coeff_polefir_addr <= wb_adr_i[3:2];
+          end else begin
+               coeff_polefir_wr_hold <= 0;
+          end
       end	 
    end
 
    always @(posedge clk_i) begin
       ack_clk <= wr_clk;
       update <= update_clk;
-      coeff_wr <= wr_clk && coeff_wr_hold;      
+      coeff_fir_wr <= wr_clk && coeff_fir_wr_hold;      
+      coeff_polefir_wr <= wr_clk && coeff_polefir_wr_hold;
    end   
    
    assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
@@ -89,15 +115,38 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    // whatever, there's no readback
    assign wb_dat_o = {32{1'b0}};
    
+   wire [OUTBITS*NSAMP-1:0] zero_fir_out;
+   
    biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
 			     .NSAMP(NSAMP),.OUTBITS(OUTBITS),
 			     .OUTFRAC(OUTFRAC))
-   u_fir(.clk(clk_i),
-	 .dat_i(dat_i),
-	 .coeff_dat_i(coeff_hold),
-	 .coeff_wr_i(coeff_wr),
-	 .coeff_update_i(update),
-	 .dat_o(dat_o));
+       u_fir(.clk(clk_i),
+         .dat_i(dat_i),
+         .coeff_dat_i(coeff_hold),
+         .coeff_wr_i(coeff_fir_wr),
+         .coeff_update_i(update),
+         .dat_o(zero_fir_out));
+
+    wire [47:0] y0_out;
+    wire [47:0] y1_out;
+
+   biquad8_pole_fir #(.NBITS(12),
+                      .NFRAC(0))
+        u_pole_fir(.clk(clk_i),
+                   .dat_i(zero_fir_out),
+                   .coeff_dat_i(coeff_hold),
+                   .coeff_wr_i(coeff_polefir_wr),
+                   .coeff_update_i(update),
+                   .coeff_adr_i(coeff_polefir_addr),
+                   .y0_out(y0_out),
+                   .y1_out(y1_out));                                       
+
+    // out outputs are Q21.27
+    assign dat_o[ 0 +: 4] = {4{1'b0}};
+    assign dat_o[ 4 +: 12] = y0_out[27 +: 12];
+    assign dat_o[ 16 +: 4] = {4{1'b0}};
+    assign dat_o[ 20 +: 12] = y1_out[27 +: 12];
+    assign dat_o[ 32 +: 96 ] = {96{1'b0}};
    
 endmodule
     
