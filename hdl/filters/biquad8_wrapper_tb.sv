@@ -81,7 +81,8 @@ module biquad8_wrapper_tb;
             #1 wr = 0;
         end
     endtask
-    
+
+    integer l;    
     initial begin
         #150;
         do_write( 7'h04, 32'd16384 );
@@ -89,12 +90,16 @@ module biquad8_wrapper_tb;
         do_write( 7'h00, 32'd1 );
         
         #500;
-        @(posedge aclk);
-        #0.01;
-        samples[0] = 1000;
-        @(posedge aclk);
-        #0.01;
-        samples[0] = 0;        
+        for (l=0;l<8;l=l+1) begin
+            @(posedge aclk);
+            #0.01;
+            samples[l] = -1000;
+            @(posedge aclk);
+            #0.01;
+            samples[l] = 0;        
+            @(posedge aclk);
+            @(posedge aclk);
+        end            
     end
     
 endmodule
