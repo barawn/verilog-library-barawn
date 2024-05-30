@@ -119,7 +119,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    
    biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
 			     .NSAMP(NSAMP),.OUTBITS(OUTBITS),
-			     .OUTFRAC(OUTFRAC))
+			     .OUTFRAC(OUTFRAC),
+			     .CLKTYPE(CLKTYPE))
        u_fir(.clk(clk_i),
          .dat_i(dat_i),
          .coeff_dat_i(coeff_hold),
@@ -131,7 +132,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     wire [47:0] y1_out;
 
    biquad8_pole_fir #(.NBITS(12),
-                      .NFRAC(0))
+                      .NFRAC(0),
+                      .CLKTYPE(CLKTYPE))
         u_pole_fir(.clk(clk_i),
                    .dat_i(zero_fir_out),
                    .coeff_dat_i(coeff_hold),
@@ -142,11 +144,9 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
                    .y1_out(y1_out));                                       
 
     // out outputs are Q21.27
-    assign dat_o[ 0 +: 4] = {4{1'b0}};
-    assign dat_o[ 4 +: 12] = y0_out[27 +: 12];
-    assign dat_o[ 16 +: 4] = {4{1'b0}};
-    assign dat_o[ 20 +: 12] = y1_out[27 +: 12];
-    assign dat_o[ 32 +: 96 ] = {96{1'b0}};
+    assign dat_o[ 0 +: OUTBITS] = y0_out[27 +: OUTBITS];
+    assign dat_o[ OUTBITS +: OUTBITS] = y1_out[27 +: OUTBITS];
+    assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
    
 endmodule
     
