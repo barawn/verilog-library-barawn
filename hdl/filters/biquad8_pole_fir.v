@@ -45,6 +45,7 @@
 // write P^9 U(7, cost), update
 module biquad8_pole_fir #(parameter NBITS=16, 
                           parameter NFRAC=2,
+                          parameter CLKTYPE="NONE",
                           NSAMP=8) (
         input			clk,
         input [NBITS*NSAMP-1:0]	dat_i,
@@ -114,9 +115,13 @@ module biquad8_pole_fir #(parameter NBITS=16,
     wire [47:0] gpcascade[GLEN-1:0];
     wire [47:0] gpout[GLEN-1:0];
     
+    (* CUSTOM_CC_DST = CLKTYPE *)
     reg coeff_wr_f = 0;
+    (* CUSTOM_CC_DST = CLKTYPE *)
     reg coeff_wr_g = 0;
+    (* CUSTOM_CC_DST = CLKTYPE *)
     reg	coeff_wr_fcross = 0;
+    (* CUSTOM_CC_DST = CLKTYPE *)
     reg	coeff_wr_gcross = 0;   
   
     reg [NBITS-1:0] fin_store = {NBITS{1'b0}};
@@ -182,6 +187,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 localparam C_TAIL_PAD = 27 - NFRAC;
                 wire [47:0] dspC_in = { {C_HEAD_PAD{fin_store[NBITS-1]}}, fin_store, {C_TAIL_PAD{1'b0}} };
                 // HEAD dsp gets its inputs directly
+                (* CUSTOM_CC_DST = CLKTYPE *)
                 DSP48E2 #(`COMMON_ATTRS,.CREG(1)) 
                     u_head( .CLK(clk),
                             .CEP(1'b1),
@@ -224,6 +230,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
         for (gi=0;gi<GLEN;gi=gi+1) begin : GLOOP
             wire [29:0] dspA_in;
             wire ceb1 = coeff_wr_g;
+            reg ceb2 = 0;
             always @(posedge clk) begin : CEBS
                 ceb2 <= coeff_update_i;
             end
@@ -258,6 +265,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 localparam C_TAIL_PAD = 27 - NFRAC;
                 wire [47:0] dspC_in = { {C_HEAD_PAD{gin_store[NBITS-1]}}, gin_store, {C_TAIL_PAD{1'b0}} };
                 // HEAD dsp gets its inputs directly
+                (* CUSTOM_CC_DST = CLKTYPE *)
                 DSP48E2 #(`COMMON_ATTRS,.CREG(1)) 
                     u_head( .CLK(clk),
                             .CEP(1'b1),
@@ -328,6 +336,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
     // Here we drop the bottom 14 bits.
     wire [29:0] dspF_A = { gpout[GLEN-2][(C_FRAC_BITS-A_FRAC_BITS) +: 30] };
     wire [47:0] dspF_C = fpout[FLEN-1];
+    (* CUSTOM_CC_DST = CLKTYPE *)
     DSP48E2 #(.AREG(2),.MREG(1),.BREG(2),.PREG(1),.CREG(1),`CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS)
         u_fdsp( .CLK(clk),
                 .CEP(1'b1),
@@ -348,6 +357,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
     // A gets fpout[GLEN-2]
     wire [29:0] dspG_A = { fpout[FLEN-2][(C_FRAC_BITS-A_FRAC_BITS) +: 30] };
     wire [47:0] dspG_C = gpout[GLEN-1];
+    (* CUSTOM_CC_DST = CLKTYPE *)
     DSP48E2 #(.AREG(2),.MREG(1),.BREG(2),.PREG(1),.CREG(1),`CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS)
         u_gdsp( .CLK(clk),
                 .CEP(1'b1),
