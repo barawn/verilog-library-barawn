@@ -17,7 +17,8 @@
 // NBITS MUST BE > 8
 // ONLY THE TOP NBITS-8 BITS HAVE A RESET VALUE BOTTOM ONES ARE IGNORED
 module square_5bit_accumulator #(parameter NBITS=24,
-                                 parameter [NBITS-1:0] RESET_VALUE = {NBITS{1'b0}})(
+                                 parameter [NBITS-1:0] RESET_VALUE = {NBITS{1'b0}},
+                                 parameter CLKTYPE="NONE")(
         input clk_i,
         input [3:0] in_i,
         input ce_i,
@@ -51,6 +52,7 @@ module square_5bit_accumulator #(parameter NBITS=24,
     // we're going to use a full slice anyway.
     
     // So first create the "top" register: contains all bits except 8.
+    (* CUSTOM_CC_SRC = CLKTYPE *)
     reg [NBITS-8-1:0] top_register = RESET_VALUE[8 +: (NBITS-8)];
     // carry output from the custom logic. acts as an up-counter input.
     wire top_carry_in;
@@ -106,21 +108,29 @@ module square_5bit_accumulator #(parameter NBITS=24,
     wire [3:0] c0_co;
     wire [3:0] c0_o;
     CARRY4 u_c0(.DI(c0_di),.S(c0_s),.CO(c0_co),.O(c0_o),.CYINIT(1'b0));
-    FD u_br0(.D(c0_o[0]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[0]));
-    FD u_br1(.D(c0_o[1]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[1]));
-    FD u_br2(.D(c0_o[2]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[2]));
-    FD u_br3(.D(c0_o[3]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[3]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br0(.D(c0_o[0]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[0]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br1(.D(c0_o[1]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[1]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br2(.D(c0_o[2]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[2]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br3(.D(c0_o[3]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[3]));
 
         
     wire [3:0] c1_di = bottom_register[7:4];
-    wire [3:0] c1_s = custom_logic[7:4];
+    wire [3:0] c1_s = {1'b0,custom_logic[6:4]};
     wire [3:0] c1_co;
     wire [3:0] c1_o;
     CARRY4 u_c1(.DI(c1_di),.S(c1_s),.CO(c1_co),.O(c1_o),.CI(c0_co[3]));
-    FDRE u_br4(.D(c1_o[0]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[4]));
-    FDRE u_br5(.D(c1_o[1]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[5]));
-    FDRE u_br6(.D(c1_o[2]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[6]));
-    FDRE u_br7(.D(c1_o[3]),.CLK(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[7]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br4(.D(c1_o[0]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[4]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br5(.D(c1_o[1]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[5]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br6(.D(c1_o[2]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[6]));
+    (* CUSTOM_CC_SRC = CLKTYPE *)
+    FDRE u_br7(.D(c1_o[3]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[7]));
     
     always @(posedge clk_i) begin
         if (rst_i) top_register <= RESET_VALUE[8 +: (NBITS-8)];
