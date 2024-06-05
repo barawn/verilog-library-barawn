@@ -16,6 +16,7 @@
 // it's because of the offset. 
 // NBITS MUST BE > 8
 // ONLY THE TOP NBITS-8 BITS HAVE A RESET VALUE BOTTOM ONES ARE IGNORED
+// ALSO NOTE NOTE: 'WHY DO YOU TAKE IN 4 BITS?' BECAUSE ABS(SIGNED 5 BIT) IS 4 BITS
 module square_5bit_accumulator #(parameter NBITS=24,
                                  parameter [NBITS-1:0] RESET_VALUE = {NBITS{1'b0}},
                                  parameter CLKTYPE="NONE")(
