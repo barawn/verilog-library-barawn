@@ -5,7 +5,13 @@
 //
 // Note! The number of accumulator bits you need is log2(NSAMPLES)+7.
 // This is because we don't ACTUALLY compute the accumulated square here:
-// the output needs to be shifted up by 1 and NSAMPLES*0.125 needs to be added.
+// the output needs to be shifted up by 1 and NSAMPLES*0.25 needs to be added.
+//
+// The NSAMPLES*0.25 can be included here as a parameter (RESET_VALUE)
+// so long as NSAMPLES*0.25 is 0 for the bottom 8 bits! In other words,
+// use a power-of-2 number of samples and make sure it's bigger than 1024
+// samples!
+//
 // Note that it doesn't actually fill the range, the highest value that can
 // be added each clock is 120.
 //
