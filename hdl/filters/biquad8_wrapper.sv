@@ -1,6 +1,9 @@
 `timescale 1ns /1ps
 `include "interfaces.vh"
 
+`define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
+`define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
+
 // this is a WISHBONE wrapper for the biquads
 // to allow the control interface to be in a different
 // domain.
@@ -35,10 +38,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    //       10 = F chain
    //       14 = G chain
    //       18 = F cross-link
-   //       1C = G cross-link
-   
-   `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
-   `define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
+   //       1C = G cross-link   
       
    reg			       pending = 0;
    reg			       pending_rereg = 0;
@@ -131,6 +131,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     wire [47:0] y0_out;
     wire [47:0] y1_out;
 
+
+    // the address bits here 
    biquad8_pole_fir #(.NBITS(12),
                       .NFRAC(0),
                       .CLKTYPE(CLKTYPE))
@@ -149,5 +151,6 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
    
 endmodule
-    
-			 
+
+`undef ADDR_MATCH
+`undef ADDR_MATCH_MASK
