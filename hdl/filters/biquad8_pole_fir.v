@@ -127,9 +127,18 @@ module biquad8_pole_fir #(parameter NBITS=16,
     reg [NBITS-1:0] fin_store = {NBITS{1'b0}};
     reg [NBITS-1:0] fin_store_tmp = {NBITS{1'b0}};
     reg [NBITS-1:0] gin_store = {NBITS{1'b0}};
+    // Sigh. I originally had these in the loops, but they're
+    // optimized out for some reason. Just put them here so
+    // maybe I can figure out what's going on.
+    // Optimizer will replicate this as needed hopefully.
+    // Otherwise I can put a max fanout req on it.
+    reg update = 0;
+
     always @(posedge clk) begin
        coeff_wr_f <= coeff_wr_i && (coeff_adr_i == 2'b00);       
        coeff_wr_g <= coeff_wr_i && (coeff_adr_i == 2'b01);
+
+       update <= coeff_update_i;
 
        coeff_wr_fcross <= coeff_wr_i && (coeff_adr_i == 2'b10);
        coeff_wr_gcross <= coeff_wr_i && (coeff_adr_i == 2'b11);       
@@ -147,18 +156,13 @@ module biquad8_pole_fir #(parameter NBITS=16,
     // AREG is *almost* common. The next-to-last DSP in the chain
     // feeds back, and so obviously it needs a delay. But because
     // ACASCREG (pointlessly) needs to be AREG, we create a new
-    // parameter for it.
-    `define COMMON_ATTRS `CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS,.AREG(THIS_AREG),.ACASCREG(THIS_AREG),.ADREG(0),.BREG(2),.BCASCREG(1),.MREG(0),.PREG(1)
+    // parameter for it.    
+    `define COMMON_ATTRS( NAREG ) `CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS,.AREG( NAREG ),.ACASCREG( NAREG ),.ADREG(0),.BREG(2),.BCASCREG(1),.MREG(0),.PREG(1)
 
     generate
         genvar fi,fj, gi,gj;
         for (fi=0;fi<FLEN;fi=fi+1) begin : FLOOP
             wire [29:0] dspA_in;
-	    wire ceb1 = coeff_wr_f;
-            reg ceb2 = 0;
-            always @(posedge clk) begin : CEBS
-                ceb2 <= coeff_update_i;
-            end
 
             if (fi < FLEN-1) begin : DIRECT
                 reg [NBITS-1:0] dat_store = {NBITS{1'b0}};
@@ -187,8 +191,9 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 localparam C_TAIL_PAD = 27 - NFRAC;
                 wire [47:0] dspC_in = { {C_HEAD_PAD{fin_store[NBITS-1]}}, fin_store, {C_TAIL_PAD{1'b0}} };
                 // HEAD dsp gets its inputs directly
+                // We don't need a CEA b/c it isn't registered.
                 (* CUSTOM_CC_DST = CLKTYPE *)
-                DSP48E2 #(`COMMON_ATTRS,.CREG(1)) 
+                DSP48E2 #(`COMMON_ATTRS( THIS_AREG ),.CREG(1)) 
                     u_head( .CLK(clk),
                             .CEP(1'b1),
                             .CEC(1'b1),
@@ -196,8 +201,8 @@ module biquad8_pole_fir #(parameter NBITS=16,
                             .A(dspA_in),
                             .B(coeff_dat_i),
                             .BCOUT(fbcascade[fi]),
-                            .CEB1(ceb1),
-                            .CEB2(ceb2),
+                            .CEB1(coeff_wr_f),
+                            .CEB2(update),
                             `D_UNUSED_PORTS,
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
                             .ALUMODE(`ALUMODE_SUM_ZXYCIN),
@@ -207,15 +212,15 @@ module biquad8_pole_fir #(parameter NBITS=16,
                             .PCOUT(fpcascade[fi]));
             end else begin : BODY
                 localparam THIS_AREG = (fi < FLEN-1) ? 0 : 1;
-                DSP48E2 #(`COMMON_ATTRS,.B_INPUT("CASCADE"),`C_UNUSED_ATTRS)
+                DSP48E2 #(`COMMON_ATTRS( THIS_AREG ),.B_INPUT("CASCADE"),`C_UNUSED_ATTRS)
                     u_body( .CLK(clk),
                             .CEP(1'b1),                            
                             .A(dspA_in),
                             .CEA2(THIS_AREG),
                             .BCIN(fbcascade[fi-1]),
                             .BCOUT(fbcascade[fi]),
-                            .CEB1(ceb1),
-                            .CEB2(ceb2),
+                            .CEB1(coeff_wr_f),
+                            .CEB2(update),
                             `C_UNUSED_PORTS,
                             `D_UNUSED_PORTS,
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
@@ -229,11 +234,6 @@ module biquad8_pole_fir #(parameter NBITS=16,
         end
         for (gi=0;gi<GLEN;gi=gi+1) begin : GLOOP
             wire [29:0] dspA_in;
-            wire ceb1 = coeff_wr_g;
-            reg ceb2 = 0;
-            always @(posedge clk) begin : CEBS
-                ceb2 <= coeff_update_i;
-            end
             if (gi < GLEN-1) begin : DIRECT
                 reg [NBITS-1:0] dat_store = {NBITS{1'b0}};
                 wire [NBITS-1:0] dat_out;
@@ -266,7 +266,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 wire [47:0] dspC_in = { {C_HEAD_PAD{gin_store[NBITS-1]}}, gin_store, {C_TAIL_PAD{1'b0}} };
                 // HEAD dsp gets its inputs directly
                 (* CUSTOM_CC_DST = CLKTYPE *)
-                DSP48E2 #(`COMMON_ATTRS,.CREG(1)) 
+                DSP48E2 #(`COMMON_ATTRS(THIS_AREG),.CREG(1)) 
                     u_head( .CLK(clk),
                             .CEP(1'b1),
                             .CEC(1'b1),
@@ -274,8 +274,8 @@ module biquad8_pole_fir #(parameter NBITS=16,
                             .A(dspA_in),
                             .B(coeff_dat_i),
                             .BCOUT(gbcascade[gi]),
-                            .CEB1(ceb1),
-                            .CEB2(ceb2),
+                            .CEB1(coeff_wr_g),
+                            .CEB2(update),
                             `D_UNUSED_PORTS,
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
                             .ALUMODE(`ALUMODE_SUM_ZXYCIN),
@@ -285,15 +285,15 @@ module biquad8_pole_fir #(parameter NBITS=16,
                             .PCOUT(gpcascade[gi]));
             end else begin : BODY
                 localparam THIS_AREG = (gi < GLEN-1) ? 0 : 1;
-                DSP48E2 #(`COMMON_ATTRS,.B_INPUT("CASCADE"),`C_UNUSED_ATTRS)
+                DSP48E2 #(`COMMON_ATTRS(THIS_AREG),.B_INPUT("CASCADE"),`C_UNUSED_ATTRS)
                     u_body( .CLK(clk),
                             .CEP(1'b1),
                             .A(dspA_in),
                             .CEA2(THIS_AREG),
                             .BCIN(gbcascade[gi-1]),
                             .BCOUT(gbcascade[gi]),
-                            .CEB1(ceb1),
-                            .CEB2(ceb2),
+                            .CEB1(coeff_wr_g),
+                            .CEB2(update),
                             `C_UNUSED_PORTS,
                             `D_UNUSED_PORTS,
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
@@ -322,7 +322,9 @@ module biquad8_pole_fir #(parameter NBITS=16,
     // and equivalent.
     wire ceb1_f = coeff_wr_fcross;
     wire ceb1_g = coeff_wr_gcross;
+    (* KEEP = "TRUE" *)
     reg ceb2_f = 0;
+    (* KEEP = "TRUE" *)
     reg ceb2_g = 0;
     always @(posedge clk) begin
         ceb2_f <= coeff_update_i;
