@@ -81,7 +81,7 @@ module fir_dsp_core #(
     localparam [8:0] OPMODE = { W_MUX, Z_MUX, 4'b0101 };
     localparam [3:0] ALUMODE = 4'b0000;
     
-    localparam ADREG = PREADD_REG;
+    localparam ADREG = (USE_D == "TRUE") ? PREADD_REG : 1'b1;
     localparam MREG = MULT_REG;
 
     // cascade input option
@@ -139,7 +139,7 @@ module fir_dsp_core #(
                                     .ACOUT( acout_o ),
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
 				    .BCIN( bcin_i ),
 				    .CEB1( load_i ),
@@ -185,7 +185,7 @@ module fir_dsp_core #(
                                     .ACOUT( acout_o ),
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
                                     .B(DSP_B),
 				    .CEB1( LOADABLE_B == "NONE" ? 1'b0 : load_i ),
@@ -233,7 +233,7 @@ module fir_dsp_core #(
                                     .ACOUT( acout_o ),
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
                                     .BCIN(bcin_i),
 				    .CEB1( load_i ),
@@ -279,7 +279,7 @@ module fir_dsp_core #(
                                     .ACOUT( acout_o ),
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
                                     .B(DSP_B),
 				    .CEB1( LOADABLE_B == "NONE" ? 1'b0 : load_i ),
@@ -329,7 +329,7 @@ module fir_dsp_core #(
                                     .ACOUT(acout_o),                           
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
                                     .BCIN(bcin_i),
 				    .CEB1( load_i ),
@@ -375,7 +375,7 @@ module fir_dsp_core #(
                                     .ACOUT(acout_o),                           
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
                                     .B(DSP_B),
 				    .CEB1( LOADABLE_B == "NONE" ? 1'b0 : load_i ),
@@ -422,7 +422,7 @@ module fir_dsp_core #(
                                     .ACOUT(acout_o),
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
                                     .BCIN(bcin_i),
 				    .CEB1( load_i ),
@@ -468,7 +468,7 @@ module fir_dsp_core #(
                                     .ACOUT(acout_o),
                                     .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
-                                    .CEAD( (PREADD_REG == 1) ? 1'b1 : 1'b0 ),
+                                    .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
                                     .B(DSP_B),
 				    .CEB1( LOADABLE_B == "NONE" ? 1'b0 : load_i ),
