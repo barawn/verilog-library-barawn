@@ -1,7 +1,8 @@
 `timescale 1ns / 1ps
 `include "dsp_macros.vh"
-// We have 4 coefficients, so we take a 2-bit address.
-// The DSPs are arranged in a chain of 4.
+// The DSPs are arranged in a chain of 4, which means we don't need
+// an address at all, it's just a single write value.
+//
 // We have *2* clocks to deal with this. Which is a bit challenging.
 // Fundamentally we have
 // y0    | A     B | | y0[-2] |   | y0_fir_in |
@@ -32,7 +33,6 @@
 module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
         input clk,
         
-        input [1:0] coeff_adr_i,
         input [17:0] coeff_dat_i,
         input coeff_wr_i,
         input coeff_update_i,
@@ -67,16 +67,6 @@ module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
     wire [A_BITS-1:0] dsp2_Ain = dsp3_out[(C_FRAC_BITS-A_FRAC_BITS) +: A_BITS];
     wire [A_BITS-1:0] dsp3_Ain = dsp1_out[(C_FRAC_BITS-A_FRAC_BITS) +: A_BITS];
     
-    reg [3:0] ceb1 = {4{1'b0}};
-    reg [3:0] ceb2 = {4{1'b0}};
-    always @(posedge clk) begin
-        ceb1[0] <= coeff_wr_i;
-        ceb1[1] <= coeff_wr_i && (coeff_adr_i > 0);
-        ceb1[2] <= coeff_wr_i && (coeff_adr_i > 1);
-        ceb1[3] <= coeff_wr_i && (coeff_adr_i > 2);
-        ceb2 <= {4{coeff_update_i}};
-    end
-    
     `define COMMON_ATTRS `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,.BREG(2),.BCASCREG(1)
     // DSP0 has an MREG, but no PREG.
     DSP48E2 #(`COMMON_ATTRS, .CREG(1),.MREG(1),.PREG(0),.AREG(0),.ACASCREG(0))
@@ -84,8 +74,8 @@ module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
                `D_UNUSED_PORTS,
                .B(coeff_dat_i),
                .BCOUT(dsp01_bcascade),
-               .CEB1(ceb1[0]),
-               .CEB2(ceb2[0]),
+               .CEB1(coeff_wr_i),
+               .CEB2(coeff_update_i),
                .CEM(1'b1),
                .CEC(1'b1),
                .C(y0_fir_in),
@@ -100,8 +90,8 @@ module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
         u_dsp1(.CLK(clk),
                .BCIN(dsp01_bcascade),
                .BCOUT(dsp12_bcascade),
-               .CEB1(ceb1[1]),
-               .CEB2(ceb2[1]),
+               .CEB1(coeff_wr_i),
+               .CEB2(coeff_update_i),
                .CEA2(1'b1),
                .CEP(1'b1),
                `C_UNUSED_PORTS,
@@ -118,8 +108,8 @@ module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
         u_dsp2(.CLK(clk),
                 .BCIN(dsp12_bcascade),
                 .BCOUT(dsp23_bcascade),
-                .CEB1(ceb1[2]),
-                .CEB2(ceb2[2]),
+                .CEB1(coeff_wr_i),
+                .CEB2(coeff_update_i),
                 .CEM(1'b1),
                 `D_UNUSED_PORTS,
                 .CEC(1'b1),
@@ -134,8 +124,8 @@ module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
     DSP48E2 #(`COMMON_ATTRS, `C_UNUSED_ATTRS,.MREG(0),.PREG(1),.AREG(1),.B_INPUT("CASCADE"))
         u_dsp3(.CLK(clk),
                .BCIN(dsp23_bcascade),
-               .CEB1(ceb1[3]),
-               .CEB2(ceb2[3]),
+               .CEB1(coeff_wr_i),
+               .CEB2(coeff_update_i),
                .CEA2(1'b1),
                .CEP(1'b1),
                `C_UNUSED_PORTS,
