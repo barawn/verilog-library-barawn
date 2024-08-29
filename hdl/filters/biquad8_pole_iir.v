@@ -30,7 +30,9 @@
 // And then it adds 0.758 to the other, arriving at 6.798, still with slack of 0.7 ns.
 //
 // So this is a useful note for the future: you *can* add through 2 DSPs in one clock, easily.
-module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
+module biquad8_pole_iir #(parameter NBITS=24, 
+			  parameter NFRAC=10, 
+			  parameter CLKTYPE)(
         input clk,
         
         input [17:0] coeff_dat_i,
@@ -69,6 +71,8 @@ module biquad8_pole_iir #(parameter NBITS=24, parameter NFRAC=10)(
     
     `define COMMON_ATTRS `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,.BREG(2),.BCASCREG(1)
     // DSP0 has an MREG, but no PREG.
+    // The head DSP needs a CC marker. Everyone else is in the proper domain.
+    (* CUSTOM_CC_DST = CLKTYPE *)
     DSP48E2 #(`COMMON_ATTRS, .CREG(1),.MREG(1),.PREG(0),.AREG(0),.ACASCREG(0))
         u_dsp0(.CLK(clk),
                `D_UNUSED_PORTS,
