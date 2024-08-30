@@ -19,7 +19,9 @@
   the algorithm is intrinsically variable-latency, but this module
   fixes the latency to the longest possible.
 * seven_bit_square.sv : Calculate the square of a 7-bit unsigned number
-  in fabric.
+  in fabric. Small but still not optimal yet.
+* signed_8b_square.sv : Calculate the square of an 8-bit signed number
+  in fabric. As optimal as it gets without going crazy.
 * fivebit_8way_ternary.sv: Add 8 5-bit numbers via ternary adder tree.
 * square_5bit_accumulator.sv: Accumulate the squares of 4-bit unsigneds.
   (yes I know it says 5bit, it's 4-bit unsigned).

@@ -5,7 +5,13 @@
 //
 // Note! The number of accumulator bits you need is log2(NSAMPLES)+7.
 // This is because we don't ACTUALLY compute the accumulated square here:
-// the output needs to be shifted up by 1 and NSAMPLES*0.125 needs to be added.
+// the output needs to be shifted up by 1 and NSAMPLES*0.25 needs to be added.
+//
+// The NSAMPLES*0.25 can be included here as a parameter (RESET_VALUE)
+// so long as NSAMPLES*0.25 is 0 for the bottom 8 bits! In other words,
+// use a power-of-2 number of samples and make sure it's bigger than 1024
+// samples!
+//
 // Note that it doesn't actually fill the range, the highest value that can
 // be added each clock is 120.
 //
@@ -119,8 +125,19 @@ module square_5bit_accumulator #(parameter NBITS=24,
     FDRE u_br3(.D(c0_o[3]),.C(clk_i),.CE(ce_i),.R(rst_i),.Q(bottom_register[3]));
 
         
-    wire [3:0] c1_di = bottom_register[7:4];
-    wire [3:0] c1_s = {1'b0,custom_logic[6:4]};
+    // The custom logic can only produce 6-bit values.
+    // The 7th bit is the first bit of a true accumulator.
+    // This means there is NEVER a second bit, so the
+    // DI (generate) input should NEVER be 1.
+    // instead the propagate (S) bit should be equal to
+    // bottom_register[7].
+    // Essentially custom_logic[7] is A[7]^0 = A[7].
+
+    // The DI input could also pointlessly be bottom_register[7]
+    // but because DI is selected when bottom_register[7] is 0
+    // we already know it's 0, so we can just feed in 0.
+    wire [3:0] c1_di = {1'b0,bottom_register[6:4]};
+    wire [3:0] c1_s = {bottom_register[7],custom_logic[6:4]};
     wire [3:0] c1_co;
     wire [3:0] c1_o;
     CARRY4 u_c1(.DI(c1_di),.S(c1_s),.CO(c1_co),.O(c1_o),.CI(c0_co[3]));

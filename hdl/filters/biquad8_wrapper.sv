@@ -1,6 +1,9 @@
 `timescale 1ns /1ps
 `include "interfaces.vh"
 
+`define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
+`define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
+
 // this is a WISHBONE wrapper for the biquads
 // to allow the control interface to be in a different
 // domain.
@@ -30,15 +33,12 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    
    // ok so 00 = update
    //       04 = fir
-   //       08 = reserved
+   //       08 = iir
    //       0C = reserved
    //       10 = F chain
    //       14 = G chain
    //       18 = F cross-link
-   //       1C = G cross-link
-   
-   `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
-   `define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
+   //       1C = G cross-link   
       
    reg			       pending = 0;
    reg			       pending_rereg = 0;
@@ -49,13 +49,20 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    reg			       coeff_fir_wr_hold = 0;
    (* CUSTOM_CC_SRC = WBCLKTYPE *)
    reg                 coeff_polefir_wr_hold = 0;
+   (* CUSTOM_CC_SRC = WBCLKTYPE *)
+   reg		       coeff_iir_wr_hold = 0;
+
    (* CUSTOM_CC_DST = CLKTYPE *)
    reg			       coeff_fir_wr = 0;   
    (* CUSTOM_CC_DST = CLKTYPE *)
    reg                 coeff_polefir_wr = 0;  
+   (* CUSTOM_CC_DST = CLKTYPE *)
+   reg		       coeff_iir_wr = 0;   
    (* CUSTOM_CC_SRC = WBCLKTYPE *)
    reg [1:0]           coeff_polefir_addr = {2{1'b0}};
+   
 
+   
    wire			       wr_wbclk = pending && !pending_rereg;   
    wire			       wr_clk;
    flag_sync u_wrsync(.in_clkA(wr_wbclk),.out_clkB(wr_clk),.clkA(wb_clk_i),.clkB(clk_i));
@@ -91,7 +98,13 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
                coeff_fir_wr_hold <= 1;
           end else begin
                coeff_fir_wr_hold <= 0;
-          end	 
+          end
+	  if (`ADDR_MATCH(wb_adr_i, 7'h08)) begin
+	       coeff_iir_wr_hold <= 1;
+	  end else begin
+	       coeff_iir_wr_hold <= 0;
+	  end
+	     
           // just check if adr_i[6:4] == 1
           if (`ADDR_MATCH_MASK(wb_adr_i, 7'h10, 7'h70 )) begin
                coeff_polefir_wr_hold <= 1;
@@ -107,6 +120,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
       update <= update_clk;
       coeff_fir_wr <= wr_clk && coeff_fir_wr_hold;      
       coeff_polefir_wr <= wr_clk && coeff_polefir_wr_hold;
+      coeff_iir_wr <= wr_clk && coeff_iir_wr_hold;
    end   
    
    assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
@@ -128,9 +142,14 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
          .coeff_update_i(update),
          .dat_o(zero_fir_out));
 
-    wire [47:0] y0_out;
-    wire [47:0] y1_out;
+    wire [47:0] y0_fir_out;
+    wire [47:0] y1_fir_out;
 
+    wire [47:0]	y0_out;
+    wire [47:0]	y1_out;
+   
+   
+    // the address bits here 
    biquad8_pole_fir #(.NBITS(12),
                       .NFRAC(0),
                       .CLKTYPE(CLKTYPE))
@@ -143,11 +162,24 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
                    .y0_out(y0_out),
                    .y1_out(y1_out));                                       
 
+    biquad8_pole_iir #(.NBITS(48),
+		       .NFRAC(27),
+		       .CLKTYPE(CLKTYPE))
+        u_pole_iir(.clk(clk_i),
+		   .coeff_dat_i(coeff_hold),
+		   .coeff_wr_i(coeff_iir_wr),
+		   .coeff_update_i(update),
+		   .y0_fir_in(y0_fir_out),
+		   .y1_fir_in(y1_fir_out),
+		   .y0_out(y0_out),
+		   .y1_out(y1_out));		       
+   
     // out outputs are Q21.27
     assign dat_o[ 0 +: OUTBITS] = y0_out[27 +: OUTBITS];
     assign dat_o[ OUTBITS +: OUTBITS] = y1_out[27 +: OUTBITS];
     assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
    
 endmodule
-    
-			 
+
+`undef ADDR_MATCH
+`undef ADDR_MATCH_MASK
