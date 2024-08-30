@@ -25,6 +25,8 @@ Files in this directory:
 
 * adc_ila_transfer.v : Rescale a full-bandwidth (8 samples/clock) ADC output to 1 sample/clock for input to an ILA using external trigger.
 
+* simple_clock_mon.sv : Monitor a large number of clocks with very few resources.
+
 Note that not all of these are by me (skidbuffer.v), and some
 were informed by publically-available ideas but implemented
 by me (flag_sync.v).
