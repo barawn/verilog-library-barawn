@@ -1,0 +1,79 @@
+From d4b3e2b9d536308c282380b2a1081c217dc8f312 Mon Sep 17 00:00:00 2001
+From: Patrick Allison <allison.122@osu.edu>
+Date: Mon, 16 Sep 2024 19:01:37 +0000
+Subject: [PATCH] add partial readback support
+
+Signed-off-by: Patrick Allison <allison.122@osu.edu>
+---
+ drivers/fpga/zynqmp-fpga.c | 34 ++++++++++++++++++++++++++--------
+ 1 file changed, 26 insertions(+), 8 deletions(-)
+
+diff --git a/drivers/fpga/zynqmp-fpga.c b/drivers/fpga/zynqmp-fpga.c
+index cdcec3beb154..b2312414ce4b 100644
+--- a/drivers/fpga/zynqmp-fpga.c
++++ b/drivers/fpga/zynqmp-fpga.c
+@@ -44,11 +44,16 @@
+ 				 XILINX_ZYNQMP_PM_FPGA_READ_BACK | \
+ 				 XILINX_ZYNQMP_PM_FPGA_REG_READ_BACK)
+ 
+-static bool readback_type;
+-module_param(readback_type, bool, 0644);
++// bad Xilinx, this should've had an init value. change to u32 as well.
++static u32 readback_type = 0;
++module_param(readback_type, uint, 0644);
+ MODULE_PARM_DESC(readback_type,
+ 		 "readback_type 0-configuration register read "
+-		 "1- configuration data read (default: 0)");
++		 "1- configuration data read (+optional up-shifted FAR base addr) (default: 0)");
++// now add the hacky readback length parameter
++static u32 readback_len = 0;
++module_param(readback_len, uint, 0644);
++MODULE_PARM_DESC(readback_len, "length to read, 0 for total size");
+ 
+ /**
+  * struct zynqmp_configreg - Configuration register offsets
+@@ -347,26 +352,39 @@ static int zynqmp_fpga_read_cfgdata(struct fpga_manager *mgr,
+ 	unsigned int *buf;
+ 	dma_addr_t dma_addr = 0;
+ 	size_t size;
+-
++	size_t readLen;
++	
+ 	priv = mgr->priv;
+ 
+ 	if (!(priv->feature_list & XILINX_ZYNQMP_PM_FPGA_REG_READ_BACK))
+ 		return -EINVAL;
+ 
+-	size = priv->size + READ_DMA_SIZE + DUMMY_FRAMES_SIZE;
++	/* force pad to multiple of 4 in horrible hackery */
++	// we want 00 => 00
++	//         01 => 11
++	//         10 => 10
++	//         11 => 01
++	// this is ((readback_len & 0x3) ^ ((readback_len & 0x1)<<1))
++	if (readback_len == 0)
++	  readLen = priv->size;
++	else
++	  readLen = readback_len + ((readback_len & 0x3)^((readback_len & 0x1)<<1));
++	
++	size = readLen + READ_DMA_SIZE + DUMMY_FRAMES_SIZE;
+ 
+ 	buf = dma_alloc_coherent(mgr->dev.parent, size, &dma_addr,
+ 				 GFP_KERNEL);
+ 	if (!buf)
+ 		return -ENOMEM;
+ 
+-	seq_puts(s, "zynqMP FPGA Configuration data contents are\n");
+-	ret = zynqmp_pm_fpga_read((priv->size + DUMMY_FRAMES_SIZE) / 4,
++	// seriously, xilinx?
++	//seq_puts(s, "zynqMP FPGA Configuration data contents are\n");
++	ret = zynqmp_pm_fpga_read((readLen + DUMMY_FRAMES_SIZE) / 4,
+ 				  dma_addr, readback_type, &data_offset);
+ 	if (ret)
+ 		goto free_dmabuf;
+ 
+-	seq_write(s, &buf[data_offset], priv->size);
++	seq_write(s, &buf[data_offset], readLen);
+ 
+ free_dmabuf:
+ 	dma_free_coherent(mgr->dev.parent, size, buf, dma_addr);
