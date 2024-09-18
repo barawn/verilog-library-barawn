@@ -159,8 +159,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
                    .coeff_wr_i(coeff_polefir_wr),
                    .coeff_update_i(update),
                    .coeff_adr_i(coeff_polefir_addr),
-                   .y0_out(y0_out),
-                   .y1_out(y1_out));                                       
+                   .y0_out(y0_fir_out),
+                   .y1_out(y1_fir_out));                                       
 
     biquad8_pole_iir #(.NBITS(48),
 		       .NFRAC(27),
