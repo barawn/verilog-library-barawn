@@ -32,7 +32,7 @@
 // So this is a useful note for the future: you *can* add through 2 DSPs in one clock, easily.
 module biquad8_pole_iir #(parameter NBITS=24, 
 			  parameter NFRAC=10, 
-			  parameter CLKTYPE)(
+			  parameter CLKTYPE = "NONE")(
         input clk,
         
         input [17:0] coeff_dat_i,
