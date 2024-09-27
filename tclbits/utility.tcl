@@ -76,6 +76,11 @@ proc set_pre_write_bitstream_tcl { pwritescr } {
     set_script $pwritescr "STEPS.WRITE_BITSTREAM.TCL.PRE" "utils_1" "impl_1"
 }
 
+# As above, for post-write bitstream
+proc set_post_write_bitstream_tcl { ptwritescr } {
+    set_script $ptwritescr "STEPS.WRITE_BITSTREAM.TCL.POST" "utils_1" "impl_1"
+}
+
 # Utility function for adding IP repository. 
 proc add_ip_repository { iprep } {
     if {[string equal [file pathtype $iprep] "absolute"]} {
