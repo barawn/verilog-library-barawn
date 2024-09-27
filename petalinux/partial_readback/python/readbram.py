@@ -26,8 +26,8 @@ bit_offsets = [int(i,16) for i in args.bitoffset]
 # you need root for this crap
 # you also need my patches, stock PetaLinux won't work here
 # who cares about error catching
-rt = os.open('/sys/module/zynqmp_fpga/parameters/readback_type','w')
-rl = os.open('/sys/module/zynqmp_fpga/parameters/readback_len','w')
+rt = os.open('/sys/module/zynqmp_fpga/parameters/readback_type',os.O_WRONLY)
+rl = os.open('/sys/module/zynqmp_fpga/parameters/readback_len',os.O_WRONLY)
 
 # you have to write this crap first
 os.write(rt, (frame_addr << 1) | 1)
