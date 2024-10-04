@@ -79,6 +79,10 @@ array set zynqmp_jtag_instr { \
 				  ERROR_STATUS  0xFBF \
 				  PMU_MDM       0x0FF }
 
+set zynqmp_jtag_words_per_frame 93
+set zynqmp_jtag_dummy_frame 1
+set zynqmp_jtag_pipeline_words 25
+
 proc zynqmp_jtag_get_instrs { } {
     global zynqmp_jtag_instr
     
@@ -180,3 +184,145 @@ proc zynqmp_jtag_scan_cfg_out { args } {
 # and then zynqmp_jtag_scan_ir takes it over to SELECT-IR
 # via the quick path.
 # So this is logically identical to Table 10-5
+
+proc zynqmp_jtag_readback_config { far nframes } {
+    global zynqmp_jtag_words_per_frame
+    global zynqmp_jtag_dummy_frame
+    global zynqmp_jtag_pipeline_words
+
+    set myFar 0x[format "%08x" [expr $far]]
+    puts "FAR is going to be $myFar"
+    set myNwords [expr $zynqmp_jtag_words_per_frame*($nframes+$zynqmp_jtag_dummy_frame)+$zynqmp_jtag_pipeline_words]
+
+    set myNwordsHeader [expr $myNwords | (1<<27)]
+    set myType2Nwords 0x4[format %07x $myNwordsHeader]
+
+    puts "Type2 is going to be $myType2Nwords"
+    # this is a copy of the shutdown readback command sequence
+    # table 10-6 in UG570
+    run_state_hw_jtag RESET
+    zynqmp_jtag_scan_ir CFG_IN
+    run_state_hw_jtag DRPAUSE
+    # reset CRC
+    zynqmp_jtag_scan_cfg_in 0xFFFFFFFF -first 1
+    zynqmp_jtag_scan_cfg_in 0xAA995566
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x30008001
+    zynqmp_jtag_scan_cfg_in 0x00000007
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    # now shutdown
+    zynqmp_jtag_scan_ir JSHUTDOWN
+    runtest_hw_jtag -tck 12
+    zynqmp_jtag_scan_ir CFG_IN
+    run_state_hw_jtag DRPAUSE
+    zynqmp_jtag_scan_cfg_in 0xFFFFFFFF -first 1
+    zynqmp_jtag_scan_cfg_in 0xAA995566
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x30008001
+    zynqmp_jtag_scan_cfg_in 0x00000004
+    # write to FAR
+    zynqmp_jtag_scan_cfg_in 0x30002001
+    zynqmp_jtag_scan_cfg_in $myFar
+    zynqmp_jtag_scan_cfg_in 0x28006000
+    zynqmp_jtag_scan_cfg_in $myType2Nwords
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_ir CFG_OUT
+    run_state_hw_jtag DRPAUSE
+    for {set i 0} {$i < $myNwords} { incr i } {
+	set first [expr ($i == 0)]
+	set res [zynqmp_jtag_scan_cfg_out -first $first]
+	puts "$i $res"
+    }
+    run_state_hw_jtag RESET
+}
+
+
+# big huge-o readout
+proc zynqmp_jtag_readback_capture { far nframes } {
+    global zynqmp_jtag_words_per_frame
+    global zynqmp_jtag_dummy_frame
+    global zynqmp_jtag_pipeline_words
+    
+    set myFar 0x[format "%08x" [expr $far]]
+    puts "FAR is going to be $myFar"
+    set myNwords [expr $zynqmp_jtag_words_per_frame*($nframes+$zynqmp_jtag_dummy_frame)+$zynqmp_jtag_pipeline_words]
+    # constructing a type 2 packet read requires the top 5 bits to be
+    # 01001 meaning the top nybble is always 4
+    # we therefore OR myNwords with (1<<27) to pick up the last bit
+    # of the header, and then format it to 7 hex digits, prepending 0x2
+    set myNwordsHeader [expr $myNwords | (1<<27)]
+    set myType2Nwords 0x4[format %07x $myNwordsHeader]
+
+    puts "Type2 is going to be $myType2Nwords"
+    
+    run_state_hw_jtag RESET
+    zynqmp_jtag_scan_ir CFG_IN
+    run_state_hw_jtag DRPAUSE
+    zynqmp_jtag_scan_cfg_in 0xFFFFFFFF -first 1
+    # sync word
+    zynqmp_jtag_scan_cfg_in 0xAA995566
+    # NOOP
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    # CMD write 1 word
+    zynqmp_jtag_scan_cfg_in 0x30008001
+    # NULL (who knows why this is here)
+    zynqmp_jtag_scan_cfg_in 0x00000000
+    # write to MSK register (controls bit access to CTL1)
+    zynqmp_jtag_scan_cfg_in 0x3000C001
+    # select the CAPTURE bit for writing
+    zynqmp_jtag_scan_cfg_in 0x00800000
+    # write to CTL1 register
+    zynqmp_jtag_scan_cfg_in 0x30030001
+    # write 1 to CAPTURE bit
+    zynqmp_jtag_scan_cfg_in 0x00800000
+    # uh lots of NOOPs. I'm copying FPGA-Research-Manchester here.
+    # XAPP1230 only has 8. Whatever.
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    # write 1 to FAR
+    zynqmp_jtag_scan_cfg_in 0x30002001
+    # write FAR
+    zynqmp_jtag_scan_cfg_in $myFar
+    # write 1 to CMD
+    zynqmp_jtag_scan_cfg_in 0x30008001
+    # RCFG
+    zynqmp_jtag_scan_cfg_in 0x00000004
+    # read from FDRO (0 words, prefix to type 2)
+    zynqmp_jtag_scan_cfg_in 0x28006000
+    # and now the type 2
+    zynqmp_jtag_scan_cfg_in $myType2Nwords
+    # and a NOOP
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    # now CFG_OUT...
+    zynqmp_jtag_scan_ir CFG_OUT
+    run_state_hw_jtag DRPAUSE
+    for {set i 0} {$i < $myNwords} { incr i } {
+	set first [expr ($i == 0)]
+	set res [zynqmp_jtag_scan_cfg_out -first $first]
+	puts "$i $res"
+    }
+    # and now we need to disable capture
+    run_state_hw_jtag RESET
+    zynqmp_jtag_scan_ir CFG_IN
+    run_state_hw_jtag DRPAUSE
+    zynqmp_jtag_scan_cfg_in 0xFFFFFFFF -first 1
+    zynqmp_jtag_scan_cfg_in 0xAA995566
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x3000C001
+    zynqmp_jtag_scan_cfg_in 0x00800000
+    zynqmp_jtag_scan_cfg_in 0x30030001
+    zynqmp_jtag_scan_cfg_in 0x00000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    zynqmp_jtag_scan_cfg_in 0x20000000
+    run_state_hw_jtag RESET
+}
