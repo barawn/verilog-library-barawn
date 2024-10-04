@@ -54,10 +54,10 @@ index 0000000000..5f0c99e5b7
 +
 +#endif
 diff --git a/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c b/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c
-index ae06b17236..4fb85886a3 100644
+index ae06b17236..5b55854503 100644
 --- a/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c
 +++ b/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c
-@@ -126,6 +126,12 @@
+@@ -126,6 +126,13 @@
  /***************************** Include Files *********************************/
  #include "xilfpga.h"
  
@@ -65,12 +65,13 @@ index ae06b17236..4fb85886a3 100644
 +
 +#ifdef OSU_HACK_ENABLE_FPGA_READ_OFFSET
 +#include "osu_xilfpga_hack.h"
++#include <stdbool.h>
 +#endif
 +
  /* @cond nocomments */
  /************************** Constant Definitions *****************************/
  #ifdef __MICROBLAZE__
-@@ -2238,14 +2244,56 @@ END:
+@@ -2238,14 +2245,56 @@ END:
   ****************************************************************************/
  static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
  {
@@ -130,7 +131,7 @@ index ae06b17236..4fb85886a3 100644
  	Status = XFpga_GetFirmwareState();
  
  	if (Status == XFPGA_FIRMWARE_STATE_UNKNOWN) {
-@@ -2261,6 +2309,15 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+@@ -2261,6 +2310,15 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
  		Status = XFPGA_FAILURE;
  		goto END;
  	}
@@ -146,7 +147,7 @@ index ae06b17236..4fb85886a3 100644
  
  	/* Enable the PCAP clk */
  	RegVal = Xil_In32(PCAP_CLK_CTRL);
-@@ -2284,6 +2341,7 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+@@ -2284,6 +2342,7 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
  
  	cmdindex = 0U;
  
@@ -154,7 +155,7 @@ index ae06b17236..4fb85886a3 100644
  	/* Step 1 */
  	CmdBuf[cmdindex] = 0xFFFFFFFFU; /* Dummy Word */
  	cmdindex++;
-@@ -2299,42 +2357,82 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+@@ -2299,42 +2358,82 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
  	/* Step 2 */
  	CmdBuf[cmdindex] = 0x02000000U; /* Type 1 NOOP Word 0 */
  	cmdindex++;
@@ -272,7 +273,7 @@ index ae06b17236..4fb85886a3 100644
  	/* Step 8 */          /* Type 1 Read 0 Words from FDRO */
  	CmdBuf[cmdindex] =  Xfpga_RegAddr(FDRO, OPCODE_READ, 0U);
  	cmdindex++;
-@@ -2405,23 +2503,36 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+@@ -2405,23 +2504,36 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
  	/* Step 11 */
  	CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
  	cmdindex++;
