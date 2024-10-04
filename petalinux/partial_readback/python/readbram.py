@@ -30,17 +30,20 @@ rt = os.open('/sys/module/zynqmp_fpga/parameters/readback_type',os.O_WRONLY)
 rl = os.open('/sys/module/zynqmp_fpga/parameters/readback_len',os.O_WRONLY)
 
 # you have to write this crap first
-os.write(rt, (frame_addr << 1) | 1)
+os.write(rt, bytes(str((frame_addr << 1) | 1),encoding='utf-8'))
 os.close(rt)
 # this is 256 frames plus 1 dummy frame plus 25 u32s (=100 bytes)
 # with frames of length 93 u32s = 372 bytes = 2976 bits
-os.write(rl, 95704)
+os.write(rl, bytes(str(95704),encoding='utf-8'))
 os.close(rl)
 
-# read it into an ndarray
-raw = np.fromfile('/sys/kernel/debug/fpga/fpga0/image', dtype=np.uint32)
+# you can't use np.fromfile since it doesn't support lseek, sigh.
+ri = os.open('/sys/kernel/debug/fpga/fpga0/image', os.O_RDONLY)
+rb = os.read(ri, 95704)
+
+raw = np.frombuffer(rb, dtype=np.uint32)
 # skip ahead 93+25 u32s
-fr = raw[:118]
+fr = raw[118:]
 frames = np.reshape(fr, (256, 93))
 
 r = bytearray()
@@ -50,6 +53,6 @@ for offset in bit_offsets:
 
 # uh, I dunno, do something?
 # maybe I should take in an outfile or something
-for byte in r:
-    print(hex(r))
+for b in r:
+    print(hex(b))
     
