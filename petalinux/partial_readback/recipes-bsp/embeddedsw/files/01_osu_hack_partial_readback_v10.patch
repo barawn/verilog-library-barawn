@@ -37,7 +37,7 @@ index 6caca7faac..3e7ab69d26 100644
  		Status = XST_NO_ACCESS;
 diff --git a/lib/sw_services/xilfpga/src/interface/zynqmp/osu_xilfpga_hack.h b/lib/sw_services/xilfpga/src/interface/zynqmp/osu_xilfpga_hack.h
 new file mode 100644
-index 0000000000..5f0c99e5b7
+index 0000000000..2903139a32
 --- /dev/null
 +++ b/lib/sw_services/xilfpga/src/interface/zynqmp/osu_xilfpga_hack.h
 @@ -0,0 +1,12 @@
@@ -45,7 +45,7 @@ index 0000000000..5f0c99e5b7
 +#define OSU_XILFPGA_HACK_H
 +
 +#ifndef versal
-+u32 XFpga_ZynqMP_GetPlConfigDataWithOffset(XFpga *InstancePtr,
++u32 XFpga_ZynqMP_GetPlConfigDataWithOffset(const XFpga *InstancePtr,
 +					   UINTPTR Address,
 +
 +					   u32 NumFrames,
@@ -329,7 +329,7 @@ index ae06b17236..5b55854503 100644
  	cmdindex++;
 diff --git a/lib/sw_services/xilfpga/src/osu_xilfpga_hack.h b/lib/sw_services/xilfpga/src/osu_xilfpga_hack.h
 new file mode 100644
-index 0000000000..5f0c99e5b7
+index 0000000000..2903139a32
 --- /dev/null
 +++ b/lib/sw_services/xilfpga/src/osu_xilfpga_hack.h
 @@ -0,0 +1,12 @@
@@ -337,7 +337,7 @@ index 0000000000..5f0c99e5b7
 +#define OSU_XILFPGA_HACK_H
 +
 +#ifndef versal
-+u32 XFpga_ZynqMP_GetPlConfigDataWithOffset(XFpga *InstancePtr,
++u32 XFpga_ZynqMP_GetPlConfigDataWithOffset(const XFpga *InstancePtr,
 +					   UINTPTR Address,
 +
 +					   u32 NumFrames,
