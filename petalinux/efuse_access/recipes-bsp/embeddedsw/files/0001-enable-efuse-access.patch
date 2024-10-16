@@ -1,0 +1,37 @@
+From 670ed35768d3f1a22f3e20ad9fc02770bb1bd081 Mon Sep 17 00:00:00 2001
+From: Patrick Allison <allison.122@osu.edu>
+Date: Tue, 15 Oct 2024 19:57:03 +0000
+Subject: [PATCH] enable efuse access
+
+---
+ lib/sw_apps/zynqmp_pmufw/src/xpfw_config.h               | 2 +-
+ lib/sw_services/xilskey/src/include/xilskey_eps_zynqmp.h | 3 +++
+ 2 files changed, 4 insertions(+), 1 deletion(-)
+
+diff --git a/lib/sw_apps/zynqmp_pmufw/src/xpfw_config.h b/lib/sw_apps/zynqmp_pmufw/src/xpfw_config.h
+index cfef7c3458..3a50fbd585 100644
+--- a/lib/sw_apps/zynqmp_pmufw/src/xpfw_config.h
++++ b/lib/sw_apps/zynqmp_pmufw/src/xpfw_config.h
+@@ -182,7 +182,7 @@ extern "C" {
+ #endif
+ 
+ #ifndef ENABLE_EFUSE_ACCESS
+-#define ENABLE_EFUSE_ACCESS					(0U)
++#define ENABLE_EFUSE_ACCESS					(1U)
+ #endif
+ 
+ #ifndef XPU_INTR_DEBUG_PRINT_ENABLE_VAL
+diff --git a/lib/sw_services/xilskey/src/include/xilskey_eps_zynqmp.h b/lib/sw_services/xilskey/src/include/xilskey_eps_zynqmp.h
+index 9ef247377f..c2f7c261ad 100644
+--- a/lib/sw_services/xilskey/src/include/xilskey_eps_zynqmp.h
++++ b/lib/sw_services/xilskey/src/include/xilskey_eps_zynqmp.h
+@@ -61,6 +61,9 @@
+ extern "C" {
+ #endif
+ 
++// OSU PSA: Enable EFUSE register access.
++#define XSK_ACCESS_USER_EFUSE 1u
++    
+ /***************************** Include Files *********************************/
+ 
+ #include "xilskey_utils.h"
