@@ -1,0 +1,5 @@
+unset LD_LIBRARY_PATH
+export PROOT=$(dirname $(dirname $BASH_SOURCE))
+source $PROOT/components/yocto/environment-setup-cortexa72-cortexa53-xilinx-linux
+source $PROOT/components/yocto/layers/core/oe-init-build-env
+export BB_ENV_PASSTHROUGH_ADDITIONS="$BB_ENV_PASSTHROUGH_ADDITIONS PROOT"
