@@ -41,8 +41,8 @@ It's just a random list of commands that will be used! Also
 the command before the Type 2 packet in Table 5 is an FDRO read,
 not write.
 
-* [Virtex Readback|https://adaptivesupport.amd.com/s/article/8181?language=en_US]
-* [XAPP1230|https://download.amd.com/docnav/documents/XAPP1230.pdf]
+* [Virtex Readback](https://adaptivesupport.amd.com/s/article/8181?language=en_US)
+* [XAPP1230](https://download.amd.com/docnav/documents/XAPP1230.pdf)
 
 Also, to be clear, if you're reading the Configuration Details documents
 from Xilinx, they randomly screwed up what a ``NO OP`` is around the
