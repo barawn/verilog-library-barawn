@@ -47,7 +47,7 @@ not write.
 Also, to be clear, if you're reading the Configuration Details documents
 from Xilinx, they randomly screwed up what a ``NO OP`` is around the
 7 series, and because they just copy-paste things, it stuck around. 
-[It's wrong](https://adaptivesupport.amd.com/s/question/0D54U00008kQaMhSAK/type-1-noop-confusion-0x02000000-or-0x20000000?language=en_US)
+[It's wrong,](https://adaptivesupport.amd.com/s/question/0D54U00008kQaMhSAK/type-1-noop-confusion-0x02000000-or-0x20000000?language=en_US)
 a Type 1 ``NO OP`` is ``0x20000000``.
 
 Details from the early article give better detail on what the limitations
