@@ -61,6 +61,11 @@ proc set_post_implementation_init_tcl { pinitscr } {
     set_script $pinitscr "STEPS.INIT_DESIGN.TCL.POST" "utils_1" "impl_1"
 }
 
+# As above, for pre-place script
+proc set_pre_place_tcl { prplacescr } {
+    set_script $prplacescr "STEPS.PLACE_DESIGN.TCL.PRE" "utils_1" "impl_1"
+}
+
 # As above, for post-place script
 proc set_post_place_tcl { pplacescr } {
     set_script $pplacescr "STEPS.PLACE_DESIGN.TCL.POST" "utils_1" "impl_1"
