@@ -6,11 +6,13 @@ on 2022.1, so you may need to modify things.
 
 I don't know if there's a way to package recipes
 for tooled integration, so you'll probably need to
-integrate these by hand if needed.
+integrate these by hand if needed. The patches are designed
+to merge cleanly so integrating them shouldn't be difficult.
 
 * partial_readback - implements Linux partial FPGA readback via horrible hacks
 * jtag_console - backport of the DCC uart serialization option
 * efuse_access - modify PMU firmware to enable accessing efuses via nvmem
+* word_aligned_loading - change zynqmp fpga_manager to force word alignment when loading firmware to avoid massive load times.
 
 There are more details in a README.md in each directory.
 
