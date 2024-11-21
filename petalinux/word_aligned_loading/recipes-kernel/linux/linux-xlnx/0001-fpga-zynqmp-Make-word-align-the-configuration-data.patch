@@ -1,0 +1,68 @@
+From 1f82e201c4a8d87ffeedfaf2fbaedb83ca69ffbe Mon Sep 17 00:00:00 2001
+From: Nava kishore Manne <nava.kishore.manne@amd.com>
+Date: Fri, 8 Dec 2023 12:14:36 +0530
+Subject: [PATCH] fpga: zynqmp: Make word align the configuration data
+
+To avoid the unwanted copies at firmware(PMUFW) this patch provides
+a fix to align PL configuration data if the data is not word-aligned.
+It improves the PL configuration timings to process unaligned bit
+files.
+
+To align the configuration data this patch adds a few padding bytes and
+these additional padding bytes will not create any functional impact on
+the PL configuration.
+
+Signed-off-by: Nava kishore Manne <nava.kishore.manne@amd.com>
+Link: https://lore.kernel.org/all/20230314094222.66916-1-nava.kishore.manne@amd.com/
+State: not-upstreamable
+Reason: Framework refactoring is needed to address multiple-copies/alignment
+issues.
+---
+ drivers/fpga/zynqmp-fpga.c | 13 +++++++++++--
+ 1 file changed, 11 insertions(+), 2 deletions(-)
+
+diff --git a/drivers/fpga/zynqmp-fpga.c b/drivers/fpga/zynqmp-fpga.c
+index b2312414ce4b..5174150bf7e7 100644
+--- a/drivers/fpga/zynqmp-fpga.c
++++ b/drivers/fpga/zynqmp-fpga.c
+@@ -18,6 +18,8 @@
+ 
+ #define READ_DMA_SIZE		0x200
+ #define DUMMY_FRAMES_SIZE	0x64
++#define DUMMY_PAD_BYTE		0xFF
++#define FPGA_WORD_SIZE		4
+ 
+ /* Error Register */
+ #define IXR_FPGA_ERR_CRC_ERR		BIT(0)
+@@ -139,14 +141,18 @@ static int zynqmp_fpga_ops_write(struct fpga_manager *mgr,
+ 				 const char *buf, size_t size)
+ {
+ 	struct zynqmp_fpga_priv *priv;
++	int word_align, ret, index;
+ 	dma_addr_t dma_addr = 0;
+ 	u32 eemi_flags = 0;
+ 	size_t dma_size;
+ 	u32 status;
+ 	char *kbuf;
+-	int ret;
+ 
+ 	priv = mgr->priv;
++	word_align = size % FPGA_WORD_SIZE;
++	if (word_align)
++	  word_align = FPGA_WORD_SIZE - word_align;
++	size = size + word_align;
+ 	priv->size = size;
+ 
+ 	if (priv->flags & FPGA_MGR_USERKEY_ENCRYPTED_BITSTREAM)
+@@ -158,7 +164,10 @@ static int zynqmp_fpga_ops_write(struct fpga_manager *mgr,
+ 	if (!kbuf)
+ 		return -ENOMEM;
+ 
+-	memcpy(kbuf, buf, size);
++	for (index = 0; index < word_align; index++)
++		kbuf[index] = DUMMY_PAD_BYTE;
++
++	memcpy(&kbuf[index], buf, size - index);
+ 
+ 	if (priv->flags & FPGA_MGR_USERKEY_ENCRYPTED_BITSTREAM) {
+ 		eemi_flags |= XILINX_ZYNQMP_PM_FPGA_ENCRYPTION_USERKEY;
