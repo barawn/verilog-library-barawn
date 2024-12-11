@@ -128,12 +128,15 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    assign wb_rty_o = 1'b0;
    // whatever, there's no readback
    assign wb_dat_o = {32{1'b0}};
-   
-   wire [OUTBITS*NSAMP-1:0] zero_fir_out;
+
+   localparam ZERO_FIR_BITS = 16;
+   localparam ZERO_FIR_FRAC = 2;
+	
+   wire [ZERO_FIR_BITS*NSAMP-1:0] zero_fir_out;
    
    biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
-			     .NSAMP(NSAMP),.OUTBITS(OUTBITS),
-			     .OUTFRAC(OUTFRAC),
+			     .NSAMP(NSAMP),.OUTBITS(ZERO_FIR_BITS),
+			     .OUTFRAC(ZERO_FIR_FRAC),
 			     .CLKTYPE(CLKTYPE))
        u_fir(.clk(clk_i),
          .dat_i(dat_i),
