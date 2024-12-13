@@ -165,8 +165,11 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
                    .y0_out(y0_fir_out),
                    .y1_out(y1_fir_out));                                       
 
-    biquad8_pole_iir #(.NBITS(48),
-		       .NFRAC(27),
+    // parameterize the decimal point here
+    localparam IIR_BITS = 48;
+    localparam IIR_FRAC = 27;
+    biquad8_pole_iir #(.NBITS(IIR_BITS),
+		       .NFRAC(IIR_FRAC),
 		       .CLKTYPE(CLKTYPE))
         u_pole_iir(.clk(clk_i),
 		   .coeff_dat_i(coeff_hold),
@@ -177,9 +180,11 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 		   .y0_out(y0_out),
 		   .y1_out(y1_out));		       
    
-    // out outputs are Q21.27
-    assign dat_o[ 0 +: OUTBITS] = y0_out[27 +: OUTBITS];
-    assign dat_o[ OUTBITS +: OUTBITS] = y1_out[27 +: OUTBITS];
+    // our outputs are Q(IIR_BITS-IIR_FRAC).IIR_FRAC
+    // so we start at the decimal point (IIR_FRAC), move back OUTFRAC (or move forward if negative),
+    // and grab OUTBITS.
+    assign dat_o[ 0 +: OUTBITS] = y0_out[IIR_FRAC-OUTFRAC +: OUTBITS];
+    assign dat_o[ OUTBITS +: OUTBITS] = y1_out[IIR_FRAC-OUTFRAC +: OUTBITS];
     assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
    
 endmodule
