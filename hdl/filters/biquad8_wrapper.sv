@@ -25,6 +25,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     
     // data side
     input		       clk_i,
+    // this reset only affects the IIR since it's the only one with state
+    input                      rst_i,
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
@@ -172,6 +174,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 		       .NFRAC(IIR_FRAC),
 		       .CLKTYPE(CLKTYPE))
         u_pole_iir(.clk(clk_i),
+		   .rst(rst_i),
 		   .coeff_dat_i(coeff_hold),
 		   .coeff_wr_i(coeff_iir_wr),
 		   .coeff_update_i(update),
