@@ -28,7 +28,11 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
-    output [OUTBITS*NSAMP-1:0] dat_o
+    output [OUTBITS*NSAMP-1:0] dat_o,
+    output [47:0] probe,
+    output [47:0] probe2,
+    output [OUTBITS*NSAMP-1:0] probe3,
+    output [47:0] probe4
     );     
    
    // ok so 00 = update
@@ -131,6 +135,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    
    wire [OUTBITS*NSAMP-1:0] zero_fir_out;
    
+   // THIS SHOULD GO AFTER IIR, ACCORDING TO SIM
    biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
 			     .NSAMP(NSAMP),.OUTBITS(OUTBITS),
 			     .OUTFRAC(OUTFRAC),
@@ -144,6 +149,9 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 
     wire [47:0] y0_fir_out;
     wire [47:0] y1_fir_out;
+
+    assign probe2 = y1_fir_out;
+    assign probe3 = zero_fir_out;
 
     wire [47:0]	y0_out;
     wire [47:0]	y1_out;
@@ -172,7 +180,9 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 		   .y0_fir_in(y0_fir_out),
 		   .y1_fir_in(y1_fir_out),
 		   .y0_out(y0_out),
-		   .y1_out(y1_out));		       
+		   .y1_out(y1_out),
+             .probe0(probe),
+             .probe1(probe4));		       
    
     // out outputs are Q21.27
     assign dat_o[ 0 +: OUTBITS] = y0_out[27 +: OUTBITS];
