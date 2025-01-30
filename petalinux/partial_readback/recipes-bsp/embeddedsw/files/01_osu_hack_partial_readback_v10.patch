@@ -1,0 +1,403 @@
+diff --git a/lib/sw_apps/zynqmp_pmufw/src/pm_core.c b/lib/sw_apps/zynqmp_pmufw/src/pm_core.c
+index 6caca7faac..3e7ab69d26 100644
+--- a/lib/sw_apps/zynqmp_pmufw/src/pm_core.c
++++ b/lib/sw_apps/zynqmp_pmufw/src/pm_core.c
+@@ -6,6 +6,8 @@
+ #include "xpfw_config.h"
+ #ifdef ENABLE_PM
+ 
++#define OSU_HACK_ENABLE_FPGA_READ_OFFSET
++
+ /*********************************************************************
+  * This file contains implementation of the PM API functions, which
+  * should be used directly only by power management itself.
+@@ -997,7 +999,23 @@ static void PmFpgaRead(const PmMaster *const master,
+ 
+ 	if (Readback_Type != 0U) {
+ #if defined(ENABLE_FPGA_READ_CONFIG_DATA)
++#if defined(OSU_HACK_ENABLE_FPGA_READ_OFFSET)
++	  // To allow for reading back the FPGA from an offset, we overload
++	  // the extra bits in Readback_Type to encode the offset.
++	  // I *BELIEVE* that the FAR address is only 26 bits long
++	  // based on the UltraScale Architecture User Guide.
++	  // But because I'm the only one using this, I'll use the whole thing.
++	  if (Readback_Type & 0x1 != Readback_Type) {
++	    u32 offsetFrameAddress = Readback_Type >> 1;
++	    // stupid xilfpga doesn't include something like this.
++	    Status = XFpga_ZynqMP_GetPlConfigDataWithOffset(&XFpgaInstance, Address, Reg_Numframes,
++							    offsetFrameAddress);
++	  } else {
++	    Status = XFpga_GetPlConfigData(&XFpgaInstance, Address, Reg_Numframes);
++	  }
++#else
+ 		Status = XFpga_GetPlConfigData(&XFpgaInstance, Address, Reg_Numframes);
++#endif
+ #else
+ 		PmWarn("Unsupported EEMI API\r\n");
+ 		Status = XST_NO_ACCESS;
+diff --git a/lib/sw_services/xilfpga/src/interface/zynqmp/osu_xilfpga_hack.h b/lib/sw_services/xilfpga/src/interface/zynqmp/osu_xilfpga_hack.h
+new file mode 100644
+index 0000000000..2903139a32
+--- /dev/null
++++ b/lib/sw_services/xilfpga/src/interface/zynqmp/osu_xilfpga_hack.h
+@@ -0,0 +1,12 @@
++#ifndef OSU_XILFPGA_HACK_H
++#define OSU_XILFPGA_HACK_H
++
++#ifndef versal
++u32 XFpga_ZynqMP_GetPlConfigDataWithOffset(const XFpga *InstancePtr,
++					   UINTPTR Address,
++
++					   u32 NumFrames,
++					   u32 offsetFrameAddress);
++#endif
++
++#endif
+diff --git a/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c b/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c
+index ae06b17236..5b55854503 100644
+--- a/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c
++++ b/lib/sw_services/xilfpga/src/interface/zynqmp/xilfpga_pcap.c
+@@ -126,6 +126,13 @@
+ /***************************** Include Files *********************************/
+ #include "xilfpga.h"
+ 
++#define OSU_HACK_ENABLE_FPGA_READ_OFFSET
++
++#ifdef OSU_HACK_ENABLE_FPGA_READ_OFFSET
++#include "osu_xilfpga_hack.h"
++#include <stdbool.h>
++#endif
++
+ /* @cond nocomments */
+ /************************** Constant Definitions *****************************/
+ #ifdef __MICROBLAZE__
+@@ -2238,14 +2245,56 @@ END:
+  ****************************************************************************/
+ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+ {
+-	volatile u32 Status = XFPGA_FAILURE;
+ 	UINTPTR Address = InstancePtr->ReadInfo.ReadbackAddr;
+ 	u32 NumFrames = InstancePtr->ReadInfo.ConfigReg_NumFrames;
++	// OSU hack: reuse our new function so our change is incredibly small
++	return XFpga_ZynqMP_GetPlConfigDataWithOffset(InstancePtr,
++						      Address,
++						      NumFrames,
++						      0);
++}
++
++// this is NOT static, it's exposed. The goofiness here is
++// that xilfpga_pcap.c initializes a function pointer table
++// that maps XFpga_GetConfigData to XFpga_GetPLConfigDataPcap.
++// But it then embeds arguments inside that structure, and then
++// IPI stuff gets used too... it's just too awkward. So we'll see if
++// this works.
++u32 XFpga_ZynqMP_GetPlConfigDataWithOffset(const XFpga *InstancePtr,
++						  UINTPTR Address,
++						  u32 NumFrames,
++						  u32 offsetFrameAddress)
++{
++	volatile u32 Status = XFPGA_FAILURE;
+ 	u32 RegVal;
+ 	u32 cmdindex;
+-	u32 CmdBuf[XFPGA_DATA_CONFIG_CMD_LEN];
++	// shutdown mode:
++	// 5 for step 1
++	// 1 for step 2
++	// 3 for step 3 -- they diverge here
++	// 3 for step 4
++	// 5 for step 5
++	// 3 for step 6
++	// 2 for step 7  -- they rejoin here
++	// 2 for step 8
++	// 64 for step 9
++	// = 88
++	// If we followed capture mode exactly, it'd be the same: except
++	// in shutdown mode, there's a NOOP following RCFG. 
++	// capture mode:
++	// 5 for step 1
++	// 1 for step 2
++	// 17 for steps 3-7
++	// 2 for step 8
++	// 64 for step 9
++	// = 89 
++	//
++	// They differ in the post-write, but that doesn't matter,
++	// they're both well short of 89 there.
++	u32 CmdBuf[89];
+ 	s32 i;
+-
++	bool captureMode = false;
++	
+ 	Status = XFpga_GetFirmwareState();
+ 
+ 	if (Status == XFPGA_FIRMWARE_STATE_UNKNOWN) {
+@@ -2261,6 +2310,15 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+ 		Status = XFPGA_FAILURE;
+ 		goto END;
+ 	}
++	// offset frame address has already been shifted down by 1
++	// we pick off the "do a capture, not shutdown read" as bit 30
++	if (offsetFrameAddress & (1<<30))
++	  captureMode = true;
++	else
++	  captureMode = false;
++
++	// this should work
++	offsetFrameAddress &= 0x3FFFFFFF;
+ 
+ 	/* Enable the PCAP clk */
+ 	RegVal = Xil_In32(PCAP_CLK_CTRL);
+@@ -2284,6 +2342,7 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+ 
+ 	cmdindex = 0U;
+ 
++	// this part is common to both methods
+ 	/* Step 1 */
+ 	CmdBuf[cmdindex] = 0xFFFFFFFFU; /* Dummy Word */
+ 	cmdindex++;
+@@ -2299,42 +2358,82 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+ 	/* Step 2 */
+ 	CmdBuf[cmdindex] = 0x02000000U; /* Type 1 NOOP Word 0 */
+ 	cmdindex++;
+-	/* Step 3 */         /* Type 1 Write 1 Word to CMD */
+-	CmdBuf[cmdindex] = Xfpga_RegAddr(CMD, OPCODE_WRITE, 0x1U);
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x0000000BU; /* SHUTDOWN Command */
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x02000000U; /* Type 1 NOOP Word 0 */
+-	cmdindex++;
+-
+-	/* Step 4 */         /* Type 1 Write 1 Word to CMD */
+-	CmdBuf[cmdindex] = Xfpga_RegAddr(CMD, OPCODE_WRITE, 0x1U);
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x00000007U; /* RCRC Command */
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
+-	cmdindex++;
+-
+-	/* Step 5 --- 5 NOOPS Words */
+-	for (i = 0 ; i < (s32)5 ; i++) {
+-		CmdBuf[cmdindex] = 0x20000000U;
+-		cmdindex++;
++	// here's where things differ
++	if (!captureMode) {
++	  /* Step 3 */         /* Type 1 Write 1 Word to CMD */
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(CMD, OPCODE_WRITE, 0x1U);
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x0000000BU; /* SHUTDOWN Command */
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x02000000U; /* Type 1 NOOP Word 0 */
++	  cmdindex++;
++
++	  /* Step 4 */         /* Type 1 Write 1 Word to CMD */
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(CMD, OPCODE_WRITE, 0x1U);
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x00000007U; /* RCRC Command */
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
++	  cmdindex++;
++
++	  /* Step 5 --- 5 NOOPS Words */
++	  for (i = 0 ; i < (s32)5 ; i++) {
++	    CmdBuf[cmdindex] = 0x20000000U;
++	    cmdindex++;
++	  }
++
++	  /* Step 6 */         /* Type 1 Write 1 Word to CMD */
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(CMD, OPCODE_WRITE, 0x1U);
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x00000004U; /* RCFG Command */
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
++	  cmdindex++;
++
++	  /* Step 7 */         /* Type 1 Write 1 Word to FAR */
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(FAR1, OPCODE_WRITE, 0x1U);
++	  cmdindex++;
++	  // OSU hack: it is so incredibly stupid that this is't already A Thing
++	  CmdBuf[cmdindex] = offsetFrameAddress; /* FAR Address = 00000000 */
++	  cmdindex++;
++	} else {
++	  /* I'm trusting the version in XAPP1230 and hoping it works with PCAP */
++	  /* only difference is inserting a NOOP after RCFG */
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(MASK, OPCODE_WRITE, 0x1U);
++	  cmdindex++; // 1
++	  CmdBuf[cmdindex] = 0x00800000U;
++	  cmdindex++; // 2
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(CTL1, OPCODE_WRITE, 0x1U);
++	  cmdindex++; // 3
++	  CmdBuf[cmdindex] = 0x00800000U;
++	  cmdindex++; // 4
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 5
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 6
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 7
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 8
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 9
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 10
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 11
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 12
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(FAR1, OPCODE_WRITE, 0x1U);
++	  cmdindex++; // 13
++	  CmdBuf[cmdindex] = offsetFrameAddress;
++	  cmdindex++; // 14
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(CMD, OPCODE_WRITE, 0x1U);
++	  cmdindex++; // 15
++	  CmdBuf[cmdindex] = 0x00000004U;
++	  cmdindex++; // 16
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++; // 17
+ 	}
+-
+-	/* Step 6 */         /* Type 1 Write 1 Word to CMD */
+-	CmdBuf[cmdindex] = Xfpga_RegAddr(CMD, OPCODE_WRITE, 0x1U);
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x00000004U; /* RCFG Command */
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
+-	cmdindex++;
+-
+-	/* Step 7 */         /* Type 1 Write 1 Word to FAR */
+-	CmdBuf[cmdindex] = Xfpga_RegAddr(FAR1, OPCODE_WRITE, 0x1U);
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x00000000U; /* FAR Address = 00000000 */
+-	cmdindex++;
+-
+ 	/* Step 8 */          /* Type 1 Read 0 Words from FDRO */
+ 	CmdBuf[cmdindex] =  Xfpga_RegAddr(FDRO, OPCODE_READ, 0U);
+ 	cmdindex++;
+@@ -2405,23 +2504,36 @@ static u32 XFpga_GetPLConfigDataPcap(const XFpga *InstancePtr)
+ 	/* Step 11 */
+ 	CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
+ 	cmdindex++;
+-
+-	/* Step 12 */
+-	CmdBuf[cmdindex] = 0x30008001U; /* Type 1 Write 1 Word to CMD */
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x00000005U; /* START Command */
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
+-	cmdindex++;
+-
+-	/* Step 13 */
+-	CmdBuf[cmdindex] = 0x30008001U; /* Type 1 Write 1 Word to CMD */
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x00000007U; /* RCRC Command */
+-	cmdindex++;
+-	CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
+-	cmdindex++;
+-
++	if (!captureMode) {	
++	  /* Step 12 */
++	  CmdBuf[cmdindex] = 0x30008001U; /* Type 1 Write 1 Word to CMD */
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x00000005U; /* START Command */
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
++	  cmdindex++;
++
++	  /* Step 13 */
++	  CmdBuf[cmdindex] = 0x30008001U; /* Type 1 Write 1 Word to CMD */
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x00000007U; /* RCRC Command */
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x20000000U; /* Type 1 NOOP Word 0 */
++	  cmdindex++;
++	} else {
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(MASK, OPCODE_WRITE, 0x1U);
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x00800000U;
++	  cmdindex++;
++	  CmdBuf[cmdindex] = Xfpga_RegAddr(CTL1, OPCODE_WRITE, 0x1U);
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x00000000U;
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++;
++	  CmdBuf[cmdindex] = 0x20000000U;
++	  cmdindex++;
++	}
+ 	/* Step 14 */
+ 	CmdBuf[cmdindex] = 0x30008001U; /* Type 1 Write 1 Word to CMD */
+ 	cmdindex++;
+diff --git a/lib/sw_services/xilfpga/src/osu_xilfpga_hack.h b/lib/sw_services/xilfpga/src/osu_xilfpga_hack.h
+new file mode 100644
+index 0000000000..2903139a32
+--- /dev/null
++++ b/lib/sw_services/xilfpga/src/osu_xilfpga_hack.h
+@@ -0,0 +1,12 @@
++#ifndef OSU_XILFPGA_HACK_H
++#define OSU_XILFPGA_HACK_H
++
++#ifndef versal
++u32 XFpga_ZynqMP_GetPlConfigDataWithOffset(const XFpga *InstancePtr,
++					   UINTPTR Address,
++
++					   u32 NumFrames,
++					   u32 offsetFrameAddress);
++#endif
++
++#endif
+diff --git a/lib/sw_services/xilfpga/src/xilfpga.c b/lib/sw_services/xilfpga/src/xilfpga.c
+index 8edb41d291..46e6285751 100644
+--- a/lib/sw_services/xilfpga/src/xilfpga.c
++++ b/lib/sw_services/xilfpga/src/xilfpga.c
+@@ -73,6 +73,12 @@
+ /***************************** Include Files *********************************/
+ #include "xilfpga.h"
+ 
++#define OSU_HACK_ENABLE_FPGA_READ_OFFSET
++
++#ifdef OSU_HACK_ENABLE_FPGA_READ_OFFSET
++#include "osu_xilfpga_hack.h"
++#endif
++
+ /************************** Function Prototypes ******************************/
+ #ifndef versal
+ /* @cond nocomments */
+diff --git a/lib/sw_services/xilfpga/src/xilfpga.h b/lib/sw_services/xilfpga/src/xilfpga.h
+index f9e4c6c8eb..01a0abc002 100644
+--- a/lib/sw_services/xilfpga/src/xilfpga.h
++++ b/lib/sw_services/xilfpga/src/xilfpga.h
+@@ -83,6 +83,10 @@
+  *                      xilfpga version and supported feature list info.
+  * 6.2  Nava  03/11/22  Fixed an "implicit declaration of function" warning.
+  *
++ * - OSU CHANGES PSA 9/16/24
++ *   xilfpga does not have partial readback support, which is ridiculous,
++ *   and I have no intention of expanding stuff for non-ZynqMP devices so
++ *   we'll just brute-force add a dumbass function to do it here.
+  * </pre>
+  *
+  * @note
+@@ -103,6 +107,7 @@ extern "C" {
+ #include "xil_util.h"
+ #include "xparameters.h"
+ #include "xfpga_config.h"
++
+ /**************************** Type Definitions *******************************/
+ /**
+  * Structure to the XFpga instance.
+@@ -263,9 +268,14 @@ u32 XFpga_GetPlConfigData(XFpga *InstancePtr, UINTPTR ReadbackAddr,
+ u32 XFpga_GetPlConfigReg(XFpga *InstancePtr, UINTPTR ReadbackAddr,
+ 			 u32 ConfigRegAddr);
+ u32 XFpga_InterfaceStatus(XFpga *InstancePtr);
++
++#ifdef OSU_HACK_ENABLE_FPGA_READ_OFFSET
++#include "osu_xilfpga_hack.h"
++#endif  
++
+ #pragma message ("From 2023.1 release onwards the XilFPGA BSP user configuration  flags ‘reg_readback_en’ and  ‘data_readback_en’ will be disabled by default but users can still be able to enable these flags as needed")
+ #endif
+-
++  
+ #ifdef __cplusplus
+ }
+ #endif

@@ -25,6 +25,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     
     // data side
     input		       clk_i,
+    // this reset only affects the IIR since it's the only one with state
+    input                      rst_i,
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
@@ -132,13 +134,16 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    assign wb_rty_o = 1'b0;
    // whatever, there's no readback
    assign wb_dat_o = {32{1'b0}};
-   
-   wire [OUTBITS*NSAMP-1:0] zero_fir_out;
+
+   localparam ZERO_FIR_BITS = 16;
+   localparam ZERO_FIR_FRAC = 2;
+	
+   wire [ZERO_FIR_BITS*NSAMP-1:0] zero_fir_out;
    
    // THIS SHOULD GO AFTER IIR, ACCORDING TO SIM
    biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
-			     .NSAMP(NSAMP),.OUTBITS(OUTBITS),
-			     .OUTFRAC(OUTFRAC),
+			     .NSAMP(NSAMP),.OUTBITS(ZERO_FIR_BITS),
+			     .OUTFRAC(ZERO_FIR_FRAC),
 			     .CLKTYPE(CLKTYPE))
        u_fir(.clk(clk_i),
          .dat_i(dat_i),
@@ -158,8 +163,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
    
    
     // the address bits here 
-   biquad8_pole_fir #(.NBITS(12),
-                      .NFRAC(0),
+	biquad8_pole_fir #(.NBITS(ZERO_FIR_BITS),
+			   .NFRAC(ZERO_FIR_FRAC),
                       .CLKTYPE(CLKTYPE))
         u_pole_fir(.clk(clk_i),
                    .dat_i(zero_fir_out),
@@ -170,10 +175,14 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
                    .y0_out(y0_fir_out),
                    .y1_out(y1_fir_out));                                       
 
-    biquad8_pole_iir #(.NBITS(48),
-		       .NFRAC(27),
+    // parameterize the decimal point here
+    localparam IIR_BITS = 48;
+    localparam IIR_FRAC = 27;
+    biquad8_pole_iir #(.NBITS(IIR_BITS),
+		       .NFRAC(IIR_FRAC),
 		       .CLKTYPE(CLKTYPE))
         u_pole_iir(.clk(clk_i),
+		   .rst(rst_i),
 		   .coeff_dat_i(coeff_hold),
 		   .coeff_wr_i(coeff_iir_wr),
 		   .coeff_update_i(update),
@@ -184,9 +193,11 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
              .probe0(probe),
              .probe1(probe4));		       
    
-    // out outputs are Q21.27
-    assign dat_o[ 0 +: OUTBITS] = y0_out[27 +: OUTBITS];
-    assign dat_o[ OUTBITS +: OUTBITS] = y1_out[27 +: OUTBITS];
+    // our outputs are Q(IIR_BITS-IIR_FRAC).IIR_FRAC
+    // so we start at the decimal point (IIR_FRAC), move back OUTFRAC (or move forward if negative),
+    // and grab OUTBITS.
+    assign dat_o[ 0 +: OUTBITS] = y0_out[IIR_FRAC-OUTFRAC +: OUTBITS];
+    assign dat_o[ OUTBITS +: OUTBITS] = y1_out[IIR_FRAC-OUTFRAC +: OUTBITS];
     assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
    
 endmodule

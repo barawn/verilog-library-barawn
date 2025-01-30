@@ -36,6 +36,7 @@ module dsp_timed_counter( // main clock
     );
     
     parameter MODE = "NORMAL";
+    parameter COUNT_IN_PIPELINE = "TRUE";
     // allow clock-cross designations
     parameter CLKTYPE_SRC = "NONE";
     parameter CLKTYPE_DST = "NONE";
@@ -136,6 +137,13 @@ module dsp_timed_counter( // main clock
             assign dsp_CEP = 1'b1;
         end 
     endgenerate
+
+    // if COUNT_IN_PIPELINE = TRUE, we use the DSP's regs
+    // to improve timing. This will result in a 1 cycle lag
+    // between the input and the interval, which can cause
+    // problems.
+    localparam dsp_ABREG = (COUNT_IN_PIPELINE == "TRUE") ? 1'b1 : 1'b0;
+
     // Note: we register both A and B to improve timing, because
     // the interval is free-running anyway. All this does is shift the input
     // relative to the interval by 1.
@@ -144,8 +152,10 @@ module dsp_timed_counter( // main clock
                 .CARRYINSELREG(0),
                 .OPMODEREG(0),
                 .USE_SIMD("TWO24"),
-                .AREG(1),
-                .BREG(1),
+                .AREG(dsp_ABREG),
+                .ACASCREG(dsp_ABREG),                
+                .BREG(dsp_ABREG),
+                .BCASCREG(dsp_ABREG),
                 .CREG(1),
                 .PREG(1),
                 .USE_PATTERN_DETECT("PATDET"),

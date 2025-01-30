@@ -6,6 +6,8 @@
 // parameters
 // ADD_PCIN = "TRUE"/"FALSE" (default)
 // USE_C = "TRUE" (default)/"FALSE"
+// USE_RND = "TRUE"/"FALSE" (default) -- READ NOTE BELOW
+// RND_VAL = {48{1'b0}} (default)     -- READ NOTE BELOW
 // USE_ACIN = "TRUE"/"FALSE" (default)
 // USE_ACOUT = "TRUE"/"FALSE" (default)
 // SUBTRACT_A = "FALSE" (default) / "TRUE"
@@ -15,6 +17,26 @@
 // PREADD_REG = 0 (default) / 1 (adds register after preadder)
 // MULT_REG = 0 (default) / 1 (adds register after multiplier)
 //
+////////////////////////////////////////////
+//
+// USE_RND NOTES:
+// DSP48s fundamentally have a 4-element ALU, however, the
+// multiplier takes 2 slots for its partial products. So we only
+// have 2 available slots, the W and Z inputs.
+//
+// fir_dsp_core allows for using any 2 of C, PCIN, or RND for
+// those slots, but you cannot use all 3. Thankfully Vivado
+// now enables $fatal on invalid parameters, so elaboration
+// will fail if ADD_PCIN = "TRUE", USE_C = "TRUE" and
+// USE_RND = "TRUE".
+//
+// You can use USE_RND to add a constant rather than feeding
+// a constant value into the C port. Dunno if this is better
+// or if they're functionally identical.
+//
+////////////////////////////////////////////
+//
+// INPUT REGISTER NOTES:
 // Note that a choice between PREADD_REG/MULT_REG for adding
 // delay depends on different factors. If you have internal registers
 // already (AREG/DREG are both not 0) then MREG is the preferential
@@ -25,14 +47,20 @@
 // You should probably wrap these functions in something else
 // to make sure that coefficients and data are passed properly.
 //
+////////////////////////////////////////////
+// LOADABLE_B NOTES:
 // LOADABLE_B can either be HEAD, BODY, TAIL, or NONE (default)
 // BODY/TAIL both use BCIN.
 // Note that if you only have 1 just use HEAD.
 //
+///////////////////////////////////////////
 // CLKTYPE allows cross-clock for coeff_dat using CUSTOM_CC_DST
+///////////////////////////////////////////
 module fir_dsp_core #(
         parameter ADD_PCIN = "FALSE",
         parameter USE_C = "TRUE",
+	parameter USE_RND = "FALSE",
+	parameter RND_VAL = {48{1'b0}},
         parameter USE_ACIN = "FALSE",
         parameter USE_ACOUT = "FALSE",
         parameter SUBTRACT_A = "FALSE",
@@ -76,8 +104,24 @@ module fir_dsp_core #(
 				(USE_D == "TRUE") ? 1'b1 : 1'b0,
 				2'b00 };
 
-    localparam [1:0] W_MUX = (USE_C == "TRUE") ? 2'b11 : 2'b00;
-    localparam [2:0] Z_MUX = (ADD_PCIN == "TRUE") ? 3'b001 : 3'b000;
+    // FIGURING OUT THE W AND Z MUX:
+    // First, check the parameters using a generate block.
+    generate
+       if (USE_C == "TRUE" && USE_RND == "TRUE" && ADD_PCIN == "TRUE") begin : INVALID
+	  $fatal(1, "Only 2 of USE_C/USE_RND/ADD_PCIN can be TRUE - aborting");
+       end       
+    endgenerate
+   
+    // W mux determination: (00, 10, or 11 only)
+    localparam W_ANY = ((USE_C == "TRUE") || (USE_RND == "TRUE")) ? 1'b1 : 1'b0;
+    localparam W_IS_C = ((USE_C == "TRUE") && (USE_RND == "FALSE")) ? 1'b1 : 1'b0;
+    localparam [1:0] W_MUX = { W_ANY, W_IS_C };
+    // Z mux determination: (000, 001, 011 only)
+    // C uses W preferentially but uses Z if RND is used and it's available
+    localparam Z_IS_C = ((USE_C == "TRUE") && (USE_RND == "TRUE")) ? 1'b1 : 1'b0;
+    localparam Z_ANY = (Z_IS_C == 1'b1) || (ADD_PCIN == "TRUE") ? 1'b1 : 1'b0;
+    localparam [2:0] Z_MUX = { 1'b0, Z_IS_C, Z_ANY };   
+      
     localparam [8:0] OPMODE = { W_MUX, Z_MUX, 4'b0101 };
     localparam [3:0] ALUMODE = 4'b0000;
     
@@ -134,6 +178,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT( acout_o ),
@@ -180,6 +225,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT( acout_o ),
@@ -228,6 +274,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT( acout_o ),
@@ -274,6 +321,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT( acout_o ),
@@ -324,6 +372,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT(acout_o),                           
@@ -370,6 +419,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT(acout_o),                           
@@ -417,6 +467,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT(acout_o),
@@ -463,6 +514,7 @@ module fir_dsp_core #(
                            .PREADDINSEL("A"),
                            .AMULTSEL(AMULTSEL),
                            .BMULTSEL("B"),
+			   .RND(RND_VAL),
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT(acout_o),
