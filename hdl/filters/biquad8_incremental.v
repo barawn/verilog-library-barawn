@@ -113,7 +113,7 @@ module biquad8_incremental #(parameter NBITS=16,
                 // and the high DSP only clocks in if address is high.
                 // Program them in reverse order (from high address to low).
                 ceblow1 <=  coeff_wr_i;
-                cebhigh1 <= coeff_adr_i && coeff_wr_i;
+                cebhigh1 <= coeff_wr_i; //coeff_adr_i && coeff_wr_i; This change was reccomended by Patrick
                 ceblow2 <= coeff_update_i;
                 cebhigh2 <= coeff_update_i;
             end
