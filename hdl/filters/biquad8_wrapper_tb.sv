@@ -235,11 +235,11 @@ module biquad8_wrapper_tb;
                 #500;
                 fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
                 if (THIS_DESIGN == "BIQUAD") begin : BIQUAD_PULSE_OUT
-                    f = $fopen($sformatf("freqs/outputs/pulse_output_height_512_notch_%1dMHz_%1dQ.dat", notch, Q), "w");
-                    fdebug = $fopen($sformatf("freqs/outputs/pulse_output_height_512_notch_%1dMHz_%1dQ_expanded.dat", notch, Q), "w");
+                    f = $fopen($sformatf("freqs/outputs/pulse_output_height_512_incremental_notch_%1dMHz_%1dQ.dat", notch, Q), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/pulse_output_height_512_incremental_notch_%1dMHz_%1dQ_expanded.dat", notch, Q), "w");
                 end else begin: IIR_PULSE_OUT
-                    f = $fopen($sformatf("freqs/outputs/no_zero_pulse_output_height_512_notch_%1dMHz_%1dQ.dat", notch, Q), "w");
-                    fdebug = $fopen($sformatf("freqs/outputs/no_zero_pulse_output_height_512_notch_%1dMHz_%1dQ_expanded.dat", notch, Q), "w");
+                    f = $fopen($sformatf("freqs/outputs/no_zero_pulse_output_height_512_incremental_notch_%1dMHz_%1dQ.dat", notch, Q), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/no_zero_pulse_output_height_512_incremental_notch_%1dMHz_%1dQ_expanded.dat", notch, Q), "w");
                     // code = $fgets(str, fd);
                 end
 
@@ -325,13 +325,13 @@ module biquad8_wrapper_tb;
                     
                     fd = $fopen($sformatf("freqs/inputs/gauss_input_%1d_sigma_hanning_clipped_%0d.dat", GAUSS_NOISE_SIZE, in_count),"r");
                     if (THIS_DESIGN == "BIQUAD") begin : BIQUAD_GAUSS_OUT
-                        f = $fopen($sformatf("freqs/outputs/output_gauss_%1d_trial_%0d_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
-                        fdebug = $fopen($sformatf("freqs/outputs/output_gauss_%1d_expanded_trial_%0d_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
-                        $monitor($sformatf("freqs/output_gauss_%1d_expanded_trial_%0d_notch_%0d_MHz.txt", GAUSS_NOISE_SIZE, in_count, notch));
+                        f = $fopen($sformatf("freqs/outputs/output_gauss_%1d_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
+                        fdebug = $fopen($sformatf("freqs/outputs/output_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
+                        $monitor($sformatf("freqs/output_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz.txt", GAUSS_NOISE_SIZE, in_count, notch));
                     end else begin: IIR_GAUSS_OUT
-                        f = $fopen($sformatf("freqs/outputs/no_zero_output_gauss_%1d_trial_%0d_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
-                        fdebug = $fopen($sformatf("freqs/outputs/no_zero_output_gauss_%1d_expanded_trial_%0d_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
-                        $monitor($sformatf("freqs/outputs/no_zero_output_gauss_%1d_expanded_trial_%0d_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch,Q));
+                        f = $fopen($sformatf("freqs/outputs/no_zero_output_gauss_%1d_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
+                        fdebug = $fopen($sformatf("freqs/outputs/no_zero_output_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
+                        $monitor($sformatf("freqs/outputs/no_zero_output_gauss_%1d_expanded_trial_%0d_notch_%0d_incremental_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch,Q));
                         // code = $fgets(str, fd);
                     end
 
