@@ -211,7 +211,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 
     biquad8_incremental #(   .NBITS(OUTBITS),// TODO: Note: NBITS and NFRAC is for both INPUT and OUTPUT
                             .NFRAC(OUTFRAC),// This is different than the paramaterization of the wrapper
-                            .NBITS2(IIR_BITS)
+                            .NBITS2(IIR_BITS),
                             .NFRAC2(IIR_FRAC),
                             .NSAMP(8))
         u_incremental( .clk(clk_i),
