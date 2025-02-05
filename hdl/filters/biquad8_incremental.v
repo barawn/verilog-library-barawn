@@ -3,7 +3,7 @@
 
 module biquad8_incremental #(parameter NBITS=16,
                              parameter NFRAC=2,
-                             parameter NBITS2=24,
+                             parameter NBITS2=24, // Note: this may not actually parameterize well at the moment
                              parameter NFRAC2=10,
                              parameter NSAMP=8)(
              input clk,
@@ -11,10 +11,10 @@ module biquad8_incremental #(parameter NBITS=16,
              input [NBITS2-1:0] y0_in,
              input [NBITS2-1:0] y1_in,
                           
-             input coeff_adr_i,
+            //  input coeff_adr_i, // Removed as reccomended by PSA
+             input [17:0] coeff_dat_i,
              input coeff_wr_i,
              input coeff_update_i,
-             input [17:0] coeff_dat_i,
              
              output [NBITS*NSAMP-1:0] dat_o );
 
@@ -29,7 +29,7 @@ module biquad8_incremental #(parameter NBITS=16,
     // effing FIGURE THIS OUT TOO
     localparam REALIGN_DELAY = 10;
     
-    // the two inputs are Q14.10
+    // the two inputs are Q14.10 (default, maybe different in wrapper)
     parameter NUM_DSPS = NSAMP-2;    
     // these have pointless ones to simplify the HDL
     
@@ -46,18 +46,19 @@ module biquad8_incremental #(parameter NBITS=16,
     assign dsp_high_in[0] = y1_in;
     assign dsp_low_in[1] = y1_store;
     
+    // Delays the already-calculated first two outputs to align with full data
     wire [NBITS-1:0] y0_delay_out;
     wire [NBITS-1:0] y1_delay_out;
     reg [NBITS-1:0] y0_delay_reg = {NBITS{1'b0}};
     reg [NBITS-1:0] y1_delay_reg = {NBITS{1'b0}};
     srlvec #(.NBITS(NBITS)) u_delay_y0( .clk(clk),
                                         .ce(1'b1),
-                                        .a(REALIGN_DELAY+3),
+                                        .a(REALIGN_DELAY+3), //L Why is this +3 and the prior is +2? Aren't they clocked in as part of a group of 8?
                                         .din(y0_in[ NFRAC2-NFRAC +: NBITS]),
                                         .dout(y0_delay_out));
     srlvec #(.NBITS(NBITS)) u_delay_y1( .clk(clk),
                                         .ce(1'b1),
-                                        .a(REALIGN_DELAY+2),
+                                        .a(REALIGN_DELAY+2), //L Why is this +2 and the prior is +3? Aren't they clocked in as part of a group of 8?
                                         .din(y1_store[ NFRAC2-NFRAC +: NBITS ]),
                                         .dout(y1_delay_out));                           
 
@@ -110,7 +111,7 @@ module biquad8_incremental #(parameter NBITS=16,
                 dat_in_reg <= delay_out;
                 dat_out_reg <= align_out;
                 // It's a cascade, so the low DSP *always* clocks in,
-                // and the high DSP only clocks in if address is high.
+                // and the high DSP only clocks in if address is high. (High addr removed)
                 // Program them in reverse order (from high address to low).
                 ceblow1 <=  coeff_wr_i;
                 cebhigh1 <= coeff_wr_i; //coeff_adr_i && coeff_wr_i; This change was reccomended by Patrick
