@@ -70,7 +70,7 @@ module biquad8_incremental #(parameter NBITS=16,
     assign samp_out[0] = y0_delay_reg;
     assign samp_out[1] = y1_delay_reg;
     
-    `define COMMON_ATTRS `CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS,.ACASCREG(0),.ADREG(0),.MREG(0),.BREG(2),.BCASCREG(1),.PREG(1)
+    `define COMMON_ATTRS `CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS,.MREG(0),.BREG(2),.BCASCREG(1),.PREG(1)//,.ACASCREG(0),.ADREG(0)
     
     generate
         genvar i,j;
