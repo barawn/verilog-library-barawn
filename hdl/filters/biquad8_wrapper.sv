@@ -34,9 +34,17 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     output [47:0] probe,
     output [47:0] probe2,
     output [OUTBITS*NSAMP-1:0] probe3,
-    output [47:0] probe4
+    output [47:0] probe4,
+    output [29:0] probe_inc_low,
+    output [29:0] probe_inc_high
     );     
-   
+
+    wire [29:0] probe_inc_low_connect;
+    wire [29:0] probe_inc_high_connect;
+
+    assign probe_inc_low = probe_inc_low_connect;
+    assign probe_inc_high = probe_inc_high_connect;
+
     // ok so 00 = update
     //       04 = fir
     //       08 = iir
@@ -221,7 +229,9 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
             .coeff_dat_i(coeff_hold), //[17:0] 
             .coeff_wr_i(coeff_inc_wr),
             .coeff_update_i(update),
-            .dat_o(inc_out));
+            .dat_o(inc_out),
+            .debug_inc_low(probe_inc_low_connect),
+            .debug_inc_high(probe_inc_high_connect));
 
     assign dat_o = inc_out;
 

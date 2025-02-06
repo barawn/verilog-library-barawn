@@ -16,8 +16,18 @@ module biquad8_incremental #(parameter NBITS=16,
              input coeff_wr_i,
              input coeff_update_i,
              
-             output [NBITS*NSAMP-1:0] dat_o );
+             output [NBITS*NSAMP-1:0] dat_o,
+             output[29:0] debug_inc_low,
+             output[29:0] debug_inc_high);
 
+
+    wire[29:0] debug_line_low;
+    wire[29:0] debug_line_high;
+
+    // With hardcoded values this does read back out to Vivado
+    // assign debug_inc_low = {{(30-NBITS){y0_in[ NFRAC2-NFRAC+NBITS-1]}},{y0_in[ NFRAC2-NFRAC +: NBITS]}};//debug_line_low;
+    // assign debug_inc_high =  {{(30-NBITS){y1_in[ NFRAC2-NFRAC+NBITS-1]}},{y1_in[ NFRAC2-NFRAC +: NBITS]}};//debug_line_high;
+    
     wire [NBITS-1:0] samp_in[NSAMP-1:0];
     wire [NBITS-1:0] samp_out[NSAMP-1:0];
     
@@ -69,7 +79,7 @@ module biquad8_incremental #(parameter NBITS=16,
     end
     assign samp_out[0] = y0_delay_reg;
     assign samp_out[1] = y1_delay_reg;
-    
+
     `define COMMON_ATTRS `CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS,.MREG(0),.BREG(2),.BCASCREG(1),.PREG(1)//,.ACASCREG(0),.ADREG(0)
     
     generate
@@ -87,7 +97,7 @@ module biquad8_incremental #(parameter NBITS=16,
             localparam A_FRAC_BITS = 13;
             localparam A_BITS = 30;
             // The input is NBITS2 with NFRAC2 fractional bits.
-            localparam A_HEAD_PAD = (A_BITS-A_FRAC_BITS) - (NBITS2-NFRAC2);
+            localparam A_HEAD_PAD = (A_BITS-A_FRAC_BITS) - (NBITS2-NFRAC2); // 17 - (48-27=21)
             localparam A_TAIL_PAD = A_FRAC_BITS - NFRAC2;
             reg ceblow1 = 0;
             reg cebhigh1 = 0;
@@ -130,9 +140,10 @@ module biquad8_incremental #(parameter NBITS=16,
             localparam AREG_LOW =   (i==  0) ? 1 : 2;
             localparam AREG_HIGH =  (i == 0) ? 2 : 1;
             wire [47:0] dspC_in = { {C_HEAD_PAD{dat_in_reg[NBITS-1]}}, dat_in_reg, {C_TAIL_PAD{1'b0}} };
-            wire [29:0] dsplowA_in = { {A_HEAD_PAD{dsp_low_in[i][NBITS2-1]}},   dsp_low_in[i],  {A_TAIL_PAD{1'b0}} };
+            //TODO: WITH PUEO DEFAULTS THESE REPLICATION OPERATORS ARE NON-POSITIVE!!!!!!! !!!!!!!!!!!!!!!!!!!! !!!!!!!!!!!!!!!!!! !!!!!!!!!!!!!!!!
+            wire [29:0] dsplowA_in = { {A_HEAD_PAD{dsp_low_in[i][NBITS2-1]}},   dsp_low_in[i],  {A_TAIL_PAD{1'b0}} }; 
             wire [29:0] dsphighA_in = {{A_HEAD_PAD{dsp_high_in[i][NBITS2-1]}},  dsp_high_in[i], {A_TAIL_PAD{1'b0}} };
-            
+
             wire [17:0] bcascade;
             wire [47:0] pcascade;
             
@@ -179,6 +190,15 @@ module biquad8_incremental #(parameter NBITS=16,
             assign samp_out[i+2] = dat_out_reg;
         end
     endgenerate
+    localparam A_FRAC_BITS = 13;
+    localparam A_BITS = 30;
+    localparam A_TAIL_PAD = A_FRAC_BITS - NFRAC2;
+    localparam A_HEAD_PAD = (A_BITS-A_FRAC_BITS) - (NBITS2-NFRAC2);
+    // dsp_low_in is  48 bits long
+    // NFRAC2 is 27 (48-27=21)
+    assign debug_line_low =  {{A_HEAD_PAD{dsp_low_in[0][NBITS2-1]}},   dsp_low_in[0],  {A_TAIL_PAD{1'b1}} };
+    assign debug_line_high = {{A_HEAD_PAD{dsp_high_in[0][NBITS2-1]}},  dsp_high_in[0], {A_TAIL_PAD{1'b1}} };
+
                 
             
 endmodule
