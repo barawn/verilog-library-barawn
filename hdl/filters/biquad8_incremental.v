@@ -5,6 +5,8 @@ module biquad8_incremental #(parameter NBITS=16,
                              parameter NFRAC=2,
                              parameter NBITS2=24, // Note: this may not actually parameterize well at the moment
                              parameter NFRAC2=10,
+                             parameter OUTBITS=12, // Note: this may not actually parameterize well at the moment
+                             parameter OUTBITS=0,
                              parameter NSAMP=8)(
              input clk,
              input [NBITS*NSAMP-1:0] dat_i,
@@ -16,7 +18,7 @@ module biquad8_incremental #(parameter NBITS=16,
              input coeff_wr_i,
              input coeff_update_i,
              
-             output [NBITS*NSAMP-1:0] dat_o,
+             output [OUTBITS*NSAMP-1:0] dat_o,
              output[29:0] debug_inc_low,
              output[29:0] debug_inc_high);
 
@@ -59,12 +61,12 @@ module biquad8_incremental #(parameter NBITS=16,
     reg [NBITS-1:0] y1_delay_reg = {NBITS{1'b0}};
     srlvec #(.NBITS(NBITS)) u_delay_y0( .clk(clk),
                                         .ce(1'b1),
-                                        .a(REALIGN_DELAY+3), //L Why is this +3 and the prior is +2? Aren't they clocked in as part of a group of 8?
+                                        .a(REALIGN_DELAY+3), 
                                         .din(y0_in[ NFRAC2-NFRAC +: NBITS]),
                                         .dout(y0_delay_out));
     srlvec #(.NBITS(NBITS)) u_delay_y1( .clk(clk),
                                         .ce(1'b1),
-                                        .a(REALIGN_DELAY+2), //L Why is this +2 and the prior is +3? Aren't they clocked in as part of a group of 8?
+                                        .a(REALIGN_DELAY+2), // y1_store is already delayed by a clock
                                         .din(y1_store[ NFRAC2-NFRAC +: NBITS ]),
                                         .dout(y1_delay_out));                           
 
@@ -82,7 +84,7 @@ module biquad8_incremental #(parameter NBITS=16,
         genvar i,j;
         for (j=0;j<NSAMP;j=j+1) begin : VECTORIZE
             assign samp_in[j] = dat_i[NBITS*j +: NBITS];
-            assign dat_o[NBITS*j +: NBITS] = samp_out[j];
+            assign dat_o[OUTBITS*j +: OUTBITS] = samp_out[j][NFRAC-OUTFRAC +: OUTBITS];
         end
         for (i=0;i<NUM_DSPS;i=i+1) begin : DSP
             localparam C_FRAC_BITS = 27;
