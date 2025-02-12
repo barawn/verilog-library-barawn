@@ -20,10 +20,6 @@ module biquad8_incremental #(parameter NBITS=16,
              output[29:0] debug_inc_low,
              output[29:0] debug_inc_high);
 
-
-    wire[29:0] debug_line_low;
-    wire[29:0] debug_line_high;
-
     // With hardcoded values this does read back out to Vivado
     // assign debug_inc_low = {{(30-NBITS){y0_in[ NFRAC2-NFRAC+NBITS-1]}},{y0_in[ NFRAC2-NFRAC +: NBITS]}};//debug_line_low;
     // assign debug_inc_high =  {{(30-NBITS){y1_in[ NFRAC2-NFRAC+NBITS-1]}},{y1_in[ NFRAC2-NFRAC +: NBITS]}};//debug_line_high;
@@ -97,8 +93,9 @@ module biquad8_incremental #(parameter NBITS=16,
             localparam A_FRAC_BITS = 13;
             localparam A_BITS = 30;
             // The input is NBITS2 with NFRAC2 fractional bits.
-            localparam A_HEAD_PAD = (A_BITS-A_FRAC_BITS) - (NBITS2-NFRAC2); // 17 - (48-27=21)
-            localparam A_TAIL_PAD = A_FRAC_BITS - NFRAC2;
+            // Currently, this is assuming that the A ins are larger than the parameterizable input
+            localparam A_HEAD_PAD = (A_BITS-A_FRAC_BITS) - (NBITS2-NFRAC2); // 17 - (48-27=21) = -4 (!!)
+            localparam A_TAIL_PAD = A_FRAC_BITS - NFRAC2; // 13 - 27 = -14 (!!)
             reg ceblow1 = 0;
             reg cebhigh1 = 0;
             reg ceblow2 = 0;
@@ -196,8 +193,8 @@ module biquad8_incremental #(parameter NBITS=16,
     localparam A_HEAD_PAD = (A_BITS-A_FRAC_BITS) - (NBITS2-NFRAC2);
     // dsp_low_in is  48 bits long
     // NFRAC2 is 27 (48-27=21)
-    assign debug_line_low =  {{A_HEAD_PAD{dsp_low_in[0][NBITS2-1]}},   dsp_low_in[0],  {A_TAIL_PAD{1'b1}} };
-    assign debug_line_high = {{A_HEAD_PAD{dsp_high_in[0][NBITS2-1]}},  dsp_high_in[0], {A_TAIL_PAD{1'b1}} };
+    assign debug_inc_low =  {{A_HEAD_PAD{dsp_low_in[0][NBITS2-1]}},   dsp_low_in[0],  {A_TAIL_PAD{1'b1}} };
+    assign debug_inc_high = {{A_HEAD_PAD{dsp_high_in[0][NBITS2-1]}},  dsp_high_in[0], {A_TAIL_PAD{1'b1}} };
 
                 
             

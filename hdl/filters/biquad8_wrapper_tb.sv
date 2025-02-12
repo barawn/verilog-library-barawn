@@ -13,7 +13,7 @@ module biquad8_wrapper_tb;
     reg wr = 0;
     reg [6:0] address = {7{1'b0}};
     reg [31:0] data = {32{1'b0}};
-    wire [31:0] data_out;
+    // wire [31:0] data_out;
     wire [47:0] probe0;
     wire [47:0] probe2;
     wire [12*8-1:0] probe3;

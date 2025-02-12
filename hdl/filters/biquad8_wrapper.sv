@@ -214,18 +214,29 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
             .probe1(probe4));		       
 
 
-    // This is where the incremental will go 
+    // This is where the incremental will go
+
+    // parameterize the y0 and y1 decimal points here
+    localparam Y_BITS = 30;
+    localparam Y_FRAC = 13;
+
+    wire [Y_BITS-1:0] y0_in;
+    wire [Y_BITS-1:0] y1_in;
     wire [OUTBITS*NSAMP-1:0] inc_out;
+
+    
+    assign y0_in = y0_out[IIR_FRAC-Y_FRAC +: Y_BITS];
+    assign y1_in = y1_out[IIR_FRAC-Y_FRAC +: Y_BITS];
 
     biquad8_incremental #(   .NBITS(OUTBITS),// TODO: Note: NBITS and NFRAC is for both INPUT and OUTPUT
                             .NFRAC(OUTFRAC),// This is different than the paramaterization of the wrapper
-                            .NBITS2(IIR_BITS),
-                            .NFRAC2(IIR_FRAC),
+                            .NBITS2(Y_BITS),
+                            .NFRAC2(Y_FRAC),
                             .NSAMP(8))
         u_incremental( .clk(clk_i),
             .dat_i(dat_i),
-            .y0_in(y0_out), //[NBITS2-1:0] (48 bits, 21.27)
-            .y1_in(y1_out), //[NBITS2-1:0] (48 bits, 21.27)
+            .y0_in(y0_in), //[NBITS2-1:0] (30 bits, 17.13)
+            .y1_in(y1_in), //[NBITS2-1:0] (30 bits, 17.13)
             .coeff_dat_i(coeff_hold), //[17:0] 
             .coeff_wr_i(coeff_inc_wr),
             .coeff_update_i(update),
