@@ -6,7 +6,7 @@ module biquad8_incremental #(parameter NBITS=16,
                              parameter NBITS2=24, // Note: this may not actually parameterize well at the moment
                              parameter NFRAC2=10,
                              parameter OUTBITS=12, // Note: this may not actually parameterize well at the moment
-                             parameter OUTBITS=0,
+                             parameter OUTFRAC=0,
                              parameter NSAMP=8)(
              input clk,
              input [NBITS*NSAMP-1:0] dat_i,
