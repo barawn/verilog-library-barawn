@@ -150,41 +150,54 @@ module biquad8_wrapper_tb;
             do_write( 7'h1C, 0);  // E_GF
 
             do_write( 7'h00, 32'd1 );     // Update
-            
 
-            // Now we do the stimulus here
-            #500;
-            fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
-            f = $fopen($sformatf("freqs/outputs/timing_pulse_a1_8192_a2_8192.dat"), "w");
-            fdebug = $fopen($sformatf("freqs/outputs/timing_pulse_8192_expanded.dat"), "w");
-            // code = $fgets(str, fd);
+            for(int advance=0; advance<10; advance++) begin : ADVANCE_PULSE            
 
-            for(int clocks=0;clocks<10007;clocks++) begin // We are expecting 80064 samples, cut the end
-                @(posedge aclk);
-                #0.01;
-                for (int i=0; i<8; i++) begin
+                // Now we do the stimulus here
+                #500;
+                fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                f = $fopen($sformatf("freqs/outputs/timing_pulse_a1_8192_a2_8192_advance_%1d.dat",advance), "w");
+                fdebug = $fopen($sformatf("freqs/outputs/timing_pulse_8192_expanded_advance_%1d.dat",advance), "w");
+                // code = $fgets(str, fd);
+
+                for (int i=0; i<advance; i++) begin
                     // Get the next inputs
                     code = $fgets(str, fd);
                     dummy = $sscanf(str, "%d", data_from_file);
-                    samples[i] = data_from_file;
+                    // samples[i] = 0;
                     // $monitor("Hello World in loop");
                     // $monitor($sformatf("sample is %1d", data_from_file));
-                    $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                    // $fwrite(f,$sformatf("%1d\n",outsample[i]));
                     #0.01;
                 end
-                $fwrite(fdebug,$sformatf("%1d\n",probe0));
-                $fwrite(fdebug,$sformatf("%1d\n",probe4));
-                $fwrite(fdebug,$sformatf("%1d\n",0));
-                $fwrite(fdebug,$sformatf("%1d\n",0));
-                $fwrite(fdebug,$sformatf("%1d\n",0));
-                $fwrite(fdebug,$sformatf("%1d\n",0));
-                $fwrite(fdebug,$sformatf("%1d\n",0));
-                $fwrite(fdebug,$sformatf("%1d\n",0));
-            end
 
-            $fclose(fd);
-            $fclose(fdebug);
-            $fclose(f);
+                for(int clocks=0;clocks<10007;clocks++) begin // We are expecting 80064 samples, cut the end
+                    @(posedge aclk);
+                    #0.01;
+                    for (int i=0; i<8; i++) begin
+                        // Get the next inputs
+                        code = $fgets(str, fd);
+                        dummy = $sscanf(str, "%d", data_from_file);
+                        samples[i] = data_from_file;
+                        // $monitor("Hello World in loop");
+                        // $monitor($sformatf("sample is %1d", data_from_file));
+                        $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                        #0.01;
+                    end
+                    $fwrite(fdebug,$sformatf("%1d\n",probe0));
+                    $fwrite(fdebug,$sformatf("%1d\n",probe4));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                end
+
+                $fclose(fd);
+                $fclose(fdebug);
+                $fclose(f);
+            end
         end else begin : FULL_SPECTRUM
             for(int notch=650; notch<1496; notch = notch+10000) begin
                 // Zeros

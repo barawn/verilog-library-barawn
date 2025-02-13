@@ -33,7 +33,9 @@ module biquad8_incremental #(parameter NBITS=16,
     // Note that this is *** very *** likely totally wrong
     // and we'll actually need a chained set of SRLs to get
     // the delay. dear god need to simulate.
-    localparam BASE_DELAY = 13;
+    localparam BASE_DELAY = 14//+18 - 1 ; // 18 from python examination, which now maxes srlvec. So 
+                                        // subtract 1 (now 31) and add a manual clock delay later
+                                        // TODO: ADD ANOTHER SRLVEC with 18 (or 17) CLOCKS IN SERIES
     // effing FIGURE THIS OUT TOO
     localparam REALIGN_DELAY = 10;
     
@@ -102,6 +104,7 @@ module biquad8_incremental #(parameter NBITS=16,
             reg cebhigh1 = 0;
             reg ceblow2 = 0;
             reg cebhigh2 = 0;
+            reg [NBITS-1:0] dat_in_reg_delay = {NBITS{1'b0}};
             reg [NBITS-1:0] dat_in_reg = {NBITS{1'b0}};
             reg [NBITS-1:0] dat_out_reg = {NBITS{1'b0}};
             wire [NBITS-1:0] delay_out;
@@ -117,7 +120,8 @@ module biquad8_incremental #(parameter NBITS=16,
                                               .din( dsp_out[i][C_FRAC_BITS-NFRAC +: NBITS] ),
                                               .dout( align_out )); 
             always @(posedge clk) begin
-                dat_in_reg <= delay_out;
+                dat_in_reg_delay <= delay_out; // Adding an extra clock cycle
+                dat_in_reg <= dat_in_reg_delay;
                 dat_out_reg <= align_out;
                 // It's a cascade, so the low DSP *always* clocks in,
                 // and the high DSP only clocks in if address is high. (High addr removed)
