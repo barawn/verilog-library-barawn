@@ -31,8 +31,8 @@ module biquad8_wrapper_no_inc #(parameter NBITS=16, // input number of bits
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
     output [OUTBITS*NSAMP-1:0] dat_o,
-    output [47:0] probe,
-    output [47:0] probe2,
+    output [47:0] probe0,
+    output [47:0] probe1,
     output [OUTBITS*NSAMP-1:0] probe3,
     output [47:0] probe4,
     output [29:0] probe_inc_low,
@@ -175,7 +175,8 @@ module biquad8_wrapper_no_inc #(parameter NBITS=16, // input number of bits
     wire [47:0] y0_fir_out;
     wire [47:0] y1_fir_out;
 
-    assign probe2 = y1_fir_out;
+    assign probe0 = y0_fir_out;
+    assign probe1 = y1_fir_out;
     assign probe3 = zero_fir_out;
 
     wire [47:0]	y0_out;

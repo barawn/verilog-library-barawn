@@ -21,7 +21,7 @@
 // G cross-link is P^9 U(7, cost)
 //
 // addr 00:
-// write coeff 6: -1*P^8 U(6, cost)
+// write coeff 6: -1*P^8 U(6, cost) D_FF
 // write coeff 5: P^6 U(6, cost)
 // write coeff 4: P^5 U(5, cost)
 // write coeff 3: P^4 U(4, cost)
@@ -30,7 +30,7 @@
 // write coeff 0: P   U(1, cost)
 // update
 // addr 01:
-// write coeff 7: P^8 U(8, cost)
+// write coeff 7: P^8 U(8, cost) E_GG
 // write coeff 6: P^7 U(7, cost)
 // write coeff 5: P^6 U(6, cost)
 // write coeff 4: P^5 U(5, cost)
@@ -197,12 +197,12 @@ module biquad8_pole_fir #(parameter NBITS=16,
                     u_head( .CLK(clk),
                             .CEP(1'b1),
                             .CEC(1'b1),
-                            .C(dspC_in),                            
+                            .C(dspC_in),   // This is where the 1 in [1,X_1,X_2,...] is added             
                             .A(dspA_in),
                             .B(coeff_dat_i),
                             .BCOUT(fbcascade[fi]),
-                            .CEB1(coeff_wr_f),
-                            .CEB2(update),
+                            .CEB1(coeff_wr_f),  // The first clock enable allows the new coefficients to flow in (but not apply)
+                            .CEB2(update),      // The second clock eneable applies the coefficients
                             `D_UNUSED_PORTS,
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
                             .ALUMODE(`ALUMODE_SUM_ZXYCIN),
@@ -263,7 +263,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 localparam THIS_AREG = 0;
                 localparam C_HEAD_PAD = 21 - (NBITS-NFRAC);
                 localparam C_TAIL_PAD = 27 - NFRAC;
-                wire [47:0] dspC_in = { {C_HEAD_PAD{gin_store[NBITS-1]}}, gin_store, {C_TAIL_PAD{1'b0}} };
+                wire [47:0] dspC_in = { {C_HEAD_PAD{gin_store[NBITS-1]}}, gin_store, {C_TAIL_PAD{1'b0}} }; 
                 // HEAD dsp gets its inputs directly
                 (* CUSTOM_CC_DST = CLKTYPE *)
                 DSP48E2 #(`COMMON_ATTRS(THIS_AREG),.CREG(1)) 
