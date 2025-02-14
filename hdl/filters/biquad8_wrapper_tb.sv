@@ -4,11 +4,12 @@ module biquad8_wrapper_tb;
     // parameter	     THIS_DESIGN = "ALIGNMENT";
     // parameter	     THIS_DESIGN = "ALIGNMENTZ1";
     // parameter	     THIS_DESIGN = "ALIGNMENTZ121";
-    parameter	     THIS_DESIGN = "ALIGNMENTBQ";
+    // parameter	     THIS_DESIGN = "ALIGNMENTBQ";
     // parameter	     THIS_DESIGN = "BIQUAD";
     // parameter	     THIS_DESIGN = "IIR";
+    parameter	     THIS_DESIGN = "NOINC";
 
-    parameter       SUB_DESIGN = "BQ";
+    parameter       SUB_DESIGN = "IIR";
 
     wire wbclk;
     wire aclk;
@@ -78,21 +79,39 @@ module biquad8_wrapper_tb;
     assign wb_adr_o = address;
     assign ack = wb_ack_i;
     
-    biquad8_wrapper #(.NBITS(12), .NFRAC(0),
-                      .OUTBITS(12),.OUTFRAC(0))
-                    u_wrapper(.wb_clk_i(wbclk),
-                              .wb_rst_i(1'b0),
-                              `CONNECT_WBS_IFM( wb_ , wb_ ),
-                              .clk_i( aclk ),
-                              .global_update_i( 1'b0 ),
-                              .dat_i(sample_arr),
-                              .dat_o(outsample_arr),
-                              .probe(probe0),
-                              .probe2(probe2),
-                              .probe3(probe3),
-                              .probe4(probe4),
-                              .probe_inc_low(probe_inc_low),
-                              .probe_inc_high(probe_inc_high));
+    if (THIS_DESIGN == "NOINC") begin : NOINC
+        biquad8_wrapper_no_inc #(.NBITS(12), .NFRAC(0),
+                        .OUTBITS(12),.OUTFRAC(0))
+                        u_wrapper(.wb_clk_i(wbclk),
+                                .wb_rst_i(1'b0),
+                                `CONNECT_WBS_IFM( wb_ , wb_ ),
+                                .clk_i( aclk ),
+                                .global_update_i( 1'b0 ),
+                                .dat_i(sample_arr),
+                                .dat_o(outsample_arr),
+                                .probe(probe0),
+                                .probe2(probe2),
+                                .probe3(probe3),
+                                .probe4(probe4),
+                                .probe_inc_low(probe_inc_low),
+                                .probe_inc_high(probe_inc_high));
+    end else begin : INC
+        biquad8_wrapper #(.NBITS(12), .NFRAC(0),
+                        .OUTBITS(12),.OUTFRAC(0))
+                        u_wrapper(.wb_clk_i(wbclk),
+                                .wb_rst_i(1'b0),
+                                `CONNECT_WBS_IFM( wb_ , wb_ ),
+                                .clk_i( aclk ),
+                                .global_update_i( 1'b0 ),
+                                .dat_i(sample_arr),
+                                .dat_o(outsample_arr),
+                                .probe(probe0),
+                                .probe2(probe2),
+                                .probe3(probe3),
+                                .probe4(probe4),
+                                .probe_inc_low(probe_inc_low),
+                                .probe_inc_high(probe_inc_high));
+    end
         
     task do_write;
         input [6:0] in_addr;
@@ -423,7 +442,7 @@ module biquad8_wrapper_tb;
 
             code = $fgets(str, fc);
             dummy = $sscanf(str, "%d", coeff_from_file);
-            do_write( 7'h0C, coeff_from_file); // a_1'  // For incremental computation, unused
+            do_write( 7'h0C, coeff_from_file); // a_1'  // For incremental computation
             code = $fgets(str, fc);
             dummy = $sscanf(str, "%d", coeff_from_file);
             do_write( 7'h0C, coeff_from_file); // a_2'
@@ -502,6 +521,164 @@ module biquad8_wrapper_tb;
                     fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
                     f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_BQZ1.dat",advance), "w");
                     fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_BQZ1.dat",advance), "w");
+                end
+
+                for (int i=0; i<advance; i++) begin
+                    // Get the next inputs
+                    code = $fgets(str, fd);
+                    dummy = $sscanf(str, "%d", data_from_file);
+                    // samples[i] = 0;
+                    // $monitor("Hello World in loop");
+                    // $monitor($sformatf("sample is %1d", data_from_file));
+                    // $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                    #0.01;
+                end
+
+                for(int clocks=0;clocks<10007;clocks++) begin // We are expecting 80064 samples, cut the end
+                    @(posedge aclk);
+                    #0.01;
+                    for (int i=0; i<8; i++) begin
+                        // Get the next inputs
+                        code = $fgets(str, fd);
+                        dummy = $sscanf(str, "%d", data_from_file);
+                        samples[i] = data_from_file;
+                        // $monitor("Hello World in loop");
+                        // $monitor($sformatf("sample is %1d", data_from_file));
+                        $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                        #0.01;
+                    end
+                    $fwrite(fdebug,$sformatf("%1d\n",probe0));
+                    $fwrite(fdebug,$sformatf("%1d\n",probe4));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                end
+
+                $fclose(fd);
+                $fclose(fdebug);
+                $fclose(f);
+            end
+        end else if (THIS_DESIGN == "NOINC") begin : ALIGNMENTNOINC
+            $monitor($sformatf("Beginning non-incremented Alignment Pulse With BQ"));
+
+            $monitor($sformatf("Notch at %1d MHz, Q at %1d", notch, Q));
+            fc = $fopen($sformatf("freqs/coefficients/coeff_file_%1dMHz_%1d.dat", notch, Q),"r");
+
+            if (SUB_DESIGN == "IIR") begin : IIR_SUB_NOINC
+                $monitor("DOING IIR SECTION WITH Z^-1");
+                code = $fgets(str, fc);
+                dummy = $sscanf(str, "%d", coeff_from_file);
+                do_write( 7'h04, 16384); // B
+                code = $fgets(str, fc);
+                dummy = $sscanf(str, "%d", coeff_from_file);
+                do_write( 7'h04, 0); // A
+            end else begin: BQ_SUB_NOINC
+                $monitor("DOING FULL BIQUAD FROM FILE");
+                code = $fgets(str, fc);
+                dummy = $sscanf(str, "%d", coeff_from_file);
+                do_write( 7'h04, coeff_from_file); // B
+                code = $fgets(str, fc);
+                dummy = $sscanf(str, "%d", coeff_from_file);
+                do_write( 7'h04, coeff_from_file); // A
+            end
+
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h08, coeff_from_file); // C_2
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h08, coeff_from_file); // C_3  // Yes, this is the correct order according to the documentation
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h08, coeff_from_file); // C_1
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h08, coeff_from_file); // C_0
+
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h0C, coeff_from_file); // a_1'  // For incremental computation
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h0C, coeff_from_file); // a_2'
+
+            // f FIR
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h10, coeff_from_file); // D_FF  
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h10, coeff_from_file); // X_6    
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h10, coeff_from_file); // X_5   
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h10, coeff_from_file);  // X_4   
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h10, coeff_from_file);  // X_3   
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h10, coeff_from_file);  // X_2   
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h10, coeff_from_file);  // X_1 
+        
+            // g FIR
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file);  // E_GG  
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file); // X_7 
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file);  // X_6
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file);  // X_5    
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file);  // X_4  
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file);  // X_3  
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file);  // X_2  
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h14, coeff_from_file);  // X_1 
+            
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h18, coeff_from_file);  // D_FG
+
+            code = $fgets(str, fc);
+            dummy = $sscanf(str, "%d", coeff_from_file);
+            do_write( 7'h1C, coeff_from_file);  // E_GF
+
+            do_write( 7'h00, 32'd1 );     // Update
+                
+
+            for(int advance=0; advance<10; advance++) begin : ADVANCE_PULSE            
+
+                // Now we do the stimulus here
+                #500;
+                
+                if (SUB_DESIGN == "IIR") begin : IIR_SUB_FILE
+                    fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_IIR_no_inc.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_IIR_no_inc.dat",advance), "w");
+                    // code = $fgets(str, fd);
+                end else begin: BQ_SUB_FILE
+                    fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_BQZ0_no_inc.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_BQZ0_no_inc.dat",advance), "w");
                 end
 
                 for (int i=0; i<advance; i++) begin

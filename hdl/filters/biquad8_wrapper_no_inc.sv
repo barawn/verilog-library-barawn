@@ -10,7 +10,7 @@
 // we have 16 of these guys so we peel off lots of the
 // space and just make this 7 bits.
 // 7 bits (5 real bits) gives us 32 registers
-module biquad8_wrapper #(parameter NBITS=16, // input number of bits
+module biquad8_wrapper_no_inc #(parameter NBITS=16, // input number of bits
 			 parameter NFRAC=2,  // input number of fractional bits
 			 parameter NSAMP=8,  // number of samples
 			 parameter OUTBITS=16, // output scaling
@@ -246,15 +246,15 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
             .debug_inc_low(probe_inc_low_connect),
             .debug_inc_high(probe_inc_high_connect));
 
-    assign dat_o = inc_out;
+    // assign dat_o = inc_out;
 
 
     //     // our outputs are Q(IIR_BITS-IIR_FRAC).IIR_FRAC
     //     // so we start at the decimal point (IIR_FRAC), move back OUTFRAC (or move forward if negative),
     //     // and grab OUTBITS.
-    //     assign dat_o[ 0 +: OUTBITS] = y0_out[IIR_FRAC-OUTFRAC +: OUTBITS];
-    //     assign dat_o[ OUTBITS +: OUTBITS] = y1_out[IIR_FRAC-OUTFRAC +: OUTBITS];
-    //     assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
+        assign dat_o[ 0 +: OUTBITS] = y0_out[IIR_FRAC-OUTFRAC +: OUTBITS];
+        assign dat_o[ OUTBITS +: OUTBITS] = y1_out[IIR_FRAC-OUTFRAC +: OUTBITS];
+        assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
 
 endmodule
 
