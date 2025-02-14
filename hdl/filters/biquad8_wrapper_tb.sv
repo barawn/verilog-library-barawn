@@ -2,9 +2,13 @@
 module biquad8_wrapper_tb;
     
     // parameter	     THIS_DESIGN = "ALIGNMENT";
+    // parameter	     THIS_DESIGN = "ALIGNMENTZ1";
+    // parameter	     THIS_DESIGN = "ALIGNMENTZ121";
     parameter	     THIS_DESIGN = "ALIGNMENTBQ";
     // parameter	     THIS_DESIGN = "BIQUAD";
     // parameter	     THIS_DESIGN = "IIR";
+
+    parameter       SUB_DESIGN = "BQ";
 
     wire wbclk;
     wire aclk;
@@ -202,28 +206,206 @@ module biquad8_wrapper_tb;
                 $fclose(fdebug);
                 $fclose(f);
             end 
+        end else if (THIS_DESIGN == "ALIGNMENTZ1") begin : ALIGNMENTZ1
+            $monitor($sformatf("Beginning Alignment Z1 Pulse"));
+
+
+            $monitor("Prepping Z^-1 through incremental");
+            do_write( 7'h04, 16384); // B
+            do_write( 7'h04, 0); // A
+
+
+            do_write( 7'h08, 0); // C_2
+            do_write( 7'h08, 0); // C_3  // Yes, this is the correct order according to the documentation
+            do_write( 7'h08, 0); // C_1
+            do_write( 7'h08,0); // C_0
+
+            do_write( 7'h0C, 0); // a_1'  // For incremental computation, unused
+            do_write( 7'h0C, 0); // a_2'
+
+            // f FIR
+            do_write( 7'h10, 0); // D_FF  
+            do_write( 7'h10, 0); // X_6    
+            do_write( 7'h10, 0); // X_5   
+            do_write( 7'h10, 0);  // X_4   
+            do_write( 7'h10, 0);  // X_3   
+            do_write( 7'h10, 0);  // X_2   
+            do_write( 7'h10, 0);  // X_1 
+        
+            // g FIR
+            do_write( 7'h14, 0);  // E_GG  
+            do_write( 7'h14, 0); // X_7 
+            do_write( 7'h14, 0);  // X_6
+            do_write( 7'h14, 0);  // X_5    
+            do_write( 7'h14, 0);  // X_4  
+            do_write( 7'h14, 0);  // X_3  
+            do_write( 7'h14, 0);  // X_2  
+            do_write( 7'h14, 0);  // X_1 
+            
+            do_write( 7'h18, 0);  // D_FG
+
+            do_write( 7'h1C, 0);  // E_GF
+
+            do_write( 7'h00, 32'd1 );     // Update
+
+            for(int advance=0; advance<10; advance++) begin : ADVANCE_PULSE            
+
+                // Now we do the stimulus here
+                #500;
+                fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                f = $fopen($sformatf("freqs/outputs/timing_pulse_a1_0_a2_0_advance_%1d.dat",advance), "w");
+                fdebug = $fopen($sformatf("freqs/outputs/timing_pulse_0_expanded_advance_%1d.dat",advance), "w");
+                // code = $fgets(str, fd);
+
+                for (int i=0; i<advance; i++) begin
+                    // Get the next inputs
+                    code = $fgets(str, fd);
+                    dummy = $sscanf(str, "%d", data_from_file);
+                    // samples[i] = 0;
+                    // $monitor("Hello World in loop");
+                    // $monitor($sformatf("sample is %1d", data_from_file));
+                    // $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                    #0.01;
+                end
+
+                for(int clocks=0;clocks<10007;clocks++) begin // We are expecting 80064 samples, cut the end
+                    @(posedge aclk);
+                    #0.01;
+                    for (int i=0; i<8; i++) begin
+                        // Get the next inputs
+                        code = $fgets(str, fd);
+                        dummy = $sscanf(str, "%d", data_from_file);
+                        samples[i] = data_from_file;
+                        // $monitor("Hello World in loop");
+                        // $monitor($sformatf("sample is %1d", data_from_file));
+                        $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                        #0.01;
+                    end
+                    $fwrite(fdebug,$sformatf("%1d\n",probe0));
+                    $fwrite(fdebug,$sformatf("%1d\n",probe4));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                end
+
+                $fclose(fd);
+                $fclose(fdebug);
+                $fclose(f);
+            end 
+        end else if (THIS_DESIGN == "ALIGNMENTZ121") begin : ALIGNMENTZ121//CHANGEME
+            $monitor($sformatf("Beginning Alignment Z1 Pulse"));
+
+
+            $monitor("Prepping Z^-1 through incremental");
+            do_write( 7'h04, 16384); // B
+            do_write( 7'h04, 16384/2); // A
+
+
+            do_write( 7'h08, 0); // C_2
+            do_write( 7'h08, 0); // C_3  // Yes, this is the correct order according to the documentation
+            do_write( 7'h08, 0); // C_1
+            do_write( 7'h08,0); // C_0
+
+            do_write( 7'h0C, 0); // a_1'  // For incremental computation, unused
+            do_write( 7'h0C, 0); // a_2'
+
+            // f FIR
+            do_write( 7'h10, 0); // D_FF  
+            do_write( 7'h10, 0); // X_6    
+            do_write( 7'h10, 0); // X_5   
+            do_write( 7'h10, 0);  // X_4   
+            do_write( 7'h10, 0);  // X_3   
+            do_write( 7'h10, 0);  // X_2   
+            do_write( 7'h10, 0);  // X_1 
+        
+            // g FIR
+            do_write( 7'h14, 0);  // E_GG  
+            do_write( 7'h14, 0); // X_7 
+            do_write( 7'h14, 0);  // X_6
+            do_write( 7'h14, 0);  // X_5    
+            do_write( 7'h14, 0);  // X_4  
+            do_write( 7'h14, 0);  // X_3  
+            do_write( 7'h14, 0);  // X_2  
+            do_write( 7'h14, 0);  // X_1 
+            
+            do_write( 7'h18, 0);  // D_FG
+
+            do_write( 7'h1C, 0);  // E_GF
+
+            do_write( 7'h00, 32'd1 );     // Update
+
+            for(int advance=0; advance<10; advance++) begin : ADVANCE_PULSE            
+
+                // Now we do the stimulus here
+                #500;
+                fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                f = $fopen($sformatf("freqs/outputs/timing_pulse_b_121_a1_0_a2_0_advance_%1d.dat",advance), "w");
+                fdebug = $fopen($sformatf("freqs/outputs/timing_pulse_0_expanded_advance_%1d.dat",advance), "w");
+                // code = $fgets(str, fd);
+
+                for (int i=0; i<advance; i++) begin
+                    // Get the next inputs
+                    code = $fgets(str, fd);
+                    dummy = $sscanf(str, "%d", data_from_file);
+                    // samples[i] = 0;
+                    // $monitor("Hello World in loop");
+                    // $monitor($sformatf("sample is %1d", data_from_file));
+                    // $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                    #0.01;
+                end
+
+                for(int clocks=0;clocks<10007;clocks++) begin // We are expecting 80064 samples, cut the end
+                    @(posedge aclk);
+                    #0.01;
+                    for (int i=0; i<8; i++) begin
+                        // Get the next inputs
+                        code = $fgets(str, fd);
+                        dummy = $sscanf(str, "%d", data_from_file);
+                        samples[i] = data_from_file;
+                        // $monitor("Hello World in loop");
+                        // $monitor($sformatf("sample is %1d", data_from_file));
+                        $fwrite(f,$sformatf("%1d\n",outsample[i]));
+                        #0.01;
+                    end
+                    $fwrite(fdebug,$sformatf("%1d\n",probe0));
+                    $fwrite(fdebug,$sformatf("%1d\n",probe4));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                    $fwrite(fdebug,$sformatf("%1d\n",0));
+                end
+
+                $fclose(fd);
+                $fclose(fdebug);
+                $fclose(f);
+            end 
         end else if (THIS_DESIGN == "ALIGNMENTBQ") begin : ALIGNMENTBQ
             $monitor($sformatf("Beginning Alignment Pulse With BQ"));
 
             $monitor($sformatf("Notch at %1d MHz, Q at %1d", notch, Q));
             fc = $fopen($sformatf("freqs/coefficients/coeff_file_%1dMHz_%1d.dat", notch, Q),"r");
 
-            if (THIS_DESIGN == "ALIGNMENTBQ") begin : BIQUAD_TEST
-                $monitor("Prepping Biquad");
-                code = $fgets(str, fc);
-                dummy = $sscanf(str, "%d", coeff_from_file);
-                do_write( 7'h04, coeff_from_file); // B
-                code = $fgets(str, fc);
-                dummy = $sscanf(str, "%d", coeff_from_file);
-                do_write( 7'h04, coeff_from_file); // A
-            end else begin: IIR_TEST
-                $monitor("REPLACEME");
+            if (SUB_DESIGN == "IIR") begin : IIR_SUB
+                $monitor("DOING IIR SECTION WITH Z^-1");
                 code = $fgets(str, fc);
                 dummy = $sscanf(str, "%d", coeff_from_file);
                 do_write( 7'h04, 16384); // B
                 code = $fgets(str, fc);
                 dummy = $sscanf(str, "%d", coeff_from_file);
                 do_write( 7'h04, 0); // A
+            end else begin: BQ_SUB
+                $monitor("DOING FULL BIQUAD FROM FILE");
+                code = $fgets(str, fc);
+                dummy = $sscanf(str, "%d", coeff_from_file);
+                do_write( 7'h04, coeff_from_file); // B
+                code = $fgets(str, fc);
+                dummy = $sscanf(str, "%d", coeff_from_file);
+                do_write( 7'h04, coeff_from_file); // A
             end
 
             code = $fgets(str, fc);
@@ -310,10 +492,17 @@ module biquad8_wrapper_tb;
 
                 // Now we do the stimulus here
                 #500;
-                fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
-                f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_BQ.dat",advance), "w");
-                fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_BQ.dat",advance), "w");
-                // code = $fgets(str, fd);
+                
+                if (SUB_DESIGN == "IIR") begin : IIR_SUB_FILE
+                    fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_IIR.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_IIR.dat",advance), "w");
+                    // code = $fgets(str, fd);
+                end else begin: BQ_SUB_FILE
+                    fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_BQZ1.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_BQZ1.dat",advance), "w");
+                end
 
                 for (int i=0; i<advance; i++) begin
                     // Get the next inputs
