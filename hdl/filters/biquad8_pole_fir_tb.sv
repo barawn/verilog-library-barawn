@@ -6,7 +6,7 @@ module biquad8_pole_fir_wrapper_tb;
     parameter       SUB_DESIGN = "BOTH";
     localparam notch = 650;
     localparam Q = 8;
-    localparam ONE = 16384/128;
+    localparam ONE = 16384;
 
     // WISHBONE
     wire wbclk;
@@ -158,22 +158,22 @@ module biquad8_pole_fir_wrapper_tb;
 
                 // f FIR
                 do_write( 7'h10, 0); // D_FF  
-                do_write( 7'h10, ONE*60); // X_6    
-                do_write( 7'h10, ONE*50); // X_5   
-                do_write( 7'h10, ONE*40);  // X_4   
-                do_write( 7'h10, ONE*30);  // X_3   
-                do_write( 7'h10, ONE*20);  // X_2   
-                do_write( 7'h10, ONE*10);  // X_1 
+                do_write( 7'h10, ONE*6); // X_6    
+                do_write( 7'h10, ONE*5); // X_5   
+                do_write( 7'h10, ONE*4);  // X_4   
+                do_write( 7'h10, ONE*3);  // X_3   
+                do_write( 7'h10, ONE*2);  // X_2   
+                do_write( 7'h10, ONE*1);  // X_1 
             
                 // g FIR
                 do_write( 7'h14, 0);  // E_GG  
-                do_write( 7'h14, ONE*700); // X_7 
-                do_write( 7'h14, ONE*600);  // X_6
-                do_write( 7'h14, ONE*500);  // X_5    
-                do_write( 7'h14, ONE*400);  // X_4  
-                do_write( 7'h14, ONE*300);  // X_3  
-                do_write( 7'h14, ONE*200);  // X_2  
-                do_write( 7'h14, ONE*100);  // X_1 
+                do_write( 7'h14, ONE*7); // X_7 
+                do_write( 7'h14, ONE*6);  // X_6
+                do_write( 7'h14, ONE*5);  // X_5    
+                do_write( 7'h14, ONE*4);  // X_4  
+                do_write( 7'h14, ONE*3);  // X_3  
+                do_write( 7'h14, ONE*2);  // X_2  
+                do_write( 7'h14, ONE*1);  // X_1 
 
                 do_write( 7'h18, 0);  // D_FG
 
@@ -268,10 +268,10 @@ module biquad8_pole_fir_wrapper_tb;
                 // Now we do the stimulus here
                 #500;
                 
-                if (SUB_DESIGN == "IIR") begin : IIR_SUB_FILE
+                if (SUB_DESIGN == "BOTH") begin : BOTH_CHAINS_FILE
                     fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
-                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_IIR.dat",advance), "w");
-                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_IIR.dat",advance), "w");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_FIR_static_%1d_IIR.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advanceFIR_static_%1d_IIR.dat",advance), "w");
                     // code = $fgets(str, fd);
                 end else begin: BQ_SUB_FILE
                     fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
@@ -304,7 +304,7 @@ module biquad8_pole_fir_wrapper_tb;
                         #0.01;
                     end
                     $fwrite(fdebug,$sformatf("%1d\n",probe0));
-                    $fwrite(fdebug,$sformatf("%1d\n",probe4));
+                    $fwrite(fdebug,$sformatf("%1d\n",probe1));
                     $fwrite(fdebug,$sformatf("%1d\n",0));
                     $fwrite(fdebug,$sformatf("%1d\n",0));
                     $fwrite(fdebug,$sformatf("%1d\n",0));

@@ -21,7 +21,7 @@ module biquad8_wrapper_tb;
     reg [31:0] data = {32{1'b0}};
     // wire [31:0] data_out;
     wire [47:0] probe0;
-    wire [47:0] probe2;
+    wire [47:0] probe1;
     wire [12*8-1:0] probe3;
     wire [47:0] probe4;
     wire [29:0] probe_inc_low;
@@ -89,8 +89,8 @@ module biquad8_wrapper_tb;
                                 .global_update_i( 1'b0 ),
                                 .dat_i(sample_arr),
                                 .dat_o(outsample_arr),
-                                .probe(probe0),
-                                .probe2(probe2),
+                                .probe0(probe0),
+                                .probe1(probe2),
                                 .probe3(probe3),
                                 .probe4(probe4),
                                 .probe_inc_low(probe_inc_low),
@@ -565,7 +565,7 @@ module biquad8_wrapper_tb;
             $monitor($sformatf("Beginning non-incremented Alignment Pulse With BQ"));
 
             $monitor($sformatf("Notch at %1d MHz, Q at %1d", notch, Q));
-            fc = $fopen($sformatf("freqs/coefficients/coeff_file_%1dMHz_%1d.dat", notch, Q),"r");
+            fc = $fopen($sformatf("freqs/coefficients/coeff_file_%1dMHz_%1d_alternate.dat", notch, Q),"r");
 
             if (SUB_DESIGN == "IIR") begin : IIR_SUB_NOINC
                 $monitor("DOING IIR SECTION WITH Z^-1");
@@ -672,8 +672,8 @@ module biquad8_wrapper_tb;
                 
                 if (SUB_DESIGN == "IIR") begin : IIR_SUB_FILE
                     fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
-                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_IIR_no_inc.dat",advance), "w");
-                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_IIR_no_inc.dat",advance), "w");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_%1d_IIR_no_inc_alternate.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advance_%1d_IIR_no_inc_alternate.dat",advance), "w");
                     // code = $fgets(str, fd);
                 end else begin: BQ_SUB_FILE
                     fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
