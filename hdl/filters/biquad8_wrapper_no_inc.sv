@@ -33,8 +33,12 @@ module biquad8_wrapper_no_inc #(parameter NBITS=16, // input number of bits
     output [OUTBITS*NSAMP-1:0] dat_o,
     output [47:0] probe0,
     output [47:0] probe1,
-    output [OUTBITS*NSAMP-1:0] probe3,
-    output [47:0] probe4,
+    // output [47:0] probe2,
+    // output [47:0] probe3,
+    // output [47:0] probe4,
+    // output [47:0] probe5,
+    // output [47:0] probe6,
+    // output [47:0] probe7,
     output [29:0] probe_inc_low,
     output [29:0] probe_inc_high
     );     

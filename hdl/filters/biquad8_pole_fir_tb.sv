@@ -2,8 +2,8 @@
 `include "interfaces.vh"
 module biquad8_pole_fir_wrapper_tb;
 
-    parameter       THIS_DESIGN = "ALLONES";
-    parameter       SUB_DESIGN = "BOTH";
+    parameter       THIS_DESIGN = "ALLON";
+    parameter       SUB_DESIGN = "FXEGF";
     localparam notch = 650;
     localparam Q = 8;
     localparam ONE = 16384;
@@ -32,8 +32,14 @@ module biquad8_pole_fir_wrapper_tb;
     // wire [31:0] data_out;
     wire [47:0] probe0;
     wire [47:0] probe1;
-    wire [12*8-1:0] probe3;
-    wire [47:0] probe4;
+    // wire [47:0] probe2;
+    // wire [47:0] probe3;
+    // wire [47:0] probe4;
+    // wire [47:0] probe5;
+    // wire [47:0] probe6;
+    // wire [47:0] probe7;
+    // wire [12*8-1:0] probe3;
+    // wire [47:0] probe4;
     wire [29:0] probe_inc_low;
     wire [29:0] probe_inc_high;
     wire ack;
@@ -93,8 +99,12 @@ module biquad8_pole_fir_wrapper_tb;
                             .dat_o(outsample_arr),
                             .probe0(probe0), // y0 out of pole FIR
                             .probe1(probe1), // y1 out of pole FIR
-                            .probe3(probe3),
-                            .probe4(probe4),
+                            // .probe2(probe2),
+                            // .probe3(probe3),
+                            // .probe4(probe4),
+                            // .probe5(probe5),
+                            // .probe6(probe6),
+                            // .probe7(probe7),
                             .probe_inc_low(probe_inc_low),
                             .probe_inc_high(probe_inc_high));        
     // end else begin : INC
@@ -138,7 +148,7 @@ module biquad8_pole_fir_wrapper_tb;
     initial begin
         #150;
 
-        if (THIS_DESIGN == "ALLONES") begin : ALLONES
+        if (THIS_DESIGN == "ALLON") begin : ALLON
             $monitor($sformatf("Beginning Alignment Pulse With BQ"));
 
             if (SUB_DESIGN == "BOTH") begin : BOTH
@@ -181,10 +191,10 @@ module biquad8_pole_fir_wrapper_tb;
 
                 do_write( 7'h00, 32'd1 );     // Update
                 
-            end else if (SUB_DESIGN == "F") begin: F_ONES
+            end else if (SUB_DESIGN == "FXDFF") begin: F_ON_DFF
                 $monitor("Running only f chain with all 1s, no cross terms");
 
-                                do_write( 7'h04, ONE); // B
+                do_write( 7'h04, ONE); // B
                 do_write( 7'h04, 0); // A
 
                 do_write( 7'h08, 0); // C_2
@@ -197,13 +207,13 @@ module biquad8_pole_fir_wrapper_tb;
                 do_write( 7'h0C, 0); // a_2'
 
                 // f FIR
-                do_write( 7'h10, 0); // D_FF  
-                do_write( 7'h10, ONE); // X_6    
-                do_write( 7'h10, ONE); // X_5   
-                do_write( 7'h10, ONE);  // X_4   
-                do_write( 7'h10, ONE);  // X_3   
-                do_write( 7'h10, ONE);  // X_2   
-                do_write( 7'h10, ONE);  // X_1 
+                do_write( 7'h10, ONE); // D_FF  
+                do_write( 7'h10, ONE*6); // X_6    
+                do_write( 7'h10, ONE*5); // X_5   
+                do_write( 7'h10, ONE*4);  // X_4   
+                do_write( 7'h10, ONE*3);  // X_3   
+                do_write( 7'h10, ONE*2);  // X_2   
+                do_write( 7'h10, ONE*1);  // X_1
             
                 // g FIR
                 do_write( 7'h14, 0);  // E_GG  
@@ -220,7 +230,46 @@ module biquad8_pole_fir_wrapper_tb;
                 do_write( 7'h1C, 0);  // E_GF
 
                 do_write( 7'h00, 32'd1 );     // Update
-            end else if (SUB_DESIGN == "G") begin: G_ONES
+            end else if (SUB_DESIGN == "FXEGF") begin: F_ON_EGF
+                $monitor("Running only f chain with all 1s, no cross terms");
+
+                do_write( 7'h04, ONE); // B
+                do_write( 7'h04, 0); // A
+
+                do_write( 7'h08, 0); // C_2
+                do_write( 7'h08, 0); // C_3  // Yes, this is the correct order according to the documentation
+                do_write( 7'h08, 0); // C_1
+                do_write( 7'h08, 0); // C_0
+
+
+                do_write( 7'h0C, 0); // a_1'  // For incremental computation
+                do_write( 7'h0C, 0); // a_2'
+
+                // f FIR
+                do_write( 7'h10, 0); // D_FF  
+                do_write( 7'h10, ONE*6); // X_6    
+                do_write( 7'h10, ONE*5); // X_5   
+                do_write( 7'h10, ONE*4);  // X_4   
+                do_write( 7'h10, ONE*3);  // X_3   
+                do_write( 7'h10, ONE*2);  // X_2   
+                do_write( 7'h10, ONE*1);  // X_1
+            
+                // g FIR
+                do_write( 7'h14, 0);  // E_GG  
+                do_write( 7'h14, 0); // X_7 
+                do_write( 7'h14, 0);  // X_6
+                do_write( 7'h14, 0);  // X_5    
+                do_write( 7'h14, 0);  // X_4  
+                do_write( 7'h14, 0);  // X_3  
+                do_write( 7'h14, 0);  // X_2  
+                do_write( 7'h14, 0);  // X_1 
+
+                do_write( 7'h18, 0);  // D_FG
+
+                do_write( 7'h1C, ONE);  // E_GF
+
+                do_write( 7'h00, 32'd1 );     // Update
+            end else if (SUB_DESIGN == "G") begin: G_ON
                 $monitor("Running only g chain with all 1s, no cross terms");
 
                                 do_write( 7'h04, ONE); // B
@@ -236,7 +285,7 @@ module biquad8_pole_fir_wrapper_tb;
                 do_write( 7'h0C, 0); // a_2'
 
                 // f FIR
-                do_write( 7'h10, 0); // D_FF  
+                do_write( 7'h10, ONE); // D_FF  
                 do_write( 7'h10, 0); // X_6    
                 do_write( 7'h10, 0); // X_5   
                 do_write( 7'h10, 0);  // X_4   
@@ -272,6 +321,16 @@ module biquad8_pole_fir_wrapper_tb;
                     fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
                     f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_FIR_static_%1d_IIR.dat",advance), "w");
                     fdebug = $fopen($sformatf("freqs/outputs/timing_BQ_expanded_advanceFIR_static_%1d_IIR.dat",advance), "w");
+                    // code = $fgets(str, fd);
+                end else if (SUB_DESIGN == "FXDFF") begin : FXDFF_FILE
+                    fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_FIR_static_%1d_IIR_FXDFF.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_pulse_expanded_advance_FIR_static_%1d_IIR_FXDFF.dat",advance), "w");
+                    // code = $fgets(str, fd);
+                end else if (SUB_DESIGN == "FXEGF") begin : FXEGF_FILE
+                    fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
+                    f = $fopen($sformatf("freqs/outputs/timing_pulse_advance_FIR_static_%1d_IIR_FXEGF.dat",advance), "w");
+                    fdebug = $fopen($sformatf("freqs/outputs/timing_pulse_expanded_advance_FIR_static_%1d_IIR_FXEGF.dat",advance), "w");
                     // code = $fgets(str, fd);
                 end else begin: BQ_SUB_FILE
                     fd = $fopen($sformatf("freqs/inputs/pulse_input_height_512_clipped.dat"),"r");
