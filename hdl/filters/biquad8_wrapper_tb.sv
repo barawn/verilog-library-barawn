@@ -7,9 +7,10 @@ module biquad8_wrapper_tb;
     // parameter	     THIS_DESIGN = "ALIGNMENTBQ";
     // parameter	     THIS_DESIGN = "BIQUAD";
     // parameter	     THIS_DESIGN = "IIR";
-    parameter	     THIS_DESIGN = "NOINC";
+    // parameter	     THIS_DESIGN = "BIQUAD";
+    parameter	     THIS_DESIGN = "DOUBLE_BIQUAD";
 
-    parameter       SUB_DESIGN = "IIR";
+    parameter       SUB_DESIGN = "BIQUAD";
 
     wire wbclk;
     wire aclk;
@@ -95,6 +96,41 @@ module biquad8_wrapper_tb;
                                 // .probe4(probe4),
                                 .probe_inc_low(probe_inc_low),
                                 .probe_inc_high(probe_inc_high));
+    end else if (THIS_DESIGN == "DOUBLE_BIQUAD") begin : DOUBLE 
+        wire [12*8-1:0] bqconnector_arr;
+        biquad8_wrapper #(.NBITS(12), .NFRAC(0),
+                        .OUTBITS(12),.OUTFRAC(0))
+                        u_wrapper1(.wb_clk_i(wbclk),
+                                .wb_rst_i(1'b0),
+                                `CONNECT_WBS_IFM( wb_ , wb_ ),
+                                .clk_i( aclk ),
+                                .global_update_i( 1'b0 ),
+                                .dat_i(sample_arr),
+                                .dat_o(bqconnector_arr),
+                                // .probe0(probe0),
+                                // .probe1(probe2),
+                                // .probe3(probe3),
+                                // .probe4(probe4),
+                                .probe_inc_low(probe_inc_low),
+                                .probe_inc_high(probe_inc_high));
+
+        // PROBE THE IN BETWEEN
+        biquad8_wrapper #(.NBITS(12), .NFRAC(0),
+                        .OUTBITS(12),.OUTFRAC(0))
+                        u_wrapper2(.wb_clk_i(wbclk),
+                                .wb_rst_i(1'b0),
+                                `CONNECT_WBS_IFM( wb_ , wb_ ),
+                                .clk_i( aclk ),
+                                .global_update_i( 1'b0 ),
+                                .dat_i(bqconnector_arr),
+                                .dat_o(outsample_arr)
+                                // .probe0(probe0),
+                                // .probe1(probe2),
+                                // .probe3(probe3),
+                                // .probe4(probe4),
+                                // .probe_inc_low(probe_inc_low),
+                                // .probe_inc_high(probe_inc_high)
+                                );
     end else begin : INC
         biquad8_wrapper #(.NBITS(12), .NFRAC(0),
                         .OUTBITS(12),.OUTFRAC(0))
@@ -107,10 +143,11 @@ module biquad8_wrapper_tb;
                                 .dat_o(outsample_arr),
                                 .probe(probe0),
                                 .probe2(probe2),
-                                .probe3(probe3),
-                                .probe4(probe4),
+                                // .probe3(probe3),
+                                // .probe4(probe4),
                                 .probe_inc_low(probe_inc_low),
-                                .probe_inc_high(probe_inc_high));
+                                .probe_inc_high(probe_inc_high)
+                                );
     end
         
     task do_write;
@@ -720,14 +757,16 @@ module biquad8_wrapper_tb;
                 $fclose(f);
             end
         end else begin : FULL_SPECTRUM
-            for(int notch=650; notch<1496; notch = notch+10000) begin
+            // for(int notch=300; notch<1496; notch = notch+100) begin
+            for(int notch=610; notch<1200; notch = notch+5) begin
+
                 // Zeros
-                for(int Q=8; Q<10; Q = Q+2) begin
+                for(int Q=1; Q<8; Q = Q+2) begin
 
                     int GAUSS_NOISE_SIZE = 400;
                     // int Q = 8;
                     $monitor($sformatf("Notch at %1d MHz, Q at %1d", notch, Q));
-                    fc = $fopen($sformatf("freqs/coefficients/coeff_file_%1dMHz_%1d.dat", notch, Q),"r");
+                    fc = $fopen($sformatf("freqs/coefficients_updated/coeff_file_%1dMHz_%1d.dat", notch, Q),"r");
 
                     if (THIS_DESIGN == "BIQUAD") begin : BIQUAD_TEST
                         $monitor("Prepping Biquad");
@@ -833,6 +872,9 @@ module biquad8_wrapper_tb;
                     if (THIS_DESIGN == "BIQUAD") begin : BIQUAD_PULSE_OUT
                         f = $fopen($sformatf("freqs/outputs/pulse_output_height_512_incremental_notch_%1dMHz_%1dQ.dat", notch, Q), "w");
                         fdebug = $fopen($sformatf("freqs/outputs/pulse_output_height_512_incremental_notch_%1dMHz_%1dQ_expanded.dat", notch, Q), "w");
+                    end else if (THIS_DESIGN == "DOUBLE_BIQUAD") begin : BIQUAD_DOUBLE_PULSE_OUT
+                        f = $fopen($sformatf("freqs/outputs/pulse_output_height_512_incremental_notch_double_%1dMHz_%1dQ.dat", notch, Q), "w");
+                        fdebug = $fopen($sformatf("freqs/outputs/pulse_output_height_512_incremental_notch_double_%1dMHz_%1dQ_expanded.dat", notch, Q), "w");
                     end else begin: IIR_PULSE_OUT
                         f = $fopen($sformatf("freqs/outputs/no_zero_pulse_output_height_512_incremental_notch_%1dMHz_%1dQ.dat", notch, Q), "w");
                         fdebug = $fopen($sformatf("freqs/outputs/no_zero_pulse_output_height_512_incremental_notch_%1dMHz_%1dQ_expanded.dat", notch, Q), "w");
@@ -873,13 +915,17 @@ module biquad8_wrapper_tb;
                     // //     fdebug = $fopen($sformatf("freqs/output_expanded_%0d_MHz_notch_%0d_MHz.txt", freq, notch), "w");
                     // //     fd = $fopen($sformatf("freqs/input_%1d_MHz.dat", freq),"r");
 
-                    for(int in_count=0; in_count<20; in_count = in_count+1) begin
+                    for(int in_count=0; in_count<10; in_count = in_count+1) begin
                         
                         fd = $fopen($sformatf("freqs/inputs/gauss_input_%1d_sigma_hanning_clipped_%0d.dat", GAUSS_NOISE_SIZE, in_count),"r");
                         if (THIS_DESIGN == "BIQUAD") begin : BIQUAD_GAUSS_OUT
                             f = $fopen($sformatf("freqs/outputs/output_gauss_%1d_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
                             fdebug = $fopen($sformatf("freqs/outputs/output_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
-                            $monitor($sformatf("freqs/output_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz.txt", GAUSS_NOISE_SIZE, in_count, notch));
+                            $monitor($sformatf("freqs/output_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q));
+                        end else if (THIS_DESIGN == "DOUBLE_BIQUAD") begin : DOUBLE_BIQUAD_GAUSS_OUT
+                            f = $fopen($sformatf("freqs/outputs/output_double_gauss_%1d_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
+                            fdebug = $fopen($sformatf("freqs/outputs/output_double_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
+                            $monitor($sformatf("freqs/output_double_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q));
                         end else begin: IIR_GAUSS_OUT
                             f = $fopen($sformatf("freqs/outputs/no_zero_output_gauss_%1d_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
                             fdebug = $fopen($sformatf("freqs/outputs/no_zero_output_gauss_%1d_expanded_trial_%0d_incremental_notch_%0d_MHz_%1d.txt", GAUSS_NOISE_SIZE, in_count, notch, Q), "w");
