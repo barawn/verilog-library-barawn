@@ -3,6 +3,7 @@
 // DSP portion of the dual pueo beam module
 // as well as an 18-bit threshold loadable individually and with common update.
 //
+// NOTE NOTE THIS STILL NEEDS TO BE DEBUGGED
 module dual_pueo_beam_dsp(
         input clk_i,
         input [16:0] beamA_in0_i,
@@ -46,6 +47,7 @@ module dual_pueo_beam_dsp(
     // Note that we do not look at the carry bit because we're doing a 3-input
     // add in the second DSP.
     
+    // DSPA computes AB + C = (in0 + in1)
     wire [47:0] dspA_ab = { {7{1'b0}}, beamA_in0_i,  {7{1'b0}}, beamB_in0_i };
     wire [29:0] dspA_a = `DSP_AB_A( dspA_ab );
     wire [17:0] dspA_b = `DSP_AB_B( dspA_ab );
@@ -53,17 +55,19 @@ module dual_pueo_beam_dsp(
     wire [47:0] dspA_to_dspB;
     wire [47:0] dspA_p;
      
+    // this is so amazingly sleazy
     wire [3:0] dspA_alumode = `ALUMODE_Z_MINUS_XYCIN;
     // it goes W, Z, Y, X
     wire [8:0] dspA_opmode = { 2'b00, `Z_OPMODE_0, `Y_OPMODE_C, `X_OPMODE_AB };
     wire [4:0] dspA_inmode = {5{1'b0}};
     wire [2:0] dspA_carryinsel = `CARRYINSEL_CARRYIN;
-    
+
+    // dspB takes in the threshold into AB, and dspA_p into C   
     wire [47:0] dspB_ab = { {6{1'b0}}, thresh_i, {6{1'b0}}, thresh_i };
     wire [29:0] dspB_a = `DSP_AB_A( dspB_ab );
     wire [17:0] dspB_b = `DSP_AB_B( dspB_ab );
     wire [47:0] dspB_p;
-    
+
     wire [3:0] dspB_alumode = `ALUMODE_SUM_ZXYCIN;
     wire [8:0] dspB_alumode = { 2'b00, `Z_OPMODE_PCIN, `Y_OPMODE_C, `X_OPMODE_AB };
     wire [4:0] dspB_inmode = {5{1'b0}};
@@ -91,7 +95,8 @@ module dual_pueo_beam_dsp(
                       .INMODE(dspA_inmode),
                       .CARRYINSEL(dspA_carryinsel),
                       .CARRYIN(1'b0));
-    DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
+   
+   DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
               .AREG(1),.BREG(1),.CREG(1),
               .USE_SIMD("TWO24"))
               u_dspB( .A( dspB_a ),
@@ -102,7 +107,7 @@ module dual_pueo_beam_dsp(
                       .CEB1(thresh_ce_i[0]),
                       .CEB2(update_i),
                       .RSTB(1'b0),
-                      .C( dspB_c ),
+                      .C( dspA_p ),
                       .CEC(1'b1),
                       .RSTC(1'b0),
                       .CEP(1'b1),
