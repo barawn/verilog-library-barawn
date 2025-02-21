@@ -7,7 +7,8 @@ module biquad8_incremental #(parameter NBITS=16,
                              parameter NFRAC2=10,
                              parameter OUTBITS=12, // Note: this may not actually parameterize well at the moment
                              parameter OUTFRAC=0,
-                             parameter NSAMP=8)(
+                             parameter NSAMP=8, 
+			                 parameter CLKTYPE = "NONE")(
              input clk,
              input [NBITS*NSAMP-1:0] dat_i,
              input [NBITS2-1:0] y0_in,
@@ -157,6 +158,7 @@ module biquad8_incremental #(parameter NBITS=16,
             wire [17:0] bcascade;
             wire [47:0] pcascade;
             
+            (* CUSTOM_CC_DST = CLKTYPE *)
             DSP48E2 #(`COMMON_ATTRS,.AREG(AREG_LOW),.ACASCREG(AREG_LOW),.CREG(1)) 
                     u_low( .CLK(clk),
                            .CEP(1'b1),

@@ -7,8 +7,8 @@ module biquad8_wrapper_tb;
     // parameter	     THIS_DESIGN = "ALIGNMENTBQ";
     // parameter	     THIS_DESIGN = "BIQUAD";
     // parameter	     THIS_DESIGN = "IIR";
-    // parameter	     THIS_DESIGN = "BIQUAD";
-    parameter	     THIS_DESIGN = "DOUBLE_BIQUAD";
+    parameter	     THIS_DESIGN = "BIQUAD";
+    // parameter	     THIS_DESIGN = "DOUBLE_BIQUAD";
 
     parameter       SUB_DESIGN = "BIQUAD";
 
@@ -758,12 +758,12 @@ module biquad8_wrapper_tb;
             end
         end else begin : FULL_SPECTRUM
             // for(int notch=300; notch<1496; notch = notch+100) begin
-            for(int notch=610; notch<1200; notch = notch+5) begin
+            for(int notch=600; notch<1200; notch = notch+5000) begin
 
                 // Zeros
-                for(int Q=1; Q<8; Q = Q+2) begin
+                for(int Q=3; Q<8; Q = Q+2) begin
 
-                    int GAUSS_NOISE_SIZE = 400;
+                    int GAUSS_NOISE_SIZE = 1000;
                     // int Q = 8;
                     $monitor($sformatf("Notch at %1d MHz, Q at %1d", notch, Q));
                     fc = $fopen($sformatf("freqs/coefficients_updated/coeff_file_%1dMHz_%1d.dat", notch, Q),"r");

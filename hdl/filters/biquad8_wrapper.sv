@@ -234,7 +234,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
                             .NFRAC2(Y_FRAC),
                             .OUTBITS(OUTBITS),
                             .OUTFRAC(OUTFRAC),
-                            .NSAMP(8))
+                            .NSAMP(8),
+                            .CLKTYPE(CLKTYPE))
         u_incremental( .clk(clk_i),
             .dat_i(zero_fir_out),
             .y0_in(y0_in), //[NBITS2-1:0] (30 bits, 17.13)
