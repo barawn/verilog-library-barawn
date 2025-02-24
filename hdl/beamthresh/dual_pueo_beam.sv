@@ -98,6 +98,11 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
                         .G(beamB_vec[6][j]),
                         .H(beamB_vec[7][j]),
                         .O(beamB[j]));
+            ////////////////////////////////////////////////////////////////////
+            // TODO: REPLACE THIS SECTION WITH THE signed_8b_square module!!  //
+            // ALL THIS WAS BEFORE I FIGURED OUT HOW TO DO THAT               //
+            ////////////////////////////////////////////////////////////////////
+                
             // offset binary absolute value
             always @(posedge clk_i) begin : ABS               
                 if (!beamA[j][NBITS+2]) beamA_abs[j] = zero - beamA[j];
@@ -121,6 +126,10 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
             // form actual square
             assign beamA_sq[j] = { beamA_sqout[j], 1'b0, beamA_lsb[j] };
             assign beamB_sq[j] = { beamB_sqout[j], 1'b0, beamB_lsb[j] };
+                
+            ////////////////////////////////////////////////////////////////////
+            //  END TO BE REPLACED WITH THE signed_8b_square module!!         //                
+            ////////////////////////////////////////////////////////////////////                
         end        
         for (kk=0;kk<3;kk=kk+1) begin : TERN
             wire [13:0] Ax = beamA_sq[3*kk];
