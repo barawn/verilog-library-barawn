@@ -228,8 +228,8 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     assign y0_in = y0_out[IIR_FRAC-Y_FRAC +: Y_BITS];
     assign y1_in = y1_out[IIR_FRAC-Y_FRAC +: Y_BITS];
 
-    biquad8_incremental #(  .NBITS(ZERO_FIR_BITS),//(OUTBITS),// TODO: Note: NBITS and NFRAC is for both INPUT and OUTPUT
-                            .NFRAC(ZERO_FIR_FRAC),//(OUTFRAC),// This is different than the paramaterization of the wrapper
+    biquad8_incremental #(  .NBITS(ZERO_FIR_BITS),
+                            .NFRAC(ZERO_FIR_FRAC),
                             .NBITS2(Y_BITS),
                             .NFRAC2(Y_FRAC),
                             .OUTBITS(OUTBITS),
