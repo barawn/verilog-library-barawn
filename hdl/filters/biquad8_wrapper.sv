@@ -30,7 +30,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
-    output [OUTBITS*NSAMP-1:0] dat_o,
+    output [OUTBITS*NSAMP-1:0] dat_o
     );     
 
     // ok so 00 = update
