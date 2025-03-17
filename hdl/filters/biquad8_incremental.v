@@ -19,14 +19,9 @@ module biquad8_incremental #(parameter NBITS=16,
              input coeff_wr_i,
              input coeff_update_i,
              
-             output [OUTBITS*NSAMP-1:0] dat_o,
-             output[29:0] debug_inc_low,
-             output[29:0] debug_inc_high);
+             output [OUTBITS*NSAMP-1:0] dat_o);
 
-    // With hardcoded values this does read back out to Vivado
-    // assign debug_inc_low = {{(30-NBITS){y0_in[ NFRAC2-NFRAC+NBITS-1]}},{y0_in[ NFRAC2-NFRAC +: NBITS]}};//debug_line_low;
-    // assign debug_inc_high =  {{(30-NBITS){y1_in[ NFRAC2-NFRAC+NBITS-1]}},{y1_in[ NFRAC2-NFRAC +: NBITS]}};//debug_line_high;
-    
+   
     wire [NBITS-1:0] samp_in[NSAMP-1:0];
     wire [NBITS-1:0] samp_out[NSAMP-1:0];
     
@@ -208,8 +203,6 @@ module biquad8_incremental #(parameter NBITS=16,
     localparam A_HEAD_PAD = (A_BITS-A_FRAC_BITS) - (NBITS2-NFRAC2);
     // dsp_low_in is  48 bits long
     // NFRAC2 is 27 (48-27=21)
-    assign debug_inc_low =  {{A_HEAD_PAD{dsp_low_in[0][NBITS2-1]}},   dsp_low_in[0],  {A_TAIL_PAD{1'b1}} };
-    assign debug_inc_high = {{A_HEAD_PAD{dsp_high_in[0][NBITS2-1]}},  dsp_high_in[0], {A_TAIL_PAD{1'b1}} };
 
                 
             

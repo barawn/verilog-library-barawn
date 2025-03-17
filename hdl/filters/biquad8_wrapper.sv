@@ -31,19 +31,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
     output [OUTBITS*NSAMP-1:0] dat_o,
-    output [47:0] probe,
-    output [47:0] probe2,
-    output [OUTBITS*NSAMP-1:0] probe3,
-    output [47:0] probe4,
-    output [29:0] probe_inc_low,
-    output [29:0] probe_inc_high
     );     
-
-    wire [29:0] probe_inc_low_connect;
-    wire [29:0] probe_inc_high_connect;
-
-    assign probe_inc_low = probe_inc_low_connect;
-    assign probe_inc_high = probe_inc_high_connect;
 
     // ok so 00 = update
     //       04 = fir
@@ -175,9 +163,6 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     wire [47:0] y0_fir_out;
     wire [47:0] y1_fir_out;
 
-    assign probe2 = y1_fir_out;
-    assign probe3 = zero_fir_out;
-
     wire [47:0]	y0_out;
     wire [47:0]	y1_out;
 
@@ -209,9 +194,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
             .y0_fir_in(y0_fir_out),
             .y1_fir_in(y1_fir_out),
             .y0_out(y0_out),
-            .y1_out(y1_out),
-            .probe0(probe),
-            .probe1(probe4));		       
+            .y1_out(y1_out));		       
 
 
     // This is where the incremental will go
@@ -243,9 +226,7 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
             .coeff_dat_i(coeff_hold), //[17:0] 
             .coeff_wr_i(coeff_inc_wr),
             .coeff_update_i(update),
-            .dat_o(inc_out),
-            .debug_inc_low(probe_inc_low_connect),
-            .debug_inc_high(probe_inc_high_connect));
+            .dat_o(inc_out));
 
     assign dat_o = inc_out;
 

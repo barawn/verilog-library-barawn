@@ -43,9 +43,7 @@ module biquad8_pole_iir #(parameter NBITS=24,
         input [47:0] y0_fir_in,
         input [47:0] y1_fir_in,
         output [NBITS-1:0] y0_out,
-        output [NBITS-1:0] y1_out,
-        output [47:0] probe0,
-        output [47:0] probe1
+        output [NBITS-1:0] y1_out
     );
     
     reg [NBITS-1:0] y0_out_reg = {NBITS{1'b0}};
@@ -154,7 +152,5 @@ module biquad8_pole_iir #(parameter NBITS=24,
     end
     assign y0_out = y0_out_reg;
     assign y1_out = y1_out_reg;
-    assign probe0 = dsp1_out;//{{(48-A_BITS){dsp3_Ain[A_BITS - 1]}},{dsp3_Ain}};
-    assign probe1 = dsp3_out;//{{(48-A_BITS){dsp3_Ain[A_BITS - 1]}},{dsp3_Ain}};
     
 endmodule
