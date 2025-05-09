@@ -19,7 +19,7 @@
 // the bits.
 //
 // This crap is ULTRA-BASIC right now!
-module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)(
+module dual_pueo_beam (
         input clk_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamA_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamB_i,
@@ -30,7 +30,12 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
         
         output [1:0] trigger_o
     );
-    
+     
+    // Moving these to localparams, since this module will break with unexpected values.
+    localparam NBITS=5;
+    localparam NSAMP=8; 
+    localparam NCHAN=8;
+
     // vectorize inputs
     wire [NBITS-1:0] beamA_vec[NCHAN-1:0][NSAMP-1:0];
     wire [NBITS-1:0] beamB_vec[NCHAN-1:0][NSAMP-1:0];
@@ -41,8 +46,8 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
     wire [NBITS-1:0] beamA_abs[NSAMP-1:0];
     wire [NBITS-1:0] beamB_abs[NSAMP-1:0];
     // square output
-    wire [11:0] beamA_sqout[NSAMP-1:0];
-    wire [11:0] beamB_sqout[NSAMP-1:0];
+    wire [14:0] beamA_sqout[NSAMP-1:0];
+    wire [14:0] beamB_sqout[NSAMP-1:0];
     // store the LSBs
     reg [NSAMP-1:0] beamA_lsb = {NSAMP{1'b0}};
     reg [NSAMP-1:0] beamB_lsb = {NSAMP{1'b0}};
@@ -75,61 +80,83 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
                 assign beamB_vec[ii][jj] = beamB_i[NCHAN*NSAMP*ii + NSAMP*jj +: NBITS-1];
             end
             // beamform A
-            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4))
+            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4)) // The constant add is to correct for the -0.5 in each offset binary
                 u_beamA(.clk_i(clk_i),
-                        .A(beamA_vec[0][j]),
-                        .B(beamA_vec[1][j]),
-                        .C(beamA_vec[2][j]),
-                        .D(beamA_vec[3][j]),
-                        .E(beamA_vec[4][j]),
-                        .F(beamA_vec[5][j]),
-                        .G(beamA_vec[6][j]),
-                        .H(beamA_vec[7][j]),
-                        .O(beamA[j]));
+                        .A(beamA_vec[0][jj]),
+                        .B(beamA_vec[1][jj]),
+                        .C(beamA_vec[2][jj]),
+                        .D(beamA_vec[3][jj]),
+                        .E(beamA_vec[4][jj]),
+                        .F(beamA_vec[5][jj]),
+                        .G(beamA_vec[6][jj]),
+                        .H(beamA_vec[7][jj]),
+                        .O(beamA[jj])); // Sum of the delayed beams for each (phase offset) sample
             // beamform B
-            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4))
+            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4)) // The constant add is to correct for the -0.5 in each offset binary
                 u_beamB(.clk_i(clk_i),
-                        .A(beamB_vec[0][j]),
-                        .B(beamB_vec[1][j]),
-                        .C(beamB_vec[2][j]),
-                        .D(beamB_vec[3][j]),
-                        .E(beamB_vec[4][j]),
-                        .F(beamB_vec[5][j]),
-                        .G(beamB_vec[6][j]),
-                        .H(beamB_vec[7][j]),
-                        .O(beamB[j]));
-            ////////////////////////////////////////////////////////////////////
-            // TODO: REPLACE THIS SECTION WITH THE signed_8b_square module!!  //
-            // ALL THIS WAS BEFORE I FIGURED OUT HOW TO DO THAT               //
-            ////////////////////////////////////////////////////////////////////
+                        .A(beamB_vec[0][jj]),
+                        .B(beamB_vec[1][jj]),
+                        .C(beamB_vec[2][jj]),
+                        .D(beamB_vec[3][jj]),
+                        .E(beamB_vec[4][jj]),
+                        .F(beamB_vec[5][jj]),
+                        .G(beamB_vec[6][jj]),
+                        .H(beamB_vec[7][jj]),
+                        .O(beamB[jj])); // Sum of the delayed beams for each (phase offset) sample
+            // ////////////////////////////////////////////////////////////////////
+            // // TODO: REPLACE THIS SECTION WITH THE signed_8b_square module!!  //
+            // // ALL THIS WAS BEFORE I FIGURED OUT HOW TO DO THAT               //
+            // ////////////////////////////////////////////////////////////////////
                 
-            // offset binary absolute value
-            always @(posedge clk_i) begin : ABS               
-                if (!beamA[j][NBITS+2]) beamA_abs[j] = zero - beamA[j];
-                else beamA_abs[j] <= zero + beamA[j];
+            // // offset binary absolute value
+            // always @(posedge clk_i) begin : ABS               
+            //     if (!beamA[j][NBITS+2]) beamA_abs[j] = zero - beamA[j];
+            //     else beamA_abs[j] <= zero + beamA[j];
 
-                if (!beamB[j][NBITS+2]) beamB_abs[j] = zero - beamB[j];
-                else beamB_abs[j] <= zero + beamB[j];
-            end
-            // and square
-            seven_bit_square u_beamA_sq(.clk_i(clk_i),
-                                        .in_i(beamA_abs[j]),
-                                        .out_o(beamA_sqout[j]));
-            seven_bit_square u_beamB_sq(.clk_i(clk_i),
-                                        .in_i(beamB_abs[j]),
-                                        .out_o(beamB_sqout[j]));
-            // LSB store
-            always @(posedge clk_i) begin : LSBS
-                beamA_lsb[j] <= beamA_abs[j][0];
-                beamB_lsb[j] <= beamB_abs[j][0];
-            end
-            // form actual square
-            assign beamA_sq[j] = { beamA_sqout[j], 1'b0, beamA_lsb[j] };
-            assign beamB_sq[j] = { beamB_sqout[j], 1'b0, beamB_lsb[j] };
+            //     if (!beamB[j][NBITS+2]) beamB_abs[j] = zero - beamB[j];
+            //     else beamB_abs[j] <= zero + beamB[j];
+            // end
+            // // and square
+            // seven_bit_square u_beamA_sq(.clk_i(clk_i),
+            //                             .in_i(beamA_abs[j]),
+            //                             .out_o(beamA_sqout[j]));
+            // seven_bit_square u_beamB_sq(.clk_i(clk_i),
+            //                             .in_i(beamB_abs[j]),
+            //                             .out_o(beamB_sqout[j]));
+            // // LSB store
+            // always @(posedge clk_i) begin : LSBS
+            //     beamA_lsb[j] <= beamA_abs[j][0];
+            //     beamB_lsb[j] <= beamB_abs[j][0];
+            // end
+            // // form actual square
+            // assign beamA_sq[j] = { beamA_sqout[j], 1'b0, beamA_lsb[j] };
+            // assign beamB_sq[j] = { beamB_sqout[j], 1'b0, beamB_lsb[j] };
                 
+            // ////////////////////////////////////////////////////////////////////
+            // //  END TO BE REPLACED WITH THE signed_8b_square module!!         //                
+            // ////////////////////////////////////////////////////////////////////  
+            
             ////////////////////////////////////////////////////////////////////
-            //  END TO BE REPLACED WITH THE signed_8b_square module!!         //                
-            ////////////////////////////////////////////////////////////////////                
+            //                 REPLACING                                      //
+            ////////////////////////////////////////////////////////////////////              
+            // wire [NBITS+2:0] beamA[NSAMP-1:0];
+            // wire [NBITS+2:0] beamB[NSAMP-1:0];
+
+            signed_8b_square u_squarerA(
+                .clk_i(clk_i),
+                .in_i(beamA[jj]),    // [7:0] 
+                .out_o(beamA_sqout[jj])); // [14:0] , although the top (15th) bit will never be set for our symmetric representation value range, so drop it
+            assign beamA_sq[jj] = beamA_sqout[jj][13:0]; // slicing off top bit
+
+            signed_8b_square u_squarerB(
+                .clk_i(clk_i),
+                .in_i(beamB[jj]),    // [7:0] 
+                .out_o(beamB_sqout[jj])); // [14:0] , although the top (15th) bit will never be set for our symmetric representation value range, so drop it
+            assign beamB_sq[jj] = beamB_sqout[jj][13:0]; // slicing off top bit
+            ////////////////////////////////////////////////////////////////////
+            //                 END REPLACING                                  //
+            ////////////////////////////////////////////////////////////////////         
+
         end        
         for (kk=0;kk<3;kk=kk+1) begin : TERN
             wire [13:0] Ax = beamA_sq[3*kk];
@@ -178,7 +205,7 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
                      .RST(1'b0));
     // and finally through the DSPs
     dual_pueo_beam_dsp u_dsps(.clk_i(clk_i),
-                              .beamA_in0_i( {1'b0, ternaryA_sum} ),
+                              .beamA_in0_i( {1'b0, ternaryA_sum} ), // Note the offsets here due to the 3:2 compressor
                               .beamA_in1_i( {ternaryA_carry, 1'b0} ),
                               .beamB_in0_i( {1'b0, ternaryB_sum} ),
                               .beamB_in1_i( {ternaryB_carry, 1'b0} ),

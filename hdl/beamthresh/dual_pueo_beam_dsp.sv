@@ -14,7 +14,7 @@ module dual_pueo_beam_dsp(
         
         input [17:0] thresh_i,
         input [1:0] thresh_ce_i,
-        input update_i,
+        input update_i, // This may be redundant
         
         output [1:0] trigger_o
     );
@@ -74,15 +74,13 @@ module dual_pueo_beam_dsp(
     wire [2:0] dspB_carryinsel = `CARRYINSEL_CARRYIN;
 
     DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
-              .AREG(2),.BREG(2),.CREG(1),.PREG(1),
+              .AREG(1),.BREG(1),.CREG(1),.PREG(1),
               .USE_SIMD("TWO24"))
               u_dspA( .A( dspA_a ),
-                      .CEA1(thresh_ce_i[1]),
-                      .CEA2(),
+                      .CEA2(1'b1),
                       .RSTA(1'b0),
                       .B( dspA_b ),
-                      .CEB1(thresh_ce_i[0]),
-                      .CEB2(),
+                      .CEB2(1'b1),
                       .RSTB(1'b0),
                       .C( dspA_c ),
                       .CEC(1'b1),
@@ -97,11 +95,11 @@ module dual_pueo_beam_dsp(
                       .CARRYIN(1'b0));
    
    DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
-              .AREG(1),.BREG(1),.CREG(1),
+              .AREG(2),.BREG(2),.CREG(1),
               .USE_SIMD("TWO24"))
               u_dspB( .A( dspB_a ),
                       .CEA1(thresh_ce_i[1]),
-                      .CEA2(update_i),
+                      .CEA2(update_i), // Update may be redundant
                       .RSTA(1'b0),
                       .B( dspB_b ),
                       .CEB1(thresh_ce_i[0]),
