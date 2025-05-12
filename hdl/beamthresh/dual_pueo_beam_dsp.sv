@@ -69,14 +69,15 @@ module dual_pueo_beam_dsp(
     wire [47:0] dspB_p;
 
     wire [3:0] dspB_alumode = `ALUMODE_SUM_ZXYCIN;
-    wire [8:0] dspB_alumode = { 2'b00, `Z_OPMODE_PCIN, `Y_OPMODE_C, `X_OPMODE_AB };
+    wire [8:0] dspB_opmode = { 2'b00, `Z_OPMODE_PCIN, `Y_OPMODE_C, `X_OPMODE_AB };
     wire [4:0] dspB_inmode = {5{1'b0}};
     wire [2:0] dspB_carryinsel = `CARRYINSEL_CARRYIN;
 
     DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
               .AREG(1),.BREG(1),.CREG(1),.PREG(1),
               .USE_SIMD("TWO24"))
-              u_dspA( .A( dspA_a ),
+              u_dspA( .CLK(clk_i),
+                      .A( dspA_a ),
                       .CEA2(1'b1),
                       .RSTA(1'b0),
                       .B( dspA_b ),
@@ -91,13 +92,15 @@ module dual_pueo_beam_dsp(
                       .RSTP(1'b0),
                       .ALUMODE(dspA_alumode),
                       .INMODE(dspA_inmode),
+                      .OPMODE(dspA_opmode),
                       .CARRYINSEL(dspA_carryinsel),
                       .CARRYIN(1'b0));
    
    DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
               .AREG(2),.BREG(2),.CREG(1),
               .USE_SIMD("TWO24"))
-              u_dspB( .A( dspB_a ),
+              u_dspB( .CLK(clk_i),
+                      .A( dspB_a ),
                       .CEA1(thresh_ce_i[1]),
                       .CEA2(update_i), // Update may be redundant
                       .RSTA(1'b0),
@@ -114,6 +117,7 @@ module dual_pueo_beam_dsp(
                       .RSTP(1'b0),
                       .ALUMODE(dspB_alumode),
                       .INMODE(dspB_inmode),
+                      .OPMODE(dspB_opmode),
                       .CARRYINSEL(dspB_carryinsel),
                       .CARRYIN(1'b0));
                       
