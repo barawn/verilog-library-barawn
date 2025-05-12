@@ -76,9 +76,12 @@ module dual_pueo_beam (
             wire [NBITS+1:0] zero = {NBITS+2{1'b0}};
             for (ii=0;ii<NCHAN;ii=ii+1) begin : CV
                 // channels jump by NSAMP*NBITS. also flip to offset binary
-                assign beamA_vec[ii][jj] = beamA_i[NCHAN*NSAMP*ii + NSAMP*jj +: NBITS-1];
-                assign beamB_vec[ii][jj] = beamB_i[NCHAN*NSAMP*ii + NSAMP*jj +: NBITS-1];
+                assign beamA_vec[ii][jj] = beamA_i[NBITS*NSAMP*ii + NBITS*jj +: NBITS]; //L Changed from Patrick's version
+                assign beamB_vec[ii][jj] = beamB_i[NBITS*NSAMP*ii + NBITS*jj +: NBITS];
             end
+
+            // First beamforming step is to sum at each (variously delayed) 3 GHz clock tick
+
             // beamform A
             fivebit_8way_ternary #(.ADD_CONSTANT(5'd4)) // The constant add is to correct for the -0.5 in each offset binary
                 u_beamA(.clk_i(clk_i),
@@ -135,12 +138,14 @@ module dual_pueo_beam (
             // ////////////////////////////////////////////////////////////////////
             // //  END TO BE REPLACED WITH THE signed_8b_square module!!         //                
             // ////////////////////////////////////////////////////////////////////  
-            
+
             ////////////////////////////////////////////////////////////////////
             //                 REPLACING                                      //
             ////////////////////////////////////////////////////////////////////              
             // wire [NBITS+2:0] beamA[NSAMP-1:0];
             // wire [NBITS+2:0] beamB[NSAMP-1:0];
+
+            // Square the now summed values for each 3 GHz clock tick
 
             signed_8b_square u_squarerA(
                 .clk_i(clk_i),
@@ -158,6 +163,8 @@ module dual_pueo_beam (
             ////////////////////////////////////////////////////////////////////         
 
         end        
+
+        // This Ternary adder section adds the 8 3 GHz sum&squared samples per 375 MHz clock period to get one number per FPGA clock
         for (kk=0;kk<3;kk=kk+1) begin : TERN
             wire [13:0] Ax = beamA_sq[3*kk];
             wire [13:0] Ay = beamA_sq[3*kk+1];
