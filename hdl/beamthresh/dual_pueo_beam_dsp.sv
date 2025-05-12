@@ -3,7 +3,7 @@
 // DSP portion of the dual pueo beam module
 // as well as an 18-bit threshold loadable individually and with common update.
 //
-// NOTE NOTE THIS STILL NEEDS TO BE DEBUGGED
+// Passes basic unit tests: Lucas 5/12/2025
 module dual_pueo_beam_dsp(
         input clk_i,
         input [16:0] beamA_in0_i,
