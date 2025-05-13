@@ -42,9 +42,9 @@ module dual_pueo_beam (
     // create the beams.
     wire [NBITS+2:0] beamA[NSAMP-1:0];
     wire [NBITS+2:0] beamB[NSAMP-1:0];
-    // absolute value
-    wire [NBITS-1:0] beamA_abs[NSAMP-1:0];
-    wire [NBITS-1:0] beamB_abs[NSAMP-1:0];
+    // converted back to signed
+    wire [NBITS+2:0] beamA_signed[NSAMP-1:0];
+    wire [NBITS+2:0] beamB_signed[NSAMP-1:0];
     // square output
     wire [14:0] beamA_sqout[NSAMP-1:0];
     wire [14:0] beamB_sqout[NSAMP-1:0];
@@ -69,9 +69,9 @@ module dual_pueo_beam (
         genvar ii,jj,kk;
         // sample loop is the outer b/c once we beamform the channels disappear
         for (jj=0;jj<NSAMP;jj=jj+1) begin : SV
-            // absolute value. this is actually going from *offset binary* to abs
-            reg [NBITS+1:0] beamA_abs = {NBITS+2{1'b0}};
-            reg [NBITS+1:0] beamB_abs = {NBITS+2{1'b0}};
+            // // absolute value. this is actually going from *offset binary* to abs
+            // reg [NBITS+1:0] beamA_abs = {NBITS+2{1'b0}};
+            // reg [NBITS+1:0] beamB_abs = {NBITS+2{1'b0}};
             // uh... let's see if this is needed or not
             wire [NBITS+1:0] zero = {NBITS+2{1'b0}};
             for (ii=0;ii<NCHAN;ii=ii+1) begin : CV
@@ -147,15 +147,22 @@ module dual_pueo_beam (
 
             // Square the now summed values for each 3 GHz clock tick
 
+            // TODO: A ZERO OFFSET IS NEEDED!!!!!!
+            // 4 has already been added to each beam sum, so now we need to subtract 128 to get to [-124,124]
+            // Going from 8 bit unsigned to 7 bit signed by subtracting 128 is just flipping the top bit
+
+            assign beamA_signed[jj] = {!beamA[jj][NBITS+2], beamA[jj][NBITS+1:0]};
+            assign beamB_signed[jj] = {!beamB[jj][NBITS+2], beamB[jj][NBITS+1:0]};
+
             signed_8b_square u_squarerA(
                 .clk_i(clk_i),
-                .in_i(beamA[jj]),    // [7:0] 
+                .in_i(beamA_signed[jj]),    // [7:0] 
                 .out_o(beamA_sqout[jj])); // [14:0] , although the top (15th) bit will never be set for our symmetric representation value range, so drop it
             assign beamA_sq[jj] = beamA_sqout[jj][13:0]; // slicing off top bit
 
             signed_8b_square u_squarerB(
                 .clk_i(clk_i),
-                .in_i(beamB[jj]),    // [7:0] 
+                .in_i(beamB_signed[jj]),    // [7:0] 
                 .out_o(beamB_sqout[jj])); // [14:0] , although the top (15th) bit will never be set for our symmetric representation value range, so drop it
             assign beamB_sq[jj] = beamB_sqout[jj][13:0]; // slicing off top bit
             ////////////////////////////////////////////////////////////////////
