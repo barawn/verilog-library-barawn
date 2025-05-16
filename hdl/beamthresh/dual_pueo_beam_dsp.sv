@@ -5,7 +5,7 @@
 //
 // Passes basic unit tests: Lucas 5/12/2025
 
-`define USING_DEBUG 0
+// `define USING_DEBUG 1
 `define DEBUG_SAMPLES 10000
 `define DEBUG_IGNORE_SAMPLES 150
 
