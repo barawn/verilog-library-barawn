@@ -4,6 +4,11 @@
 // as well as an 18-bit threshold loadable individually and with common update.
 //
 // Passes basic unit tests: Lucas 5/12/2025
+
+`define USING_DEBUG 0
+`define DEBUG_SAMPLES 10000
+`define DEBUG_IGNORE_SAMPLES 150
+
 module dual_pueo_beam_dsp(
         input clk_i,
         input [16:0] beamA_in0_i,
@@ -120,8 +125,29 @@ module dual_pueo_beam_dsp(
                       .OPMODE(dspB_opmode),
                       .CARRYINSEL(dspB_carryinsel),
                       .CARRYIN(1'b0));
-                      
-    assign trigger_o[0] = dspB_p[23];
-    assign trigger_o[1] = dspB_p[47];              
+
+`ifdef USING_DEBUG
+    // Debugging only
+    int fout = $fopen($sformatf("freqs/sumsquare_pulse.dat"),"w");
+    int counter = -1 * `DEBUG_IGNORE_SAMPLES;
+    reg signed [23:0] debugdata;
+    always @(posedge clk_i) begin : DEBUG_WRITEOUT
+        debugdata = dspA_to_dspB[23:0];
+        if(counter < 0) begin
+                $display($sformatf("Ignoring %1d", debugdata));
+                counter++;
+        end else if(counter<`DEBUG_SAMPLES) begin
+                $display($sformatf("%1d\n",debugdata));
+                $fwrite(fout,$sformatf("%1d\n",debugdata));
+                counter++;
+        end else if(counter==`DEBUG_SAMPLES) begin
+                $fclose(fout);
+                counter=`DEBUG_SAMPLES+1;
+        end
+    end
+`endif
+    // These look swapped so that 0 corresponds to A and 1 to B
+    assign trigger_o[0] = dspB_p[47];
+    assign trigger_o[1] = dspB_p[23];              
     
 endmodule
