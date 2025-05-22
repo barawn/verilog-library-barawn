@@ -4,6 +4,8 @@
 `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
 `define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
 
+`define DLYFF #0.1
+
 // this is a WISHBONE wrapper for the biquads
 // to allow the control interface to be in a different
 // domain.
@@ -86,55 +88,55 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 
 
     always @(posedge wb_clk_i) begin
-        read_ack = (wb_cyc_i && wb_stb_i && !wb_we_i);
+        read_ack = `DLYFF (wb_cyc_i && wb_stb_i && !wb_we_i);
 
-        if (ack_wbclk || wb_rst_i)
-        pending <= 0;
+        if (ack_wbclk || wb_rst_i) // THESE ACKS MAY BE OUT OF SYNC
+        `DLYFF pending <= 0;
         else if (wb_cyc_i && wb_stb_i && wb_we_i)
-        pending <= 1;
+        `DLYFF pending <= 1;
 
-        pending_rereg <= pending;      
+        pending_rereg <= `DLYFF pending;      
 
-        update_wbclk <= global_update_i || (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[0]);
+        update_wbclk <= `DLYFF global_update_i || (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[0]);
 
         if (wb_cyc_i && wb_stb_i && wb_we_i) begin
             // just always capture it
-            coeff_hold <= wb_dat_i[17:0];
+            coeff_hold <= `DLYFF wb_dat_i[17:0];
             if (`ADDR_MATCH(wb_adr_i, 7'h04)) begin
-                coeff_fir_wr_hold <= 1;
+                coeff_fir_wr_hold <= `DLYFF 1;
             end else begin
-                coeff_fir_wr_hold <= 0;
+                coeff_fir_wr_hold <= `DLYFF 0;
             end
             if (`ADDR_MATCH(wb_adr_i, 7'h08)) begin
-                coeff_iir_wr_hold <= 1;
+                coeff_iir_wr_hold <= `DLYFF 1;
             end else begin
-                coeff_iir_wr_hold <= 0;
+                coeff_iir_wr_hold <= `DLYFF 0;
             end
             if (`ADDR_MATCH(wb_adr_i, 7'h0C)) begin
-                coeff_inc_wr_hold <= 1;
+                coeff_inc_wr_hold <= `DLYFF 1;
             end else begin
-                coeff_inc_wr_hold <= 0;
+                coeff_inc_wr_hold <= `DLYFF 0;
             end
 
             // just check if adr_i[6:4] == 1
             // masked so additional addressing can be pulled for inside the polefir
             //                      val = 1010 0000  mask = 0111 0000
             if (`ADDR_MATCH_MASK(wb_adr_i, 7'h10, 7'h70 )) begin
-                coeff_polefir_wr_hold <= 1;
-                coeff_polefir_addr <= wb_adr_i[3:2];
+                coeff_polefir_wr_hold <= `DLYFF 1;
+                coeff_polefir_addr <= `DLYFF wb_adr_i[3:2];
             end else begin
-                coeff_polefir_wr_hold <= 0;
+                coeff_polefir_wr_hold <= `DLYFF 0;
             end
         end	 
     end
 
     always @(posedge clk_i) begin
-        ack_clk <= wr_clk;
-        update <= update_clk;
-        coeff_fir_wr <= wr_clk && coeff_fir_wr_hold;      
-        coeff_polefir_wr <= wr_clk && coeff_polefir_wr_hold;
-        coeff_iir_wr <= wr_clk && coeff_iir_wr_hold;
-        coeff_inc_wr <= wr_clk && coeff_inc_wr_hold;
+        ack_clk <= `DLYFF wr_clk;
+        update <= `DLYFF update_clk;
+        coeff_fir_wr <= `DLYFF wr_clk && coeff_fir_wr_hold;      
+        coeff_polefir_wr <= `DLYFF wr_clk && coeff_polefir_wr_hold;
+        coeff_iir_wr <= `DLYFF wr_clk && coeff_iir_wr_hold;
+        coeff_inc_wr <= `DLYFF wr_clk && coeff_inc_wr_hold;
     end   
 
     assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
