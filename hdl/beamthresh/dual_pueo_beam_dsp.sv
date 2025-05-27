@@ -106,11 +106,11 @@ module dual_pueo_beam_dsp(
               .USE_SIMD("TWO24"))
               u_dspB( .CLK(clk_i),
                       .A( dspB_a ),
-                      .CEA1(thresh_ce_i[1]),
-                      .CEA2(update_i), // Update may be redundant
+                      .CEA1(thresh_ce_i[0]),
+                      .CEA2(update_i), 
                       .RSTA(1'b0),
                       .B( dspB_b ),
-                      .CEB1(thresh_ce_i[0]),
+                      .CEB1(thresh_ce_i[1]),
                       .CEB2(update_i),
                       .RSTB(1'b0),
                       .C( dspA_p ),
