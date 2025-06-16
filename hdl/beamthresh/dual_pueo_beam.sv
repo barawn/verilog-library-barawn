@@ -36,6 +36,12 @@ module dual_pueo_beam (
     localparam NSAMP=8; 
     localparam NCHAN=8;
 
+    // Registers for pipelining
+    (* KEEP = "TRUE"  *)
+    reg [NCHAN*NSAMP*NBITS-1:0] beamA_i_reg = {NCHAN*NSAMP*NBITS{1'b0}};
+    (* KEEP = "TRUE"  *)
+    reg [NCHAN*NSAMP*NBITS-1:0] beamB_i_reg = {NCHAN*NSAMP*NBITS{1'b0}};
+    
     // vectorize inputs
     wire [NBITS-1:0] beamA_vec[NCHAN-1:0][NSAMP-1:0];
     wire [NBITS-1:0] beamB_vec[NCHAN-1:0][NSAMP-1:0];
@@ -64,7 +70,13 @@ module dual_pueo_beam (
     wire [15:0] ternaryA_carry;
     wire [15:0] ternaryB_sum;
     wire [15:0] ternaryB_carry;
-    
+
+    always @(posedge clk_i) begin
+        // Pipeline the inputs
+        beamA_i_reg <= beamA_i;
+        beamB_i_reg <= beamB_i;
+    end
+
     generate
         genvar ii,jj,kk;
         // sample loop is the outer b/c once we beamform the channels disappear
@@ -76,8 +88,8 @@ module dual_pueo_beam (
             wire [NBITS+1:0] zero = {NBITS+2{1'b0}};
             for (ii=0;ii<NCHAN;ii=ii+1) begin : CV
                 // channels jump by NSAMP*NBITS. also flip to offset binary
-                assign beamA_vec[ii][jj] = beamA_i[NBITS*NSAMP*ii + NBITS*jj +: NBITS]; //L Changed from Patrick's version
-                assign beamB_vec[ii][jj] = beamB_i[NBITS*NSAMP*ii + NBITS*jj +: NBITS];
+                assign beamA_vec[ii][jj] = beamA_i_reg[NBITS*NSAMP*ii + NBITS*jj +: NBITS]; //L Changed from Patrick's version
+                assign beamB_vec[ii][jj] = beamB_i_reg[NBITS*NSAMP*ii + NBITS*jj +: NBITS];
             end
 
             // First beamforming step is to sum at each (variously delayed) 3 GHz clock tick
