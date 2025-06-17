@@ -19,7 +19,7 @@
 // the bits.
 //
 // This crap is ULTRA-BASIC right now!
-module dual_pueo_beam (
+module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "ACLK") (
         input clk_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamA_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamB_i,

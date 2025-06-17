@@ -9,7 +9,7 @@
 `define DEBUG_SAMPLES 10000
 `define DEBUG_IGNORE_SAMPLES 150
 
-module dual_pueo_beam_dsp(
+module dual_pueo_beam_dsp #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "ACLK")(
         input clk_i,
         input [16:0] beamA_in0_i,
         input [16:0] beamA_in1_i,
@@ -78,6 +78,8 @@ module dual_pueo_beam_dsp(
     wire [4:0] dspB_inmode = {5{1'b0}};
     wire [2:0] dspB_carryinsel = `CARRYINSEL_CARRYIN;
 
+
+    (* CUSTOM_CC_DST = CLKTYPE *)
     DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
               .AREG(1),.BREG(1),.CREG(1),.PREG(1),
               .USE_SIMD("TWO24"))
@@ -101,7 +103,8 @@ module dual_pueo_beam_dsp(
                       .CARRYINSEL(dspA_carryinsel),
                       .CARRYIN(1'b0));
    
-   DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
+    (* CUSTOM_CC_DST = CLKTYPE *)
+    DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
               .AREG(2),.BREG(2),.CREG(1),
               .USE_SIMD("TWO24"))
               u_dspB( .CLK(clk_i),
