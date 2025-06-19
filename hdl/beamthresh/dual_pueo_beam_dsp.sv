@@ -5,7 +5,7 @@
 //
 // Passes basic unit tests: Lucas 5/12/2025
 
-// `define USING_DEBUG 1
+// `define USING_DEBUG_DSP 1
 `define DEBUG_SAMPLES 10000
 `define DEBUG_IGNORE_SAMPLES 150
 
@@ -129,7 +129,7 @@ module dual_pueo_beam_dsp #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "
                       .CARRYINSEL(dspB_carryinsel),
                       .CARRYIN(1'b0));
 
-`ifdef USING_DEBUG
+`ifdef USING_DEBUG_DSP
     // Debugging only
     int fout = $fopen($sformatf("freqs/sumsquare_pulse.dat"),"w");
     int counter = -1 * `DEBUG_IGNORE_SAMPLES;
