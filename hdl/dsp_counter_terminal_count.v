@@ -69,7 +69,7 @@ module dsp_counter_terminal_count(
     );
     
     parameter FIXED_TCOUNT = "FALSE";
-    parameter FIXED_TCOUNT_VALUE = 0;
+    parameter [47:0] FIXED_TCOUNT_VALUE = 0;
     parameter RESET_TCOUNT_AT_RESET = "TRUE";
     parameter HALT_AT_TCOUNT = "FALSE";
     parameter [47:0] TCOUNT_MASK = {48{1'b0}};
