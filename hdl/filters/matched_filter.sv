@@ -207,7 +207,16 @@ module matched_filter #(parameter NBITS=12,
             end else begin : TL2
                 assign U_1 = TC;            
             end
-            wire [NBITS-1:0] U_2 = (i > 4) ? x[i-5] : x_zminus8[i+3];
+	    // U2 needs a long delay, either 5 or 6 clocks.
+	    // so the address is 3 or 4 with the extra FF
+	    wire [NBITS-1:0] U_2_dly;
+	    reg [NBITS-1:0]  U_2 = {NBITS{1'b0}};	   
+	    srlvec #(.NBITS(12))
+	        u_u2delay_srl(.clk(aclk),
+			      .ce(1'b1),
+			      .a((i<6) ? 4 : 3),
+			      .din((i<6) ? x[i+2] : x[i-6]),
+			      .dout(U_2_dly));
             // and sign extend 0: 16->17, 1:15->17, 2: 12->17
             wire [NBITS+4:0] U_0_SE = { U_0[NBITS+3], U_0 };
             wire [NBITS+4:0] U_1_SE = { {2{U_1[NBITS+2]}}, U_1 };
@@ -234,8 +243,6 @@ module matched_filter #(parameter NBITS=12,
 
             // MOVE THIS TO A DSP!!!
             reg [NBITS+5:0] M_sum = {NBITS+6{1'b0}};
-                                    
-            assign data_o[(NBITS+6)*i +: (NBITS+6)] = M_sum;
             
             always @(posedge aclk) begin : LG
                 // force the sign extension to avoid stupidity.
@@ -258,13 +265,18 @@ module matched_filter #(parameter NBITS=12,
                 TB <= TB_0_SE + TB_1_SE + TB_2_SE;
                 
                 TC <= Two_TC_2_SE - TC_0_SE - TC_1_SE;
-                
+
+	        U_2 <= U_2_dly;	       
+	       
                 U_sum <= U_0_SE + U_1_SE + U_2_SE;
                 
                 T_delayed_sum <= T_delayed;
                 
                 M_sum <= T_delayed_sum + U_sum;
             end                             
+                                    
+            assign data_o[(NBITS+6)*i +: (NBITS+6)] = M_sum;
+	   
         end
     endgenerate
                 
