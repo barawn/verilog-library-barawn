@@ -260,7 +260,7 @@ module matched_filter #(parameter NBITS=12,
                 
                 T_sum <= T_0_SE + Four_T_1_SE + T_2_SE;
                 
-                TB <= TB_0_SE + TB_1_SE + TB_2_SE;
+                TB <= TB_2_SE - TB_0_SE - TB_1_SE;
                 
                 TC <= Two_TC_2_SE - TC_0_SE - TC_1_SE;
 
