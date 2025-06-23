@@ -29,8 +29,6 @@ module matched_filter #(parameter NBITS=12,
     wire [NBITS-1:0] x_zminus8[NSAMPS-1:0];
     wire [NBITS-1:0] x_zminus16[NSAMPS-1:0];
     wire [NBITS-1:0] x_zminus1[NSAMPS-1:0];    
-    wire [NBITS-1:0] x_zminus2[NSAMPS-1:0];
-    wire [NBITS-1:0] x_zminus6[NSAMPS-1:0];
     wire [NBITS-1:0] x_zminus15[NSAMPS-1:0];
         
     // 1+z^-1
@@ -172,9 +170,9 @@ module matched_filter #(parameter NBITS=12,
             wire [NBITS+1:0] TB_2 = (i > 5) ? aux_b_zminus8[i-5] : aux_b_zminus16[i+3];
 
             // sign extension
-            wire [NBITS+3:0] TB_0_SE = { {2{TB_0[NBITS+1]}}, TB_0_SE };
-            wire [NBITS+3:0] TB_1_SE = { {2{TB_1[NBITS+1]}}, TB_1_SE };
-            wire [NBITS+3:0] TB_2_SE = { {2{TB_2[NBITS+1]}}, TB_2_SE };
+            wire [NBITS+3:0] TB_0_SE = { {2{TB_0[NBITS+1]}}, TB_0 };
+            wire [NBITS+3:0] TB_1_SE = { {2{TB_1[NBITS+1]}}, TB_1 };
+            wire [NBITS+3:0] TB_2_SE = { {2{TB_2[NBITS+1]}}, TB_2 };
             
             // TC inputs are just an add of 4 NBITS+1 guys so they have range NBITS+3
             reg [NBITS+2:0] TC = {NBITS+3{1'b0}};
