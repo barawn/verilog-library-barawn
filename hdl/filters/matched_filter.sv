@@ -1,4 +1,5 @@
 `timescale 1ns / 1ps
+`include "dsp_macros.vh"
 // single channel matched filter for PUEO
 //
 // REMEMBER: OUR INDICES WORK LIKE:
@@ -155,8 +156,8 @@ module matched_filter #(parameter NBITS=12,
             end else begin
                 assign T_1 = Ty;
             end
-            
-            if (i > 3) begin : T2DL
+            // 0, 1, and 2 just add direct, everyone else needs Tz delayed.
+            if (i > 2) begin : T2DL
                 reg [NBITS+1:0] Tz_delayed = {NBITS+1{1'b0}};
                 always @(posedge aclk) begin : LG
                     Tz_delayed <= Tz;
@@ -253,8 +254,10 @@ module matched_filter #(parameter NBITS=12,
                              .din(T_sum),
                              .dout(T_delayed));
 
-            // MOVE THIS TO A DSP!!!
+            // 17/16/15 == 111 or 000
             reg [NBITS+5:0] M_sum = {NBITS+6{1'b0}};
+            wire saturation = (M_sum[17:15] != 3'b000) && (M_sum[17:15] != 3'b111);
+            reg [NBITS-1:0] M_sat_and_scale = {NBITS{1'b0}};
             wire [NBITS+5:0] M_0_SE = {T_delayed_sum[NBITS+4], T_delayed_sum};
             wire [NBITS+5:0] M_1_SE = {U_sum[NBITS+4], U_sum};
             
@@ -288,9 +291,20 @@ module matched_filter #(parameter NBITS=12,
                 T_delayed_sum <= T_delayed;
                 
                 M_sum <= M_0_SE + M_1_SE;
+                
+                if (saturation) begin
+                    // this is always the same
+                    M_sat_and_scale[NBITS-1] <= M_sum[NBITS-1];
+                    // this is always the opposite: so it's either 011111111111
+                    //                                          or 100000000000
+                    M_sat_and_scale[NBITS-2:0] <= ~M_sum[NBITS-1];
+                end else begin
+                    // FIGURE OUT ROUNDING!!!
+                    M_sat_and_scale <= M_sum[4 +: NBITS];
+                end
             end                             
                                     
-            assign data_o[(NBITS+6)*i +: (NBITS+6)] = M_sum;
+            assign data_o[(NBITS+6)*i +: (NBITS+6)] = M_sat_and_scale;
 	   
         end
     endgenerate
