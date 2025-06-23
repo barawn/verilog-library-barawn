@@ -81,7 +81,7 @@ module matched_filter #(parameter NBITS=12,
             // Tx_0 has three types 0-2, 3-5, and 6-7
             wire [NBITS-1:0] Tx_0 = (i > 5) ? (x_zminus8[i-6]) : ( (i>2) ? (x_zminus16[i+2]) : (x_zminus8[i+2]));
             // Tx_1 has only 2 types: 0-2 and 3-7
-            wire [NBITS:0] Tx_1 = (i > 3) ? (aux_a[i-3]) : (aux_a[i+5]);
+            wire [NBITS:0] Tx_1 = (i > 2) ? (aux_a[i-3]) : (aux_a[i+5]);
             // Tx_2 has 3 types 0-1, 2, and 3-7
             wire [NBITS-1:0] Tx_2 = (i > 2) ? x_zminus8[i-2] : ((i > 1) ? x[i-2] : x_zminus8[i+6]);
             // Now arrange with common width and scaling.
