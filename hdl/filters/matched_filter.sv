@@ -293,7 +293,11 @@ module matched_filter #(parameter NBITS=12,
                 M_sum <= M_0_SE + M_1_SE;
                 
                 if (saturation) begin
-                    M_sat_and_scale <= {NBITS{M_sum[17]}};
+                    // this is always the same
+                    M_sat_and_scale[NBITS-1] <= M_sum[NBITS-1];
+                    // this is always the opposite: so it's either 011111111111
+                    //                                          or 100000000000
+                    M_sat_and_scale[NBITS-2:0] <= ~M_sum[NBITS-1];
                 end else begin
                     // FIGURE OUT ROUNDING!!!
                     M_sat_and_scale <= M_sum[4 +: NBITS];
