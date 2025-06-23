@@ -46,6 +46,11 @@ module matched_filter #(parameter NBITS=12,
     wire [NBITS:0] aux_c_zminus8[NSAMPS-1:0];
     wire [NBITS:0] aux_c_zminus16[NSAMPS-1:0];
     
+    always @(posedge aclk) begin
+        data_delayed <= data_i;
+        data_ddelayed <= data_delayed;
+    end
+    
     generate
         genvar i;
         for (i=0;i<NSAMPS;i=i+1) begin : NL
@@ -136,7 +141,12 @@ module matched_filter #(parameter NBITS=12,
             wire [NBITS+1:0] T_1;
             wire [NBITS+1:0] T_2;
             
-            if (i > 2) begin : T1DL
+            // Ty is ONLY delayed in one case: i == 3.
+            // This is because the delays go:
+            // 4: z^16 z^16 z^24
+            // 3: z^16 z^24 z^24
+            // 2: z^24 z^24 z^24
+            if (i == 3) begin : T1DL
                 reg [NBITS+1:0] Ty_delayed = {NBITS+1{1'b0}};
                 always @(posedge aclk) begin : LG
                     Ty_delayed <= Ty;
@@ -250,7 +260,7 @@ module matched_filter #(parameter NBITS=12,
                 // force the sign extension to avoid stupidity.
                 aux_a_sum <= {x[i][NBITS-1], x[i]} + {x_zminus1[i][NBITS-1],x_zminus1[i]};
                 aux_b_sum <= {aux_a[i][NBITS],aux_a[i]} - {aux_a_zminus5[i][NBITS],aux_a_zminus5[i]};
-                aux_c_sum <= {x[i][NBITS-1],x[i]} + {x_zminus15[i][NBITS-1],x_zminus15[i]};
+                aux_c_sum <= {x[i][NBITS-1],x[i]} - {x_zminus15[i][NBITS-1],x_zminus15[i]};
                 
                 aux_a_sum_delayed <= aux_a_sum;
                 aux_b_sum_delayed <= aux_b_sum;
