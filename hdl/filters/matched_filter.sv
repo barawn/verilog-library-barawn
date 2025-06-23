@@ -64,15 +64,17 @@ module matched_filter #(parameter NBITS=12,
             reg [NBITS:0] aux_c_sum = {NBITS+1{1'b0}};
             reg [NBITS:0] aux_c_sum_delayed = {NBITS+1{1'b0}};
             reg [NBITS:0] aux_c_sum_ddelayed = {NBITS+1{1'b0}};
-            
+            reg [NBITS:0] aux_c_sum_dddelayed = {NBITS+1{1'b0}};
+                        
             assign aux_a[i] = aux_a_sum;
             assign aux_a_zminus8[i] = aux_a_sum_delayed;
             assign aux_b[i] = aux_b_sum;
             assign aux_b_zminus8[i] = aux_b_sum_delayed;
             assign aux_b_zminus16[i] = aux_b_sum_ddelayed;
-            assign aux_c[i] = aux_c_sum;
-            assign aux_c_zminus8[i] = aux_c_sum_delayed;
-            assign aux_c_zminus16[i] = aux_c_sum_ddelayed;
+            // aux_c is base delayed by 1.
+            assign aux_c[i] = aux_c_sum_delayed;
+            assign aux_c_zminus8[i] = aux_c_sum_ddelayed;
+            assign aux_c_zminus16[i] = aux_c_sum_dddelayed;
             
             // The Tx terms are 2a -2b + c
             // range is -10238 to 10237, takes NBITS+3 bits to represent. 
@@ -164,9 +166,9 @@ module matched_filter #(parameter NBITS=12,
             reg [NBITS+3:0] TB = {NBITS+4{1'b0}};
             // TB_0 is always the same.
             wire [NBITS+1:0] TB_0 = aux_b[i];
-            // TB_1 flips at 2
-            wire [NBITS+1:0] TB_1 = (i > 1) ? aux_b[i-2] : aux_b_zminus8[i+6];
-            // and TB_2 flips at 5
+            // TB_1 flips at 2 and is base zminus8
+            wire [NBITS+1:0] TB_1 = (i > 1) ? aux_b_zminus8[i-2] : aux_b_zminus16[i+6];
+            // and TB_2 flips at 5 and is base zminus8
             wire [NBITS+1:0] TB_2 = (i > 4) ? aux_b_zminus8[i-5] : aux_b_zminus16[i+3];
 
             // sign extension
@@ -241,6 +243,8 @@ module matched_filter #(parameter NBITS=12,
 
             // MOVE THIS TO A DSP!!!
             reg [NBITS+5:0] M_sum = {NBITS+6{1'b0}};
+            wire [NBITS+5:0] M_0_SE = {T_delayed_sum[NBITS+4], T_delayed_sum};
+            wire [NBITS+5:0] M_1_SE = {U_sum[NBITS+4], U_sum};
             
             always @(posedge aclk) begin : LG
                 // force the sign extension to avoid stupidity.
@@ -253,6 +257,7 @@ module matched_filter #(parameter NBITS=12,
                 aux_b_sum_ddelayed <= aux_b_sum_delayed;
                 aux_c_sum_delayed <= aux_c_sum;
                 aux_c_sum_ddelayed <= aux_c_sum_delayed;
+                aux_c_sum_dddelayed <= aux_c_sum_ddelayed;
                 
                 Tx <= Two_Tx_0_SE - Two_Tx_1_SE - Tx_2_SE;
                 Ty <= Ty_0_SE - Ty_1_SE + Ty_2_SE;
@@ -264,13 +269,13 @@ module matched_filter #(parameter NBITS=12,
                 
                 TC <= Two_TC_2_SE - TC_0_SE - TC_1_SE;
 
-	        U_2 <= U_2_dly;	       
+	            U_2 <= U_2_dly;	       
 	       
                 U_sum <= U_0_SE + U_1_SE + U_2_SE;
                 
                 T_delayed_sum <= T_delayed;
                 
-                M_sum <= T_delayed_sum + U_sum;
+                M_sum <= M_0_SE + M_1_SE;
             end                             
                                     
             assign data_o[(NBITS+6)*i +: (NBITS+6)] = M_sum;
