@@ -165,7 +165,7 @@ module matched_filter #(parameter NBITS=12,
             // TB_0 is always the same.
             wire [NBITS+1:0] TB_0 = aux_b[i];
             // TB_1 flips at 2
-            wire [NBITS+1:0] TB_1 = (i > 2) ? aux_b[i-2] : aux_b_zminus8[i+6];
+            wire [NBITS+1:0] TB_1 = (i > 1) ? aux_b[i-2] : aux_b_zminus8[i+6];
             // and TB_2 flips at 5
             wire [NBITS+1:0] TB_2 = (i > 5) ? aux_b_zminus8[i-5] : aux_b_zminus16[i+3];
 
