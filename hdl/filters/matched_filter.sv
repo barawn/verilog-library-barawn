@@ -249,7 +249,7 @@ module matched_filter #(parameter NBITS=12,
             always @(posedge aclk) begin : LG
                 // force the sign extension to avoid stupidity.
                 aux_a_sum <= {x[i][NBITS-1], x[i]} + {x_zminus1[i][NBITS-1],x_zminus1[i]};
-                aux_b_sum <= {aux_a[i][NBITS],aux_a[i]} + {aux_a_zminus5[i][NBITS],aux_a_zminus5[i]};
+                aux_b_sum <= {aux_a[i][NBITS],aux_a[i]} - {aux_a_zminus5[i][NBITS],aux_a_zminus5[i]};
                 aux_c_sum <= {x[i][NBITS-1],x[i]} + {x_zminus15[i][NBITS-1],x_zminus15[i]};
                 
                 aux_a_sum_delayed <= aux_a_sum;
