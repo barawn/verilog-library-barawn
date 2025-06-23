@@ -243,11 +243,13 @@ module matched_filter #(parameter NBITS=12,
 
             wire [NBITS+4:0] T_delayed;
             reg [NBITS+4:0] T_delayed_sum = {NBITS+5{1'b0}};
-            // 5 clocks of delay would mean an address of 4. but we use the FF too, so 3.
+            // The T outputs need a delay of 4 clocks (for i > 2) or 5 clocks (for i <= 2)
+            // Without the FF this would be an address of 3 or 4
+            // With the FFs this is an address of 2 or 3
             srlvec #(.NBITS(17))
                 u_tdelay_srl(.clk(aclk),
                              .ce(1'b1),
-                             .a((i>2) ? 4'd3 : 4'd4),
+                             .a((i>2) ? 4'd2 : 4'd3),
                              .din(T_sum),
                              .dout(T_delayed));
 
