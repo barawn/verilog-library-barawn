@@ -155,8 +155,8 @@ module matched_filter #(parameter NBITS=12,
             end else begin
                 assign T_1 = Ty;
             end
-            
-            if (i > 3) begin : T2DL
+            // 0, 1, and 2 just add direct, everyone else needs Tz delayed.
+            if (i > 2) begin : T2DL
                 reg [NBITS+1:0] Tz_delayed = {NBITS+1{1'b0}};
                 always @(posedge aclk) begin : LG
                     Tz_delayed <= Tz;
