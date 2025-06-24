@@ -17,7 +17,7 @@ module matched_filter #(parameter NBITS=12,
                         parameter NSAMPS=8)(
         input aclk,
         input [NBITS*NSAMPS-1:0] data_i,
-        output [(NBITS+6)*NSAMPS-1:0] data_o
+        output [NBITS*NSAMPS-1:0] data_o
     );
     
     // input data delayed
@@ -294,17 +294,17 @@ module matched_filter #(parameter NBITS=12,
                 
                 if (saturation) begin
                     // this is always the same
-                    M_sat_and_scale[NBITS-1] <= M_sum[NBITS-1];
+                    M_sat_and_scale[NBITS-1] <= M_sum[4+NBITS-1];
                     // this is always the opposite: so it's either 011111111111
                     //                                          or 100000000000
-                    M_sat_and_scale[NBITS-2:0] <= ~M_sum[NBITS-1];
+                    M_sat_and_scale[NBITS-2:0] <= ~M_sum[4+NBITS-1];
                 end else begin
                     // FIGURE OUT ROUNDING!!!
                     M_sat_and_scale <= M_sum[4 +: NBITS];
                 end
             end                             
                                     
-            assign data_o[(NBITS+6)*i +: (NBITS+6)] = M_sat_and_scale;
+            assign data_o[NBITS*i +: NBITS] = M_sat_and_scale;
 	   
         end
     endgenerate
