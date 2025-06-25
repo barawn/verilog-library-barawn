@@ -4,15 +4,13 @@
 `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
 `define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
 
-`define DLYFF #0.1
-
 // this is a WISHBONE wrapper for the biquads
 // to allow the control interface to be in a different
 // domain.
 // we have 16 of these guys so we peel off lots of the
 // space and just make this 7 bits.
 // 7 bits (5 real bits) gives us 32 registers
-module biquad8_wrapper #(parameter NBITS=16, // input number of bits
+module biquad8_wrapper_no_inc #(parameter NBITS=16, // input number of bits
 			 parameter NFRAC=2,  // input number of fractional bits
 			 parameter NSAMP=8,  // number of samples
 			 parameter OUTBITS=16, // output scaling
@@ -32,8 +30,24 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
     input [NBITS*NSAMP-1:0]    dat_i,
-    output [OUTBITS*NSAMP-1:0] dat_o
+    output [OUTBITS*NSAMP-1:0] dat_o,
+    output [47:0] probe0,
+    output [47:0] probe1,
+    // output [47:0] probe2,
+    // output [47:0] probe3,
+    // output [47:0] probe4,
+    // output [47:0] probe5,
+    // output [47:0] probe6,
+    // output [47:0] probe7,
+    output [29:0] probe_inc_low,
+    output [29:0] probe_inc_high
     );     
+
+    wire [29:0] probe_inc_low_connect;
+    wire [29:0] probe_inc_high_connect;
+
+    assign probe_inc_low = probe_inc_low_connect;
+    assign probe_inc_high = probe_inc_high_connect;
 
     // ok so 00 = update
     //       04 = fir
@@ -88,55 +102,55 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 
 
     always @(posedge wb_clk_i) begin
-        read_ack = `DLYFF (wb_cyc_i && wb_stb_i && !wb_we_i);
+        read_ack = (wb_cyc_i && wb_stb_i && !wb_we_i);
 
-        if (ack_wbclk || wb_rst_i) // THESE ACKS MAY BE OUT OF SYNC
-        `DLYFF pending <= 0;
+        if (ack_wbclk || wb_rst_i)
+        pending <= 0;
         else if (wb_cyc_i && wb_stb_i && wb_we_i)
-        `DLYFF pending <= 1;
+        pending <= 1;
 
-        pending_rereg <= `DLYFF pending;      
+        pending_rereg <= pending;      
 
-        update_wbclk <= `DLYFF global_update_i || (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[0]);
+        update_wbclk <= global_update_i || (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[0]);
 
         if (wb_cyc_i && wb_stb_i && wb_we_i) begin
             // just always capture it
-            coeff_hold <= `DLYFF wb_dat_i[17:0];
+            coeff_hold <= wb_dat_i[17:0];
             if (`ADDR_MATCH(wb_adr_i, 7'h04)) begin
-                coeff_fir_wr_hold <= `DLYFF 1;
+                coeff_fir_wr_hold <= 1;
             end else begin
-                coeff_fir_wr_hold <= `DLYFF 0;
+                coeff_fir_wr_hold <= 0;
             end
             if (`ADDR_MATCH(wb_adr_i, 7'h08)) begin
-                coeff_iir_wr_hold <= `DLYFF 1;
+                coeff_iir_wr_hold <= 1;
             end else begin
-                coeff_iir_wr_hold <= `DLYFF 0;
+                coeff_iir_wr_hold <= 0;
             end
             if (`ADDR_MATCH(wb_adr_i, 7'h0C)) begin
-                coeff_inc_wr_hold <= `DLYFF 1;
+                coeff_inc_wr_hold <= 1;
             end else begin
-                coeff_inc_wr_hold <= `DLYFF 0;
+                coeff_inc_wr_hold <= 0;
             end
 
             // just check if adr_i[6:4] == 1
             // masked so additional addressing can be pulled for inside the polefir
             //                      val = 1010 0000  mask = 0111 0000
             if (`ADDR_MATCH_MASK(wb_adr_i, 7'h10, 7'h70 )) begin
-                coeff_polefir_wr_hold <= `DLYFF 1;
-                coeff_polefir_addr <= `DLYFF wb_adr_i[3:2];
+                coeff_polefir_wr_hold <= 1;
+                coeff_polefir_addr <= wb_adr_i[3:2];
             end else begin
-                coeff_polefir_wr_hold <= `DLYFF 0;
+                coeff_polefir_wr_hold <= 0;
             end
         end	 
     end
 
     always @(posedge clk_i) begin
-        ack_clk <= `DLYFF wr_clk;
-        update <= `DLYFF update_clk;
-        coeff_fir_wr <= `DLYFF wr_clk && coeff_fir_wr_hold;      
-        coeff_polefir_wr <= `DLYFF wr_clk && coeff_polefir_wr_hold;
-        coeff_iir_wr <= `DLYFF wr_clk && coeff_iir_wr_hold;
-        coeff_inc_wr <= `DLYFF wr_clk && coeff_inc_wr_hold;
+        ack_clk <= wr_clk;
+        update <= update_clk;
+        coeff_fir_wr <= wr_clk && coeff_fir_wr_hold;      
+        coeff_polefir_wr <= wr_clk && coeff_polefir_wr_hold;
+        coeff_iir_wr <= wr_clk && coeff_iir_wr_hold;
+        coeff_inc_wr <= wr_clk && coeff_inc_wr_hold;
     end   
 
     assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
@@ -164,6 +178,10 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 
     wire [47:0] y0_fir_out;
     wire [47:0] y1_fir_out;
+
+    assign probe0 = y0_fir_out;
+    assign probe1 = y1_fir_out;
+    assign probe3 = zero_fir_out;
 
     wire [47:0]	y0_out;
     wire [47:0]	y1_out;
@@ -196,7 +214,9 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
             .y0_fir_in(y0_fir_out),
             .y1_fir_in(y1_fir_out),
             .y0_out(y0_out),
-            .y1_out(y1_out));		       
+            .y1_out(y1_out),
+            .probe0(probe),
+            .probe1(probe4));		       
 
 
     // This is where the incremental will go
@@ -213,14 +233,13 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
     assign y0_in = y0_out[IIR_FRAC-Y_FRAC +: Y_BITS];
     assign y1_in = y1_out[IIR_FRAC-Y_FRAC +: Y_BITS];
 
-    biquad8_incremental #(  .NBITS(ZERO_FIR_BITS),
-                            .NFRAC(ZERO_FIR_FRAC),
+    biquad8_incremental #(  .NBITS(ZERO_FIR_BITS),//(OUTBITS),// TODO: Note: NBITS and NFRAC is for both INPUT and OUTPUT
+                            .NFRAC(ZERO_FIR_FRAC),//(OUTFRAC),// This is different than the paramaterization of the wrapper
                             .NBITS2(Y_BITS),
                             .NFRAC2(Y_FRAC),
                             .OUTBITS(OUTBITS),
                             .OUTFRAC(OUTFRAC),
-                            .NSAMP(8),
-                            .CLKTYPE(CLKTYPE))
+                            .NSAMP(8))
         u_incremental( .clk(clk_i),
             .dat_i(zero_fir_out),
             .y0_in(y0_in), //[NBITS2-1:0] (30 bits, 17.13)
@@ -228,17 +247,19 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
             .coeff_dat_i(coeff_hold), //[17:0] 
             .coeff_wr_i(coeff_inc_wr),
             .coeff_update_i(update),
-            .dat_o(inc_out));
+            .dat_o(inc_out),
+            .debug_inc_low(probe_inc_low_connect),
+            .debug_inc_high(probe_inc_high_connect));
 
-    assign dat_o = inc_out;
+    // assign dat_o = inc_out;
 
 
     //     // our outputs are Q(IIR_BITS-IIR_FRAC).IIR_FRAC
     //     // so we start at the decimal point (IIR_FRAC), move back OUTFRAC (or move forward if negative),
     //     // and grab OUTBITS.
-    //     assign dat_o[ 0 +: OUTBITS] = y0_out[IIR_FRAC-OUTFRAC +: OUTBITS];
-    //     assign dat_o[ OUTBITS +: OUTBITS] = y1_out[IIR_FRAC-OUTFRAC +: OUTBITS];
-    //     assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
+        assign dat_o[ 0 +: OUTBITS] = y0_out[IIR_FRAC-OUTFRAC +: OUTBITS];
+        assign dat_o[ OUTBITS +: OUTBITS] = y1_out[IIR_FRAC-OUTFRAC +: OUTBITS];
+        assign dat_o[ 2*OUTBITS +: ((NSAMP-2)*OUTBITS)] = {(NSAMP-2)*OUTBITS{1'b0}};
 
 endmodule
 

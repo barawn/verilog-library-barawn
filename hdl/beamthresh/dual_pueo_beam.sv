@@ -19,7 +19,7 @@
 // the bits.
 //
 // This crap is ULTRA-BASIC right now!
-module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)(
+module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "ACLK") (
         input clk_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamA_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamB_i,
@@ -30,6 +30,17 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
         
         output [1:0] trigger_o
     );
+     
+    // Moving these to localparams, since this module will break with unexpected values.
+    localparam NBITS=5;
+    localparam NSAMP=8; 
+    localparam NCHAN=8;
+
+    // Registers for pipelining
+    (* KEEP = "TRUE"  *)
+    reg [NCHAN*NSAMP*NBITS-1:0] beamA_i_reg = {NCHAN*NSAMP*NBITS{1'b0}};
+    (* KEEP = "TRUE"  *)
+    reg [NCHAN*NSAMP*NBITS-1:0] beamB_i_reg = {NCHAN*NSAMP*NBITS{1'b0}};
     
     // vectorize inputs
     wire [NBITS-1:0] beamA_vec[NCHAN-1:0][NSAMP-1:0];
@@ -37,12 +48,12 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
     // create the beams.
     wire [NBITS+2:0] beamA[NSAMP-1:0];
     wire [NBITS+2:0] beamB[NSAMP-1:0];
-    // absolute value
-    wire [NBITS-1:0] beamA_abs[NSAMP-1:0];
-    wire [NBITS-1:0] beamB_abs[NSAMP-1:0];
+    // converted back to signed
+    wire [NBITS+2:0] beamA_signed[NSAMP-1:0];
+    wire [NBITS+2:0] beamB_signed[NSAMP-1:0];
     // square output
-    wire [11:0] beamA_sqout[NSAMP-1:0];
-    wire [11:0] beamB_sqout[NSAMP-1:0];
+    wire [14:0] beamA_sqout[NSAMP-1:0];
+    wire [14:0] beamB_sqout[NSAMP-1:0];
     // store the LSBs
     reg [NSAMP-1:0] beamA_lsb = {NSAMP{1'b0}};
     reg [NSAMP-1:0] beamB_lsb = {NSAMP{1'b0}};
@@ -59,78 +70,120 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
     wire [15:0] ternaryA_carry;
     wire [15:0] ternaryB_sum;
     wire [15:0] ternaryB_carry;
-    
+
+    always @(posedge clk_i) begin
+        // Pipeline the inputs
+        beamA_i_reg <= beamA_i;
+        beamB_i_reg <= beamB_i;
+    end
+
     generate
         genvar ii,jj,kk;
         // sample loop is the outer b/c once we beamform the channels disappear
         for (jj=0;jj<NSAMP;jj=jj+1) begin : SV
-            // absolute value. this is actually going from *offset binary* to abs
-            reg [NBITS+1:0] beamA_abs = {NBITS+2{1'b0}};
-            reg [NBITS+1:0] beamB_abs = {NBITS+2{1'b0}};
+            // // absolute value. this is actually going from *offset binary* to abs
+            // reg [NBITS+1:0] beamA_abs = {NBITS+2{1'b0}};
+            // reg [NBITS+1:0] beamB_abs = {NBITS+2{1'b0}};
             // uh... let's see if this is needed or not
             wire [NBITS+1:0] zero = {NBITS+2{1'b0}};
             for (ii=0;ii<NCHAN;ii=ii+1) begin : CV
                 // channels jump by NSAMP*NBITS. also flip to offset binary
-                assign beamA_vec[ii][jj] = beamA_i[NCHAN*NSAMP*ii + NSAMP*jj +: NBITS-1];
-                assign beamB_vec[ii][jj] = beamB_i[NCHAN*NSAMP*ii + NSAMP*jj +: NBITS-1];
+                assign beamA_vec[ii][jj] = beamA_i_reg[NBITS*NSAMP*ii + NBITS*jj +: NBITS]; //L Changed from Patrick's version
+                assign beamB_vec[ii][jj] = beamB_i_reg[NBITS*NSAMP*ii + NBITS*jj +: NBITS];
             end
-            // beamform A
-            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4))
-                u_beamA(.clk_i(clk_i),
-                        .A(beamA_vec[0][j]),
-                        .B(beamA_vec[1][j]),
-                        .C(beamA_vec[2][j]),
-                        .D(beamA_vec[3][j]),
-                        .E(beamA_vec[4][j]),
-                        .F(beamA_vec[5][j]),
-                        .G(beamA_vec[6][j]),
-                        .H(beamA_vec[7][j]),
-                        .O(beamA[j]));
-            // beamform B
-            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4))
-                u_beamB(.clk_i(clk_i),
-                        .A(beamB_vec[0][j]),
-                        .B(beamB_vec[1][j]),
-                        .C(beamB_vec[2][j]),
-                        .D(beamB_vec[3][j]),
-                        .E(beamB_vec[4][j]),
-                        .F(beamB_vec[5][j]),
-                        .G(beamB_vec[6][j]),
-                        .H(beamB_vec[7][j]),
-                        .O(beamB[j]));
-            ////////////////////////////////////////////////////////////////////
-            // TODO: REPLACE THIS SECTION WITH THE signed_8b_square module!!  //
-            // ALL THIS WAS BEFORE I FIGURED OUT HOW TO DO THAT               //
-            ////////////////////////////////////////////////////////////////////
-                
-            // offset binary absolute value
-            always @(posedge clk_i) begin : ABS               
-                if (!beamA[j][NBITS+2]) beamA_abs[j] = zero - beamA[j];
-                else beamA_abs[j] <= zero + beamA[j];
 
-                if (!beamB[j][NBITS+2]) beamB_abs[j] = zero - beamB[j];
-                else beamB_abs[j] <= zero + beamB[j];
-            end
-            // and square
-            seven_bit_square u_beamA_sq(.clk_i(clk_i),
-                                        .in_i(beamA_abs[j]),
-                                        .out_o(beamA_sqout[j]));
-            seven_bit_square u_beamB_sq(.clk_i(clk_i),
-                                        .in_i(beamB_abs[j]),
-                                        .out_o(beamB_sqout[j]));
-            // LSB store
-            always @(posedge clk_i) begin : LSBS
-                beamA_lsb[j] <= beamA_abs[j][0];
-                beamB_lsb[j] <= beamB_abs[j][0];
-            end
-            // form actual square
-            assign beamA_sq[j] = { beamA_sqout[j], 1'b0, beamA_lsb[j] };
-            assign beamB_sq[j] = { beamB_sqout[j], 1'b0, beamB_lsb[j] };
+            // First beamforming step is to sum at each (variously delayed) 3 GHz clock tick
+
+            // beamform A
+            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4)) // The constant add is to correct for the -0.5 in each offset binary
+                u_beamA(.clk_i(clk_i),
+                        .A(beamA_vec[0][jj]),
+                        .B(beamA_vec[1][jj]),
+                        .C(beamA_vec[2][jj]),
+                        .D(beamA_vec[3][jj]),
+                        .E(beamA_vec[4][jj]),
+                        .F(beamA_vec[5][jj]),
+                        .G(beamA_vec[6][jj]),
+                        .H(beamA_vec[7][jj]),
+                        .O(beamA[jj])); // Sum of the delayed beams for each (phase offset) sample
+            // beamform B
+            fivebit_8way_ternary #(.ADD_CONSTANT(5'd4)) // The constant add is to correct for the -0.5 in each offset binary
+                u_beamB(.clk_i(clk_i),
+                        .A(beamB_vec[0][jj]),
+                        .B(beamB_vec[1][jj]),
+                        .C(beamB_vec[2][jj]),
+                        .D(beamB_vec[3][jj]),
+                        .E(beamB_vec[4][jj]),
+                        .F(beamB_vec[5][jj]),
+                        .G(beamB_vec[6][jj]),
+                        .H(beamB_vec[7][jj]),
+                        .O(beamB[jj])); // Sum of the delayed beams for each (phase offset) sample
+            // ////////////////////////////////////////////////////////////////////
+            // // TODO: REPLACE THIS SECTION WITH THE signed_8b_square module!!  //
+            // // ALL THIS WAS BEFORE I FIGURED OUT HOW TO DO THAT               //
+            // ////////////////////////////////////////////////////////////////////
                 
+            // // offset binary absolute value
+            // always @(posedge clk_i) begin : ABS               
+            //     if (!beamA[j][NBITS+2]) beamA_abs[j] = zero - beamA[j];
+            //     else beamA_abs[j] <= zero + beamA[j];
+
+            //     if (!beamB[j][NBITS+2]) beamB_abs[j] = zero - beamB[j];
+            //     else beamB_abs[j] <= zero + beamB[j];
+            // end
+            // // and square
+            // seven_bit_square u_beamA_sq(.clk_i(clk_i),
+            //                             .in_i(beamA_abs[j]),
+            //                             .out_o(beamA_sqout[j]));
+            // seven_bit_square u_beamB_sq(.clk_i(clk_i),
+            //                             .in_i(beamB_abs[j]),
+            //                             .out_o(beamB_sqout[j]));
+            // // LSB store
+            // always @(posedge clk_i) begin : LSBS
+            //     beamA_lsb[j] <= beamA_abs[j][0];
+            //     beamB_lsb[j] <= beamB_abs[j][0];
+            // end
+            // // form actual square
+            // assign beamA_sq[j] = { beamA_sqout[j], 1'b0, beamA_lsb[j] };
+            // assign beamB_sq[j] = { beamB_sqout[j], 1'b0, beamB_lsb[j] };
+                
+            // ////////////////////////////////////////////////////////////////////
+            // //  END TO BE REPLACED WITH THE signed_8b_square module!!         //                
+            // ////////////////////////////////////////////////////////////////////  
+
             ////////////////////////////////////////////////////////////////////
-            //  END TO BE REPLACED WITH THE signed_8b_square module!!         //                
-            ////////////////////////////////////////////////////////////////////                
+            //                 REPLACING                                      //
+            ////////////////////////////////////////////////////////////////////              
+            // wire [NBITS+2:0] beamA[NSAMP-1:0];
+            // wire [NBITS+2:0] beamB[NSAMP-1:0];
+
+            // Square the now summed values for each 3 GHz clock tick
+
+            // TODO: A ZERO OFFSET IS NEEDED!!!!!!
+            // 4 has already been added to each beam sum, so now we need to subtract 128 to get to [-124,124]
+            // Going from 8 bit unsigned to 7 bit signed by subtracting 128 is just flipping the top bit
+
+            assign beamA_signed[jj] = {!beamA[jj][NBITS+2], beamA[jj][NBITS+1:0]};
+            assign beamB_signed[jj] = {!beamB[jj][NBITS+2], beamB[jj][NBITS+1:0]};
+
+            signed_8b_square u_squarerA(
+                .clk_i(clk_i),
+                .in_i(beamA_signed[jj]),    // [7:0] 
+                .out_o(beamA_sqout[jj])); // [14:0] , although the top (15th) bit will never be set for our symmetric representation value range, so drop it
+            assign beamA_sq[jj] = beamA_sqout[jj][13:0]; // slicing off top bit
+
+            signed_8b_square u_squarerB(
+                .clk_i(clk_i),
+                .in_i(beamB_signed[jj]),    // [7:0] 
+                .out_o(beamB_sqout[jj])); // [14:0] , although the top (15th) bit will never be set for our symmetric representation value range, so drop it
+            assign beamB_sq[jj] = beamB_sqout[jj][13:0]; // slicing off top bit
+            ////////////////////////////////////////////////////////////////////
+            //                 END REPLACING                                  //
+            ////////////////////////////////////////////////////////////////////         
+
         end        
+
+        // This Ternary adder section adds the 8 3 GHz sum&squared samples per 375 MHz clock period to get one number per FPGA clock
         for (kk=0;kk<3;kk=kk+1) begin : TERN
             wire [13:0] Ax = beamA_sq[3*kk];
             wire [13:0] Ay = beamA_sq[3*kk+1];
@@ -178,7 +231,7 @@ module dual_pueo_beam #(parameter NBITS=5, parameter NSAMP=8, parameter NCHAN=8)
                      .RST(1'b0));
     // and finally through the DSPs
     dual_pueo_beam_dsp u_dsps(.clk_i(clk_i),
-                              .beamA_in0_i( {1'b0, ternaryA_sum} ),
+                              .beamA_in0_i( {1'b0, ternaryA_sum} ), // Note the offsets here due to the 3:2 compressor
                               .beamA_in1_i( {ternaryA_carry, 1'b0} ),
                               .beamB_in0_i( {1'b0, ternaryB_sum} ),
                               .beamB_in1_i( {ternaryB_carry, 1'b0} ),

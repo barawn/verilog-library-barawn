@@ -3,8 +3,13 @@
 // DSP portion of the dual pueo beam module
 // as well as an 18-bit threshold loadable individually and with common update.
 //
-// NOTE NOTE THIS STILL NEEDS TO BE DEBUGGED
-module dual_pueo_beam_dsp(
+// Passes basic unit tests: Lucas 5/12/2025
+
+// `define USING_DEBUG_DSP 1
+`define DEBUG_SAMPLES 10000
+`define DEBUG_IGNORE_SAMPLES 150
+
+module dual_pueo_beam_dsp #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "ACLK")(
         input clk_i,
         input [16:0] beamA_in0_i,
         input [16:0] beamA_in1_i,
@@ -14,7 +19,7 @@ module dual_pueo_beam_dsp(
         
         input [17:0] thresh_i,
         input [1:0] thresh_ce_i,
-        input update_i,
+        input update_i, // This may be redundant
         
         output [1:0] trigger_o
     );
@@ -69,20 +74,21 @@ module dual_pueo_beam_dsp(
     wire [47:0] dspB_p;
 
     wire [3:0] dspB_alumode = `ALUMODE_SUM_ZXYCIN;
-    wire [8:0] dspB_alumode = { 2'b00, `Z_OPMODE_PCIN, `Y_OPMODE_C, `X_OPMODE_AB };
+    wire [8:0] dspB_opmode = { 2'b00, `Z_OPMODE_PCIN, `Y_OPMODE_C, `X_OPMODE_AB };
     wire [4:0] dspB_inmode = {5{1'b0}};
     wire [2:0] dspB_carryinsel = `CARRYINSEL_CARRYIN;
 
+
+    (* CUSTOM_CC_DST = CLKTYPE *)
     DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
-              .AREG(2),.BREG(2),.CREG(1),.PREG(1),
+              .AREG(1),.BREG(1),.CREG(1),.PREG(1),
               .USE_SIMD("TWO24"))
-              u_dspA( .A( dspA_a ),
-                      .CEA1(thresh_ce_i[1]),
-                      .CEA2(),
+              u_dspA( .CLK(clk_i),
+                      .A( dspA_a ),
+                      .CEA2(1'b1),
                       .RSTA(1'b0),
                       .B( dspA_b ),
-                      .CEB1(thresh_ce_i[0]),
-                      .CEB2(),
+                      .CEB2(1'b1),
                       .RSTB(1'b0),
                       .C( dspA_c ),
                       .CEC(1'b1),
@@ -93,18 +99,21 @@ module dual_pueo_beam_dsp(
                       .RSTP(1'b0),
                       .ALUMODE(dspA_alumode),
                       .INMODE(dspA_inmode),
+                      .OPMODE(dspA_opmode),
                       .CARRYINSEL(dspA_carryinsel),
                       .CARRYIN(1'b0));
    
-   DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
-              .AREG(1),.BREG(1),.CREG(1),
+    (* CUSTOM_CC_DST = CLKTYPE *)
+    DSP48E2 #(`NO_MULT_ATTRS, `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,
+              .AREG(2),.BREG(2),.CREG(1),
               .USE_SIMD("TWO24"))
-              u_dspB( .A( dspB_a ),
-                      .CEA1(thresh_ce_i[1]),
-                      .CEA2(update_i),
+              u_dspB( .CLK(clk_i),
+                      .A( dspB_a ),
+                      .CEA1(thresh_ce_i[0]),
+                      .CEA2(update_i), 
                       .RSTA(1'b0),
                       .B( dspB_b ),
-                      .CEB1(thresh_ce_i[0]),
+                      .CEB1(thresh_ce_i[1]),
                       .CEB2(update_i),
                       .RSTB(1'b0),
                       .C( dspA_p ),
@@ -116,10 +125,32 @@ module dual_pueo_beam_dsp(
                       .RSTP(1'b0),
                       .ALUMODE(dspB_alumode),
                       .INMODE(dspB_inmode),
+                      .OPMODE(dspB_opmode),
                       .CARRYINSEL(dspB_carryinsel),
                       .CARRYIN(1'b0));
-                      
-    assign trigger_o[0] = dspB_p[23];
-    assign trigger_o[1] = dspB_p[47];              
+
+`ifdef USING_DEBUG_DSP
+    // Debugging only
+    int fout = $fopen($sformatf("freqs/sumsquare_pulse.dat"),"w");
+    int counter = -1 * `DEBUG_IGNORE_SAMPLES;
+    reg signed [23:0] debugdata;
+    always @(posedge clk_i) begin : DEBUG_WRITEOUT
+        debugdata = dspA_to_dspB[23:0];
+        if(counter < 0) begin
+                $display($sformatf("Ignoring %1d", debugdata));
+                counter++;
+        end else if(counter<`DEBUG_SAMPLES) begin
+                $display($sformatf("%1d\n",debugdata));
+                $fwrite(fout,$sformatf("%1d\n",debugdata));
+                counter++;
+        end else if(counter==`DEBUG_SAMPLES) begin
+                $fclose(fout);
+                counter=`DEBUG_SAMPLES+1;
+        end
+    end
+`endif
+    // These look swapped so that 0 corresponds to A and 1 to B
+    assign trigger_o[0] = dspB_p[47];
+    assign trigger_o[1] = dspB_p[23];              
     
 endmodule
