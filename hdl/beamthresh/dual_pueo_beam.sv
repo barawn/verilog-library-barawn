@@ -230,7 +230,9 @@ module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "ACLK
                      .CE(1'b1),
                      .RST(1'b0));
     // and finally through the DSPs
-    dual_pueo_beam_dsp u_dsps(.clk_i(clk_i),
+    dual_pueo_beam_dsp #(.WBCLKTYPE(WBCLKTYPE),
+                         .CLKTYPE(CLKTYPE))
+                       u_dsps(.clk_i(clk_i),
                               .beamA_in0_i( {1'b0, ternaryA_sum} ), // Note the offsets here due to the 3:2 compressor
                               .beamA_in1_i( {ternaryA_carry, 1'b0} ),
                               .beamB_in0_i( {1'b0, ternaryB_sum} ),
