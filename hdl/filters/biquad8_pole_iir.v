@@ -69,7 +69,7 @@ module biquad8_pole_iir #(parameter NBITS=24,
     wire [A_BITS-1:0] dsp1_Ain = dsp3_out[(C_FRAC_BITS-A_FRAC_BITS) +: A_BITS];
     wire [A_BITS-1:0] dsp2_Ain = dsp3_out[(C_FRAC_BITS-A_FRAC_BITS) +: A_BITS];
     wire [A_BITS-1:0] dsp3_Ain = dsp1_out[(C_FRAC_BITS-A_FRAC_BITS) +: A_BITS];
-    
+
     `define COMMON_ATTRS `DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS,.BREG(2),.BCASCREG(1)
     // DSP0 has an MREG, but no PREG.
     // The head DSP needs a CC marker. Everyone else is in the proper domain.
@@ -152,5 +152,6 @@ module biquad8_pole_iir #(parameter NBITS=24,
     end
     assign y0_out = y0_out_reg;
     assign y1_out = y1_out_reg;
-    
+
+    `undef COMMON_ATTRS    
 endmodule

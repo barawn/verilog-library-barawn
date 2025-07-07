@@ -19,7 +19,7 @@
 //
 // CLK_DIVIDE=0 and EXTRA_DIV2 is stupid, it's just constantly
 // 1 after a bit of startup.
-`define DLYFF #1
+`define DLYFF #0.1
 module clk_div_ce #(parameter [4:0] CLK_DIVIDE=31,
 		    parameter EXTRA_DIV2="FALSE")
                    ( input clk,

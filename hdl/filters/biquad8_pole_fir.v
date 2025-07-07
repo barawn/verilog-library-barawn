@@ -379,4 +379,6 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 .P(y1_out));
 
     
+    `undef COMMON_ATTRS
 endmodule
+
