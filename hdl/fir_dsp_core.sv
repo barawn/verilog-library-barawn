@@ -110,8 +110,9 @@ module fir_dsp_core #(
     localparam DSP_AREG = (ACASCREG > AREG) ? ACASCREG : AREG;
     // this is set if we need to jump back a register in
     // the path
-    localparam USE_A1 = (ACASCREG == 2 && AREG == 1) ? 1 : 0;
-    
+    localparam USE_A1_INMODE = (ACASCREG == 2 && AREG == 1) ? 1'b1 : 1'b0;
+    localparam USE_D_INMODE = (USE_D == "TRUE") ? 1'b1 : 1'b0;
+    localparam SUBTRACT_A_INMODE = (SUBTRACT_A == "TRUE") ? 1'b1 : 1'b0;
     // INMODE is always either D+A or D-A, or just +/-A.
     // We use A2 unless USE_A1 is set, which is the same thing
     // as INMODE[0].
@@ -126,11 +127,12 @@ module fir_dsp_core #(
     // A1   = 00001
     // -A2  = 01000
     // -A1  = 01001
-    localparam [4:0] INMODE = { 1'b0,
-				(SUBTRACT_A == "TRUE") ? 1'b1 : 1'b0,
-				(USE_D == "TRUE") ? 1'b1 : 1'b0,
-				1'b0,
-				USE_A1 };
+    localparam [4:0] DSP_INMODE = 
+            { 1'b0,
+              SUBTRACT_A_INMODE,
+              USE_D_INMODE,
+              1'b0,
+              USE_A1_INMODE };
 
     // FIGURING OUT THE W AND Z MUX:
     // First, check the parameters using a generate block.
@@ -228,7 +230,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));		  
@@ -276,7 +278,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
@@ -326,7 +328,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),                                    
                                     .ALUMODE(ALUMODE));                
@@ -374,7 +376,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),                                    
                                     .ALUMODE(ALUMODE));                
@@ -425,7 +427,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
@@ -473,7 +475,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
@@ -522,7 +524,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
@@ -570,7 +572,7 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
