@@ -107,7 +107,9 @@ module fir_dsp_core #(
         .RSTP( port )
 
     // figure out the ACTUAL DSP AREG
-    localparam DSP_AREG = (ACASCREG > AREG) ? ACASCREG : AREG;
+    localparam MAX_AREG = (ACASCREG > AREG) ? ACASCREG : AREG;
+    localparam DSP_AREG = (USE_ACOUT != "FALSE") ? MAX_AREG : AREG;
+    
     // this is set if we need to jump back a register in
     // the path
     localparam USE_A1 = (ACASCREG == 2 && AREG == 1) ? 1 : 0;
