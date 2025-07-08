@@ -19,7 +19,13 @@
 // the bits.
 //
 // This crap is ULTRA-BASIC right now!
-module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "ACLK") (
+module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK", 
+                        parameter CLKTYPE = "ACLK",
+                        // thank you, SystemVerilog 2009
+                        localparam NBITS=5,
+                        localparam NSAMP=8,
+                        localparam NCHAN=8
+                        ) (
         input clk_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamA_i,
         input [NCHAN*NSAMP*NBITS-1:0] beamB_i,
@@ -31,11 +37,6 @@ module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK", parameter CLKTYPE = "ACLK
         output [1:0] trigger_o
     );
      
-    // Moving these to localparams, since this module will break with unexpected values.
-    localparam NBITS=5;
-    localparam NSAMP=8; 
-    localparam NCHAN=8;
-
     // Registers for pipelining
     (* KEEP = "TRUE"  *)
     reg [NCHAN*NSAMP*NBITS-1:0] beamA_i_reg = {NCHAN*NSAMP*NBITS{1'b0}};
