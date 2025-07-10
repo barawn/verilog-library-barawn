@@ -68,7 +68,12 @@ module fir_dsp_core #(
 	parameter USE_D = "TRUE",
         parameter PREADD_REG = 0,
         parameter MULT_REG = 0,
+        // NOTE NOTE NOTE: This is the number of registers
+        // IN THE CASCADE path
         parameter ACASCREG = 1,
+        // NOTE NOTE NOTE: This is NOT the DSP's "AREG"!
+        //  - it is the number of registers IN THE
+        // PREADD/MULT/ALU path!
         parameter AREG = 1,
         parameter CREG = 1,
         parameter DREG = 1,
@@ -77,6 +82,7 @@ module fir_dsp_core #(
 	parameter CLKTYPE = "NONE"
     )(
         input clk_i,
+        input rst_i,
         input [29:0] acin_i,
         input [47:0] pcin_i,
         input [25:0] a_i,
@@ -93,16 +99,42 @@ module fir_dsp_core #(
         input update_i
     );
     
+    `define RESETS( port )  \
+        .RSTA( port ),      \
+        .RSTB( port ),      \
+        .RSTC( port ),      \
+        .RSTD( port ),      \
+        .RSTP( port )
+
+    // figure out the ACTUAL DSP AREG
+    localparam MAX_AREG = (ACASCREG > AREG) ? ACASCREG : AREG;
+    localparam DSP_AREG = (USE_ACOUT != "FALSE") ? MAX_AREG : AREG;
+    
+    // this is set if we need to jump back a register in
+    // the path
+    localparam USE_A1_INMODE = (ACASCREG == 2 && AREG == 1) ? 1'b1 : 1'b0;
+    localparam USE_D_INMODE = (USE_D == "TRUE") ? 1'b1 : 1'b0;
+    localparam SUBTRACT_A_INMODE = (SUBTRACT_A == "TRUE") ? 1'b1 : 1'b0;
+    // INMODE is always either D+A or D-A, or just +/-A.
+    // We use A2 unless USE_A1 is set, which is the same thing
+    // as INMODE[0].
+    
     // INMODE is always either D+A2 or D-A2, or just +/-A2.
     // A2 gets selected when AMULTSEL is just A instead of AD
     // D+A2 = 00100
+    // D+A1 = 00101
     // D-A2 = 01100
+    // D-A1 = 01101
     // A2   = 00000
+    // A1   = 00001
     // -A2  = 01000
-    localparam [4:0] INMODE = { 1'b0,
-				(SUBTRACT_A == "TRUE") ? 1'b1 : 1'b0,
-				(USE_D == "TRUE") ? 1'b1 : 1'b0,
-				2'b00 };
+    // -A1  = 01001
+    localparam [4:0] DSP_INMODE = 
+            { 1'b0,
+              SUBTRACT_A_INMODE,
+              USE_D_INMODE,
+              1'b0,
+              USE_A1_INMODE };
 
     // FIGURING OUT THE W AND Z MUX:
     // First, check the parameters using a generate block.
@@ -163,7 +195,7 @@ module fir_dsp_core #(
                            .A_INPUT( "CASCADE" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(2),
                            .BCASCREG(1),
 			   .B_INPUT("CASCADE"),
@@ -182,7 +214,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT( acout_o ),
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
@@ -200,8 +232,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));		  
                end else begin : APCSCIN // block: ABPCSCIN
 		// A, P have cascade inputs
@@ -210,7 +243,7 @@ module fir_dsp_core #(
                            .A_INPUT( "CASCADE" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(LOADABLE_B == "NONE" ? 0 : 2),
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
@@ -229,7 +262,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT( acout_o ),
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
@@ -247,8 +280,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
 		  end // block: APCSCIN	       
 	    end // block: CSCIN
@@ -259,7 +293,7 @@ module fir_dsp_core #(
                            .A_INPUT( "DIRECT" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(2),
                            .BCASCREG(1),
                            .CARRYINREG(1'b0),
@@ -278,7 +312,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT( acout_o ),
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
@@ -296,8 +330,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),                                    
                                     .ALUMODE(ALUMODE));                
 	       end else begin : PCSCIN // block: BPCSCIN
 		// P has cascade input
@@ -306,7 +341,7 @@ module fir_dsp_core #(
                            .A_INPUT( "DIRECT" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(LOADABLE_B == "NONE" ? 0 : 2),
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
@@ -325,7 +360,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT( acout_o ),
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),
@@ -343,8 +378,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),                                    
                                     .ALUMODE(ALUMODE));                
 	       end // block: PCSCIN	       
 	    end // block: NCSCIN	   
@@ -357,7 +393,7 @@ module fir_dsp_core #(
                            .A_INPUT( "CASCADE" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(2),
                            .BCASCREG(1),
                            .CARRYINREG(1'b0),
@@ -376,7 +412,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT(acout_o),                           
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
@@ -393,8 +429,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
 		end // block: ABCSCIN
 	        else begin : ACSCIN
@@ -404,7 +441,7 @@ module fir_dsp_core #(
                            .A_INPUT( "CASCADE" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(LOADABLE_B == "NONE" ? 0 : 2),
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
@@ -423,7 +460,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .ACIN( acin_i ),
                                     .ACOUT(acout_o),                           
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
@@ -440,8 +477,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
 		end // block: ACSCIN
 	    end // block: CSCIN
@@ -452,7 +490,7 @@ module fir_dsp_core #(
                            .A_INPUT( "DIRECT" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(2),
                            .BCASCREG(1),
                            .CARRYINREG(1'b0),
@@ -471,7 +509,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT(acout_o),
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
@@ -488,8 +526,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
 		end // block: BCSCIN
 	        else begin : NCSCIN
@@ -499,7 +538,7 @@ module fir_dsp_core #(
                            .A_INPUT( "DIRECT" ),
                            .ADREG( ADREG ),
                            .ALUMODEREG(1'b0),
-                           .AREG(AREG),
+                           .AREG(DSP_AREG),
                            .BREG(LOADABLE_B == "NONE" ? 0 : 2),
                            .BCASCREG(LOADABLE_B == "NONE" ? 0 : 1),
                            .CARRYINREG(1'b0),
@@ -518,7 +557,7 @@ module fir_dsp_core #(
                            .USE_MULT("MULTIPLY"))
                            u_dsp(   .A(DSP_A),
                                     .ACOUT(acout_o),
-                                    .CEA1( (AREG == 2) ? 1'b1 : 1'b0 ),
+                                    .CEA1( (DSP_AREG == 2) ? 1'b1 : 1'b0 ),
                                     .CEA2(1'b1),
                                     .CEAD( (ADREG == 1) ? 1'b1 : 1'b0 ),
                                     .CEM( (MULT_REG == 1) ? 1'b1 : 1'b0 ),                                
@@ -535,8 +574,9 @@ module fir_dsp_core #(
                                     .P(p_o),
                                     .CEP(1'b1),
                                     .PCOUT(pcout_o),
-                                    .INMODE(INMODE),
+                                    .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
+                                    `RESETS( rst_i ),
                                     .ALUMODE(ALUMODE));
 		end // block: NCSCIN	       
             end // block: NCSCIN	   
