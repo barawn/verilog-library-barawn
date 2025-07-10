@@ -7,6 +7,7 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
 				    parameter OUTBITS=12,
 				    localparam NSAMPS=8)
    (  input                            clk_i,
+      input			       rst_i,      
       input [NSAMPS-1:0][INBITS-1:0]   dat_i,
       output [NSAMPS-1:0][OUTBITS-1:0] dat_o );
 
@@ -147,7 +148,7 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
 	 wire [47:0] cascade;	 
 	 fourtap_systolic_preadd 
 	   syst0(.clk_i(clk),
-		 .rst_i(rst),
+		 .rst_i(rst_i),
 		 .dat_i(sys0_in),
 		 .preadd_i(pre0_in),
 		 .coeff0_i(    526    ),
@@ -158,7 +159,7 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
 	 wire [47:0] data_out;	 
 	 fourtap_systolic_preadd #(.CASCADE("TRUE"))
 	   syst1(.clk_i(clk),
-		 .rst_i(rst),
+		 .rst_i(rst_i),
 		 .dat_i(sys1_in),
 		 .preadd_i(pre1_in),
 		 .coeff0_i(   -263    ),
