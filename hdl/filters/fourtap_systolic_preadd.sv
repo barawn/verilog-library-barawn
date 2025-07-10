@@ -163,7 +163,7 @@ module fourtap_systolic_preadd #(
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
-		  .USE_ROUND(USE_RND_2),
+		  .USE_RND(USE_RND_2),
 		  .RND_VAL(RND_CONST),
 		  .PREADD_REG(1),
 		  .MULT_REG(1),
