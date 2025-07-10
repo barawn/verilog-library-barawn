@@ -1,23 +1,53 @@
 `timescale 1ns / 1ps
 
-module fourtap_systolic_preadd #( parameter CASCADE = "FALSE",
-				  parameter ROUND = "FALSE",
-				  localparam NBITS = 12,
-				  parameter CLKTYPE = "NONE")(
-	    input	  clk_i,
-	    input     rst_i,
-	    input [NBITS-1:0]  dat_i,
-	    input [NBITS-1:0]  preadd_i,
-	    input [17:0]  coeff0_i,
-	    input [17:0]  coeff1_i,
-	    input [17:0]  coeff2_i,
-	    input [17:0]  coeff3_i,
-	    input [47:0]  pc_i,
-	    output [47:0] p_o,
-	    input [47:0]  pc_o
+//! @title 4 tap systolic filter with preadder, single add, and output round
+//! @author Patrick Allison (dbarawn@gmail.com)
+module fourtap_systolic_preadd #( 
+                  parameter CASCADE = "FALSE",    //! use input cascade for first tap
+				  parameter ROUND = "FALSE",      //! round the final tap to output bits
+				  parameter USE_ADD = "FALSE",    //! use the add_i input to add a value
+				  parameter SCALE_ADD = 0,        //! number of bits to upshift the add_i input
+				  parameter [1:0] ADD_INDEX = 0,  //! index to add the add_i input at 
+				  localparam NBITS = 12,          //! number of bits in input and output
+				  parameter CLKTYPE = "NONE")     //! clocktype for magic clock crossing
+	  ( input	  clk_i,             //! filter clock
+	    input     rst_i,             //! force DSPs into reset
+	    input [NBITS-1:0]  dat_i,	 //! input to the systolic filter
+	    input [NBITS-1:0]  preadd_i, //! preadd for symmetric SSR systolics with SSR a multiple of 4
+	    input [NBITS-1:0]  add_i,    //! value to be added at a specific tap (center tap for symmetrics)
+	    input [17:0]  coeff0_i,      //! coefficient of first DSP
+	    input [17:0]  coeff1_i,      //! coefficient of second DSP
+	    input [17:0]  coeff2_i,      //! coefficient of third DSP
+	    input [17:0]  coeff3_i,      //! coefficient of fourth DSP
+	    input [47:0]  pc_i,          //! cascade input if CASCADE == "TRUE"
+	    output [47:0] p_o,           //! output of last DSP
+	    input [47:0]  pc_o           //! cascade output of last DSP
       );
    
-							         
+   // the multiplier takes in an 18-bit coefficient and a
+   // 27 bit value to multiply, producing a 45 bit output.
+   // We align to the top of the adder to reduce bit
+   // switching. In addition, the preadder cannot saturate
+   // so we need margin on the A/D inputs.
+   // So for instance if we have a 12 bit input, A/D are
+   // scaled up by 14 bits. So we need to scale up the 
+   // coefficient by the same amount and also add SCALE_ADD
+   // bits (because the center tap is typically scaled to
+   // a power of 2).
+   localparam ADD_PAD_BITS = SCALE_ADD + (26 - NBITS);
+   wire [47:0] add_pad = (ADD_PAD_BITS + NBITS < 48) ?
+        // need to sign extend at the top
+        { {(48-ADD_PAD_BITS-NBITS){add_i[NBITS-1]}},
+          add_i,
+          {ADD_PAD_BITS{1'b0}} } :
+        // don't need to add bits at the top
+        { add_i, {ADD_PAD_BITS{1'b0}}};
+   
+   localparam USE_C0 = (USE_ADD == "TRUE") && ADD_INDEX == 2'd0 ? "TRUE" : "FALSE";
+   localparam USE_C1 = (USE_ADD == "TRUE") && ADD_INDEX == 2'd1 ? "TRUE" : "FALSE";
+   localparam USE_C2 = (USE_ADD == "TRUE") && ADD_INDEX == 2'd2 ? "TRUE" : "FALSE";
+   localparam USE_C3 = (USE_ADD == "TRUE") && ADD_INDEX == 2'd3 ? "TRUE" : "FALSE";
+      
    // The cross map means
    // sample 0 has a systolic 7 and feeds in 1
    reg [NBITS-1:0]	  chainA_store0 = {NBITS{1'b0}};
@@ -42,6 +72,10 @@ module fourtap_systolic_preadd #( parameter CASCADE = "FALSE",
    wire [47:0] dsp2_to_dsp3;
    wire [29:0] a2_to_a3;
 
+   // FIR dsp core lets us connect C to everything even
+   // if it's unused, it'll auto-connect the register to the
+   // right value.
+
    // One of the benefits of the fir_dsp_core is that
    // I can connect up something to the pcin port even if
    // it's unused. If you try that with the primitive Vivado
@@ -56,7 +90,7 @@ module fourtap_systolic_preadd #( parameter CASCADE = "FALSE",
    //
    // this puts 2 registers in the cascade path, one in input
    fir_dsp_core #(.ADD_PCIN(CASCADE),
-		  .USE_C("FALSE"),
+		  .USE_C(USE_C0),
 		  .USE_ACIN("FALSE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
@@ -77,7 +111,7 @@ module fourtap_systolic_preadd #( parameter CASCADE = "FALSE",
 		  .pcout_o(dsp0_to_dsp1));
       
    fir_dsp_core #(.ADD_PCIN("TRUE"),
-		  .USE_C("FALSE"),
+		  .USE_C(USE_C1),
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
@@ -97,7 +131,7 @@ module fourtap_systolic_preadd #( parameter CASCADE = "FALSE",
 		  .pcout_o(dsp1_to_dsp2),
 		  .acout_o(a1_to_a2));	 
    fir_dsp_core #(.ADD_PCIN("TRUE"),
-		  .USE_C("FALSE"),
+		  .USE_C(USE_C2),
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
@@ -116,15 +150,15 @@ module fourtap_systolic_preadd #( parameter CASCADE = "FALSE",
 		  .b_i(coeff2_i),
 		  .pcout_o(dsp2_to_dsp3),
 		  .acout_o(a2_to_a3));
+   // last core doesn't use the cascade path		  
    fir_dsp_core #(.ADD_PCIN("TRUE"),
-		  .USE_C("FALSE"),
+		  .USE_C(USE_C3),
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("FALSE"),
 		  .USE_D("TRUE"),
 		  .PREADD_REG(1),
 		  .MULT_REG(1),
 		  .AREG(1),
-		  .ACASCREG(2),
 		  .DREG(1),
 		  .PREG(1),
 		  .CLKTYPE(CLKTYPE))

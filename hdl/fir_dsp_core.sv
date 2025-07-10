@@ -112,7 +112,9 @@ module fir_dsp_core #(
     
     // this is set if we need to jump back a register in
     // the path
-    localparam USE_A1_INMODE = (ACASCREG == 2 && AREG == 1) ? 1'b1 : 1'b0;
+    // Note that if the user screws up and specifies ACASCREG = 2
+    // even though they're not using it, we need to ignore them.
+    localparam USE_A1_INMODE = (ACASCREG == 2 && AREG == 1 && USE_ACOUT == "TRUE") ? 1'b1 : 1'b0;
     localparam USE_D_INMODE = (USE_D == "TRUE") ? 1'b1 : 1'b0;
     localparam SUBTRACT_A_INMODE = (SUBTRACT_A == "TRUE") ? 1'b1 : 1'b0;
     // INMODE is always either D+A or D-A, or just +/-A.
