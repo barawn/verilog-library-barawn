@@ -23,7 +23,7 @@ module fourtap_systolic_preadd #(
 	    input [47:0]  pc_i,          //! cascade input if CASCADE == "TRUE"
 	    output [NBITS:0] dat_o,      //! data output
 	    output [47:0] p_o,           //! output of last DSP
-	    input [47:0]  pc_o           //! cascade output of last DSP
+	    output [47:0]  pc_o          //! cascade output of last DSP
       );
    
    // the multiplier takes in an 18-bit coefficient and a
