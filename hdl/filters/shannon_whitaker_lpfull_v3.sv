@@ -13,14 +13,26 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
         output [NSAMPS-1:0][OUTBITS-1:0] dat_o );
 
     localparam signed [7:0][17:0] coeffs =
-        {   18'h10342,  // B15
-            -18'h3216,  // B13
-            18'h1672,   // B11
-            -18'h949,   // B9
-            18'h526,    // B7
-            -18'h263,   // B5
-            18'h105,    // B3
-            18'h23 };   // B1
+        {   18'h10342,  // B15      7
+            -18'h3216,  // B13      6
+            18'h1672,   // B11      5
+            -18'h949,   // B9       4
+            18'h526,    // B7       3
+            -18'h263,   // B5       2
+            18'h105,    // B3       1
+            18'h23 };   // B1       0
+    localparam COEFF_UPSHIFT = 4;            
+    function [17:0] coeff_shift;
+        input [17:0] coeff_in;
+        input integer shift;
+        integer i;
+        begin
+            for (i=0;i<18;i=i+1) begin
+                if (i < shift) coeff_shift[i] = 0;
+                else coeff_shift[i] = coeff_in[i-shift];
+            end
+        end
+    endfunction
     // the overall structure of the filter in super-sample rate is
     // [ B7, B15, B9,  B1,   (  x1 )
     //   B5, B13, B11, B3,   |  x3 |
@@ -179,32 +191,43 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
             wire [47:0] cascade;	 
             fourtap_systolic_preadd #(.USE_ADD("TRUE"),
                                       .ADD_INDEX(0),
-                                      .SCALE_ADD(14))
+                                      .SCALE_ADD(14+COEFF_UPSHIFT))
                 syst0(  .clk_i(clk_i),
                         .rst_i(rst_i),
                         .dat_i(sys0_in),
                         .preadd_i(pre0_in),
                         .add_i(add_in),
-                        .coeff0_i(    526    ),
-                        .coeff1_i(  10342    ),
-                        .coeff2_i(   -949    ),
-                        .coeff3_i(    -23    ),
+                        .coeff0_i( coeff_shift(coeffs[3], COEFF_UPSHIFT)    ), //  526
+                        .coeff1_i( coeff_shift(coeffs[7], COEFF_UPSHIFT)    ), //  10342
+                        .coeff2_i( coeff_shift(coeffs[4], COEFF_UPSHIFT)    ), //  -949
+                        .coeff3_i( coeff_shift(coeffs[0], COEFF_UPSHIFT)    ), //  -23
                         .pc_o(cascade));
-            wire [47:0] data_out;	 
+            wire [47:0] data_out;
+            // the output data can range from -3161 to +3159: we don't care, so we
+            // again cap off at 12 bits. Note that in order to actually saturate you need
+            // to have a maximal amplitude bandlimited pulse so it's pretty unlikely.
+            wire [12:0] last_out;
+            wire saturated = last_out[12] ^ last_out[11];
+            reg [11:0] dat_final = {12{1'b0}};
             fourtap_systolic_preadd #(.CASCADE("TRUE"),
                                       .ROUND("TRUE"),
-                                      .SCALE_OUT(15))
+                                      .SCALE_OUT(15+COEFF_UPSHIFT))
                 syst1(  .clk_i(clk_i),
                         .rst_i(rst_i),
                         .dat_i(sys1_dly),
                         .preadd_i(pre1_dly),
-                        .coeff0_i(   -263    ),
-                        .coeff1_i(  -3216    ),
-                        .coeff2_i(   1672    ),
-                        .coeff3_i(    105    ),
+                        .coeff0_i( coeff_shift(coeffs[2], COEFF_UPSHIFT)    ), //  -263
+                        .coeff1_i( coeff_shift(coeffs[6], COEFF_UPSHIFT)    ), //  -3216
+                        .coeff2_i( coeff_shift(coeffs[5], COEFF_UPSHIFT)    ), //  1672
+                        .coeff3_i( coeff_shift(coeffs[1], COEFF_UPSHIFT)    ), //  105
                         .pc_i(cascade),
-                        .dat_o(dat_o[i]),
+                        .dat_o(last_out),
                         .p_o(data_out));
+            always @(posedge clk_i) begin : SAT
+                if (saturated) dat_final <= {12{last_out[12]}};
+                else dat_final <= last_out[11:0];
+            end
+            assign dat_o[i] = dat_final;
         end
     endgenerate
    
