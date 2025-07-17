@@ -242,7 +242,7 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
                     dat_final[10:0] <= {11{~last_out[12]}};
                 end else dat_final <= last_out[11:0];
             end
-            assign dat_o[i] = (SATURATE == "TRUE") : {dat_final[11],dat_final} : last_out[12:0];
+            assign dat_o[i] = (SATURATE == "TRUE") ? {dat_final[11],dat_final} : last_out[12:0];
         end
     endgenerate
    
