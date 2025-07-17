@@ -13,15 +13,15 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
         output [NSAMPS-1:0][OUTBITS-1:0] dat_o );
 
     localparam signed [7:0][17:0] coeffs =
-        {   18'h10342,  // B15      7
-            -18'h3216,  // B13      6
-            18'h1672,   // B11      5
-            -18'h949,   // B9       4
-            18'h526,    // B7       3
-            -18'h263,   // B5       2
-            18'h105,    // B3       1
-            18'h23 };   // B1       0
-    localparam COEFF_UPSHIFT = 4;            
+        {   18'd10342,  // B15      7
+            -18'd3216,  // B13      6
+            18'd1672,   // B11      5
+            -18'd949,   // B9       4
+            18'd526,    // B7       3
+            -18'd263,   // B5       2
+            18'd105,    // B3       1
+            -18'd23 };  // B1       0
+    localparam COEFF_UPSHIFT = 3;            
     function [17:0] coeff_shift;
         input [17:0] coeff_in;
         input integer shift;
