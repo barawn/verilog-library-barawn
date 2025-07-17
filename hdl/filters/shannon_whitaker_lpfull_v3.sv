@@ -3,8 +3,17 @@
 // This uses more DSPs but zero logic, and with the
 // systolic rearrangement it fully utilizes the cascade
 // paths, which should make it lower power?
-
+//
+// if SATURATE is set, the output data is compressed to
+// 12-bits only. The filter itself has a gain of basically 0
+// but the phase response allows a properly crafted input
+// signal to reach 13 bit range (the sum of the absolute
+// value of the coefficients divided by 32768 is 1.543).
+//
+// The output is still 13 bits, but in that case the top
+// bit can be dropped.
 module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
+				    parameter SATURATE="YES",
                                     localparam OUTBITS=INBITS+1,
                                     localparam NSAMPS=8)(
         input   clk_i,
