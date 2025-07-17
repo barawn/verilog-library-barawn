@@ -12,7 +12,7 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
         input [NSAMPS-1:0][INBITS-1:0]   dat_i,
         output [NSAMPS-1:0][OUTBITS-1:0] dat_o );
 
-    localparam signed [7:0][17:0] coeffs =
+    localparam signed [17:0] coeffs[7:0] =
         {   18'd10342,  // B15      7
             -18'd3216,  // B13      6
             18'd1672,   // B11      5
@@ -20,8 +20,8 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
             18'd526,    // B7       3
             -18'd263,   // B5       2
             18'd105,    // B3       1
-            -18'd23 };  // B1       0
-    localparam COEFF_UPSHIFT = 3;            
+            -18'd23 };   // B1       0
+    localparam COEFF_UPSHIFT = 3;
     function [17:0] coeff_shift;
         input [17:0] coeff_in;
         input integer shift;
@@ -208,7 +208,7 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
             // to have a maximal amplitude bandlimited pulse so it's pretty unlikely.
             wire [12:0] last_out;
             wire saturated = last_out[12] ^ last_out[11];
-            reg [11:0] dat_final = {12{1'b0}};
+            reg [12:0] dat_final = {13{1'b0}};
             fourtap_systolic_preadd #(.CASCADE("TRUE"),
                                       .ROUND("TRUE"),
                                       .SCALE_OUT(15+COEFF_UPSHIFT))
@@ -224,8 +224,10 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
                         .dat_o(last_out),
                         .p_o(data_out));
             always @(posedge clk_i) begin : SAT
-                if (saturated) dat_final <= {last_out[11],{11{~last_out[11]}}};
-                else dat_final <= last_out[11:0];
+                if (saturated) begin
+                    dat_final[11] <= last_out[12];
+                    dat_final[10:0] <= {11{~last_out[12]}};
+                end else dat_final <= last_out[11:0];
             end
             assign dat_o[i] = dat_final;
         end
