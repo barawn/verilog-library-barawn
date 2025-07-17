@@ -11,9 +11,10 @@
 // value of the coefficients divided by 32768 is 1.543).
 //
 // The output is still 13 bits, but in that case the top
-// bit can be dropped.
+// bit can be dropped. SATURATE also adds an additional
+// clock of delay to the output.
 module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
-				    parameter SATURATE="YES",
+				    parameter SATURATE="TRUE",
                                     localparam OUTBITS=INBITS+1,
                                     localparam NSAMPS=8)(
         input   clk_i,
@@ -216,8 +217,6 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
             // again cap off at 12 bits. Note that in order to actually saturate you need
             // to have a maximal amplitude bandlimited pulse so it's pretty unlikely.
             wire [12:0] last_out;
-            wire saturated = last_out[12] ^ last_out[11];
-            reg [12:0] dat_final = {13{1'b0}};
             fourtap_systolic_preadd #(.CASCADE("TRUE"),
                                       .ROUND("TRUE"),
                                       .SCALE_OUT(15+COEFF_UPSHIFT))
@@ -232,13 +231,18 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
                         .pc_i(cascade),
                         .dat_o(last_out),
                         .p_o(data_out));
+	   
+	    // The saturation logic is always present, but if it's not selected,
+	    // it's not used and will be trimmed away.
+            wire saturated = last_out[12] ^ last_out[11];
+            reg [11:0] dat_final = {12{1'b0}};
             always @(posedge clk_i) begin : SAT
                 if (saturated) begin
                     dat_final[11] <= last_out[12];
                     dat_final[10:0] <= {11{~last_out[12]}};
                 end else dat_final <= last_out[11:0];
             end
-            assign dat_o[i] = dat_final;
+            assign dat_o[i] = (SATURATE == "TRUE") : {dat_final[11],dat_final} : last_out[12:0];
         end
     endgenerate
    
