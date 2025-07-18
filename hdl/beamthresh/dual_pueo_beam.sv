@@ -38,9 +38,7 @@ module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK",
     );
      
     // Registers for pipelining
-    (* KEEP = "TRUE"  *)
     reg [NCHAN*NSAMP*NBITS-1:0] beamA_i_reg = {NCHAN*NSAMP*NBITS{1'b0}};
-    (* KEEP = "TRUE"  *)
     reg [NCHAN*NSAMP*NBITS-1:0] beamB_i_reg = {NCHAN*NSAMP*NBITS{1'b0}};
     
     // vectorize inputs
@@ -98,26 +96,26 @@ module dual_pueo_beam #(parameter WBCLKTYPE = "PSCLK",
             // beamform A
             fivebit_8way_ternary #(.ADD_CONSTANT(5'd4)) // The constant add is to correct for the -0.5 in each offset binary
                 u_beamA(.clk_i(clk_i),
-                        .A(beamA_vec[0][jj]),
-                        .B(beamA_vec[1][jj]),
-                        .C(beamA_vec[2][jj]),
-                        .D(beamA_vec[3][jj]),
-                        .E(beamA_vec[4][jj]),
-                        .F(beamA_vec[5][jj]),
-                        .G(beamA_vec[6][jj]),
-                        .H(beamA_vec[7][jj]),
+                        .A(beamA_vec[1][jj]),
+                        .B(beamA_vec[2][jj]),
+                        .C(beamA_vec[3][jj]),
+                        .D(beamA_vec[5][jj]),
+                        .E(beamA_vec[6][jj]),
+                        .F(beamA_vec[7][jj]),
+                        .G(beamA_vec[0][jj]),
+                        .H(beamA_vec[4][jj]),
                         .O(beamA[jj])); // Sum of the delayed beams for each (phase offset) sample
             // beamform B
             fivebit_8way_ternary #(.ADD_CONSTANT(5'd4)) // The constant add is to correct for the -0.5 in each offset binary
                 u_beamB(.clk_i(clk_i),
-                        .A(beamB_vec[0][jj]),
-                        .B(beamB_vec[1][jj]),
-                        .C(beamB_vec[2][jj]),
-                        .D(beamB_vec[3][jj]),
-                        .E(beamB_vec[4][jj]),
-                        .F(beamB_vec[5][jj]),
-                        .G(beamB_vec[6][jj]),
-                        .H(beamB_vec[7][jj]),
+                        .A(beamB_vec[1][jj]),
+                        .B(beamB_vec[2][jj]),
+                        .C(beamB_vec[3][jj]),
+                        .D(beamB_vec[5][jj]),
+                        .E(beamB_vec[6][jj]),
+                        .F(beamB_vec[7][jj]),
+                        .G(beamB_vec[0][jj]),
+                        .H(beamB_vec[4][jj]),
                         .O(beamB[jj])); // Sum of the delayed beams for each (phase offset) sample
             // ////////////////////////////////////////////////////////////////////
             // // TODO: REPLACE THIS SECTION WITH THE signed_8b_square module!!  //
