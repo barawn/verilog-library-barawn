@@ -1,5 +1,11 @@
 // notes: set unused A/B/C/D ports to 1, select input register, 0 clock enable and 0 reset
 
+// for a dsp48e2
+`define W_OPMODE_0              2'b00
+`define W_OPMODE_P              2'b01
+`define W_OPMODE_RND            2'b10
+`define W_OPMODE_C              2'b11
+
 `define X_OPMODE_0              2'b00
 // the 01 case is XY_OPMODE_M
 `define X_OPMODE_P              2'b10
