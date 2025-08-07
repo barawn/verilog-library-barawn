@@ -1,20 +1,20 @@
 package tc;
    
-   function tcbits;
+   function integer tcbits;
       input integer tcount;
       begin
 	 tcbits = $clog2(tcount)+1;
       end
    endfunction // tcbits
    
-   function tcstart;
+   function integer tcstart;
       input integer tcount;
       begin
 	 tcstart = 1<<$clog2(tcount);	 
       end
    endfunction // tcstart
 
-   function tcstop;
+   function integer tcstop;
       input integer tcount;
       begin
 	 tcstop = (1<<$clog2(tcount)) - tcount;
