@@ -14,6 +14,7 @@ module fivetap_systolic_preadd #(
 				  localparam NBITS = 12,          //! number of bits in input and (output-1)
 				  parameter CLKTYPE = "NONE")     //! clocktype for magic clock crossing
 	  ( input	  clk_i,             //! filter clock
+	    input     ce_i,              //! filter clock enable
 	    input     rst_i,             //! force DSPs into reset
 	    input [NBITS-1:0]  dat_i,	 //! input to the systolic filter
 	    input [NBITS-1:0]  preadd_i, //! preadd for symmetric SSR systolics with SSR a multiple of 4
@@ -81,15 +82,19 @@ module fivetap_systolic_preadd #(
    reg [NBITS-1:0]	  chainA_store0 = {NBITS{1'b0}};
    reg [NBITS-1:0]	  chainA_store1 = {NBITS{1'b0}};
    reg [NBITS-1:0]    chainA_store2 = {NBITS{1'b0}};
+   reg [NBITS-1:0]    chainA_store3 = {NBITS{1'b0}};
    always @(posedge clk_i) begin : CA
-      chainA_store0 <= preadd_i;
-      chainA_store1 <= chainA_store0;
-      chainA_store2 <= chainA_store1;
+      if (ce_i) begin
+          chainA_store0 <= preadd_i;
+          chainA_store1 <= chainA_store0;
+          chainA_store2 <= chainA_store1;
+          chainA_store3 <= chainA_store2;
+      end
    end
    
    // 30 bit input 27 bit preadder and save a bit so no saturation
    wire [29:0] dat_pad = { {4{dat_i[NBITS-1]}}, dat_i, { (30-NBITS-4) {1'b0}} };
-   wire [26:0] preadd_pad = { chainA_store2[NBITS-1], chainA_store2, {(27-NBITS-1){1'b0}} };
+   wire [26:0] preadd_pad = { chainA_store3[NBITS-1], chainA_store3, {(27-NBITS-1){1'b0}} };
    
    // Each sample is organized as the combination of
    // 2 4-tap systolic filters.
