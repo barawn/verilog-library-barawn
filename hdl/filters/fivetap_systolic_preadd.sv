@@ -8,6 +8,7 @@ module fivetap_systolic_preadd #(
                   parameter CASCADE = "FALSE",    //! use input cascade for first tap
 				  parameter ROUND = "FALSE",      //! round the final tap to output bits
 				  parameter USE_ADD = "FALSE",    //! use the add_i input to add a value
+				  parameter USE_CE = "FALSE",     //! actually use the clock enable input
 				  parameter SCALE_ADD = 0,        //! number of bits to upshift the add_i input
 				  parameter SCALE_OUT = 0,        //! number of bits to downshift the output
 				  parameter [2:0] ADD_INDEX = 0,  //! index to add the add_i input at 
@@ -29,6 +30,8 @@ module fivetap_systolic_preadd #(
 	    output [47:0] p_o,           //! output of last DSP
 	    output [47:0]  pc_o          //! cascade output of last DSP
       );
+
+   wire ce = (USE_CE == "TRUE") ? ce_i : 1'b1;
    
    // the multiplier takes in an 18-bit coefficient and a
    // 27 bit value to multiply, producing a 45 bit output.
@@ -131,6 +134,7 @@ module fivetap_systolic_preadd #(
 		  .USE_ACIN("FALSE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
+		  .USE_CE("TRUE"),
 		  .PREADD_REG(1),
 		  .MULT_REG(1),
 		  .AREG(1),
@@ -153,6 +157,7 @@ module fivetap_systolic_preadd #(
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
+		  .USE_CE("TRUE"),
 		  .PREADD_REG(1),
 		  .MULT_REG(1),
 		  .AREG(1),
@@ -174,6 +179,7 @@ module fivetap_systolic_preadd #(
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
+		  .USE_CE("TRUE"),
 		  .RND_VAL(RND_CONST),
 		  .PREADD_REG(1),
 		  .MULT_REG(1),
@@ -196,6 +202,7 @@ module fivetap_systolic_preadd #(
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
+		  .USE_CE("TRUE"),
 		  .USE_RND(USE_RND_3),
 		  .RND_VAL(RND_CONST),
 		  .PREADD_REG(1),
@@ -221,6 +228,7 @@ module fivetap_systolic_preadd #(
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("FALSE"),
 		  .USE_D("TRUE"),
+		  .USE_CE("TRUE"),
 		  .USE_RND(USE_RND_4),
 		  .RND_VAL(RND_CONST),
 		  .USE_PATTERN(USE_PATTERN_4),
