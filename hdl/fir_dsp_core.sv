@@ -66,6 +66,7 @@ module fir_dsp_core #(
 	parameter USE_PATTERN = "FALSE",
 	parameter PATTERN_VAL = {48{1'b0}},
 	parameter MASK_VAL = {48{1'b1}},
+    parameter USE_CE = "FALSE",
 	parameter USE_CARRYIN = "FALSE",
         parameter USE_ACIN = "FALSE",
         parameter USE_ACOUT = "FALSE",
@@ -88,6 +89,7 @@ module fir_dsp_core #(
 	parameter CLKTYPE = "NONE"
     )(
         input clk_i,
+        input ce_i,
         input rst_i,
         input [29:0] acin_i,
         input [47:0] pcin_i,
@@ -106,6 +108,8 @@ module fir_dsp_core #(
         input load_i,
         input update_i
     );
+
+    wire ce = (USE_CE == "TRUE") ? ce_i : 1'b1;
     
     `define RESETS( port )  \
         .RSTA( port ),      \
@@ -192,7 +196,16 @@ module fir_dsp_core #(
     localparam  MY_CREG = (USE_C == "TRUE") ? CREG : 1'b1;
     wire		CEC = (USE_C == "TRUE") ? 1'b1 : 1'b0;
    
-
+    // lah de dah
+    `define CLOCK_ENABLES( port )   \
+        .CEA1(DSP_AREG == 2 ? port : 1'b0),                 \
+        .CEA2(AREG != 0 ? port : 1'b0),                 \
+        .CEB1(DSP_BREG == 2 ? port : 1'b0),                 \
+        .CEB2(BREG != 0 ? port : 1'b0),                   \
+        .CEC(CREG != 0 ? port : 1'b0),                 \
+        .CEM(MULT_REG != 0 ? port : 1'b0),                 \
+        .CEP(PREG != 0 ? port : 1'b0),                \
+        .CED(PREADD_REG != 0 ? port : 1'b0)
    
     // extend by 4 or 1. Extend by 4 b/c if we don't use Dport, gets passed to multiplier
     wire [29:0] DSP_A = { {4{a_i[25]}}, a_i };
@@ -258,6 +271,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));		  
                end else begin : APCSCIN // block: ABPCSCIN
@@ -311,6 +325,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));
 		  end // block: APCSCIN	       
@@ -366,6 +381,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));                
 	       end else begin : PCSCIN // block: BPCSCIN
@@ -419,6 +435,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));                
 	       end // block: PCSCIN	       
@@ -475,6 +492,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));
 		end // block: ABCSCIN
@@ -528,6 +546,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));
 		end // block: ACSCIN
@@ -582,6 +601,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));
 		end // block: BCSCIN
@@ -635,6 +655,7 @@ module fir_dsp_core #(
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
                                     `RESETS( rst_i ),
+                                    `CLOCK_ENABLES( ce ),
                                     .PATTERNDETECT(pattern_o),
                                     .ALUMODE(ALUMODE));
 		end // block: NCSCIN	       
