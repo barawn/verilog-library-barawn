@@ -34,6 +34,14 @@ module twothirds_lpfull #(parameter INBITS=12,
         input [NSAMPS-1:0][INBITS-1:0]   dat_i,
         output [NSAMPS-1:0][OUTBITS-1:0] dat_o );
 
+    // Overall
+    // z^0   z^-1    z^-2  z^-3  z^-4     z^-5
+    // 0     -18     44    0     -137     209
+    // 0     -423    578   0     -1054    1446
+    // 0     -3258   6710  16384  6710   -3258
+    // 0      1446  -1054  0      578    -423
+    // 0      209   -137   0      44     -18
+    //
     localparam signed [17:0] coeffs[9:0] =
         {   18'd6710,   // B14      9
 	    -18'd3258,  // B13      8
