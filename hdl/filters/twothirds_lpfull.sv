@@ -244,7 +244,7 @@ module twothirds_lpfull #(parameter INBITS=12,
                         .pc_o(cascade));
             wire [47:0] data_out;
             wire [12:0] last_out;
-            fourtap_systolic_preadd #(.CASCADE("TRUE"),
+            fivetap_systolic_preadd #(.CASCADE("TRUE"),
 				      .USE_CE("TRUE"),
                                       .ROUND("TRUE"),
                                       .SCALE_OUT(15+COEFF_UPSHIFT))
