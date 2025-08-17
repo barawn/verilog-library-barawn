@@ -179,8 +179,7 @@ module fir_dsp_core #(
       
     localparam [8:0] OPMODE = { W_MUX, Z_MUX, 4'b0101 };
     localparam [3:0] ALUMODE = 4'b0000;
-
-    // ???!? is this right??
+    
     localparam ADREG = (USE_D == "TRUE") ? PREADD_REG : 1'b1;
     localparam MREG = MULT_REG;
 
@@ -191,19 +190,22 @@ module fir_dsp_core #(
     // Dport usage, for low power
     localparam  AMULTSEL = (USE_D == "TRUE") ? "AD" : "A";
     localparam  MY_DREG = (USE_D == "TRUE") ? DREG : 1'b1;
-    wire	       CED = (USE_D == "TRUE") ? ce : 1'b0;
+    wire	       CED = (USE_D == "TRUE") ? 1'b1 : 1'b0;
 
     // Cport usage, for low power
     localparam  MY_CREG = (USE_C == "TRUE") ? CREG : 1'b1;
-    wire		CEC = (USE_C == "TRUE") ? ce : 1'b0;
-
-    // Handle all the common data clock enables
+    wire		CEC = (USE_C == "TRUE") ? 1'b1 : 1'b0;
+   
+    // lah de dah
     `define CLOCK_ENABLES( port )   \
         .CEA1(DSP_AREG == 2 ? port : 1'b0),                 \
         .CEA2(AREG != 0 ? port : 1'b0),                 \
-        .CEAD(ADREG == 1 ? port : 1'b0),                \
+        .CEB1(DSP_BREG == 2 ? port : 1'b0),                 \
+        .CEB2(BREG != 0 ? port : 1'b0),                   \
+        .CEC(CREG != 0 ? port : 1'b0),                 \
         .CEM(MULT_REG != 0 ? port : 1'b0),                 \
-        .CEP(PREG != 0 ? port : 1'b0),
+        .CEP(PREG != 0 ? port : 1'b0),                \
+        .CED(PREADD_REG != 0 ? port : 1'b0)
    
     // extend by 4 or 1. Extend by 4 b/c if we don't use Dport, gets passed to multiplier
     wire [29:0] DSP_A = { {4{a_i[25]}}, a_i };
@@ -360,7 +362,6 @@ module fir_dsp_core #(
                                     .PCIN(pcin_i),
                                     .CLK(clk_i),
                                     .P(p_o),
-                                    .CEP(1'b1),
                                     .PCOUT(pcout_o),
                                     .INMODE(DSP_INMODE),
                                     .OPMODE(OPMODE),
