@@ -279,7 +279,7 @@ module twothirds_lpfull #(parameter INBITS=12,
     endgenerate
 
     // and then back to 4 per
-    lp_six_to_four u_ssr6(.clk_i(clk_i),
+    lp_six_to_four u_ssr4(.clk_i(clk_i),
 			  .ce_i(dat_ssr6_ce),
 			  .dat_i(out_ssr6),
 			  .dat_o(dat_o));    
