@@ -33,7 +33,7 @@ module lp_six_to_four #(parameter NBITS=12)(
       else out_buf <= dat_store;
       
       if (nce_shreg[0]) dat_store[0 +: 2*NBITS] <= dat_i[4*NBITS +: 2*NBITS];
-      else if (nce_shreg[1]) dat_store <= dat_i[0 +: 4*NBITS];
+      else if (nce_shreg[1]) dat_store <= dat_i[2*NBITS +: 4*NBITS];
    end
 
    assign dat_o = out_buf;   
