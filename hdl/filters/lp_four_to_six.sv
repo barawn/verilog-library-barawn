@@ -33,7 +33,7 @@ module lp_four_to_six #(parameter NBITS=12)(
       
    end
    
-   assign dat_o = dat_store;
+   assign dat_o = out_buf;
    assign ce_o = outbuf_valid;
    
 endmodule
