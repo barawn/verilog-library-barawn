@@ -143,6 +143,7 @@ module fivetap_systolic_preadd #(
 		  .PREG(1),
 		  .CLKTYPE(CLKTYPE))
           u_dsp0( .clk_i(clk_i),
+          .ce_i(ce_i),
           .rst_i(rst_i),
 		  .a_i(dat_pad),
 		  .c_i(add_pad),
@@ -166,6 +167,7 @@ module fivetap_systolic_preadd #(
 		  .PREG(1),
 		  .CLKTYPE(CLKTYPE))
           u_dsp1( .clk_i(clk_i),
+          .ce_i(ce_i),
           .rst_i(rst_i),
 		  .acin_i(a0_to_a1),
 		  .pcin_i(dsp0_to_dsp1),
@@ -189,6 +191,7 @@ module fivetap_systolic_preadd #(
 		  .PREG(1),
 		  .CLKTYPE(CLKTYPE))
           u_dsp2( .clk_i(clk_i),
+          .ce_i(ce_i),
           .rst_i(rst_i),
 		  .acin_i(a1_to_a2),
 		  .pcin_i(dsp1_to_dsp2),
@@ -213,6 +216,7 @@ module fivetap_systolic_preadd #(
 		  .PREG(1),
 		  .CLKTYPE(CLKTYPE))
           u_dsp3( .clk_i(clk_i),
+          .ce_i(ce_i),
           .rst_i(rst_i),
 		  .acin_i(a2_to_a3),
 		  .pcin_i(dsp2_to_dsp3),
@@ -242,6 +246,7 @@ module fivetap_systolic_preadd #(
 		  .PREG(1),
 		  .CLKTYPE(CLKTYPE))
           u_dsp4( .clk_i(clk_i),
+          .ce_i(ce_i),
           .rst_i(rst_i),
 		  .acin_i(a3_to_a4),
 		  .pcin_i(dsp3_to_dsp4),
