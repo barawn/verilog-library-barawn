@@ -106,10 +106,10 @@ module twothirds_lpfull #(parameter INBITS=12,
 	    // sample 0: 5z^-6/1z^-6 and 4z^-6/2z^-6 center 3 at z^-18
 	    //
 	    // However, note that in order to get the add at the right point,
-	    // since all of the DSPs have the preadder + multiplier register
+	    // since all of the DSPs have the A/D+preadder + multiplier register
 	    // before the ALU and the add path only has the C register,
-	    // this means we need an additional clock delay on the center
-	    // (or two if we're before sample 3). So we need to delay the
+	    // this means we need an additional 2 clocks delay on the center
+	    // (or three if we're before sample 3). So we need to delay the
 	    // add by 3 or 4 clocks.
             //
             // Note that we don't bother absorbing any delays anywhere
@@ -127,16 +127,18 @@ module twothirds_lpfull #(parameter INBITS=12,
             reg [INBITS-1:0]  add_in_store2 = {INBITS{1'b0}};
             reg [INBITS-1:0]  add_in_store3 = {INBITS{1'b0}};
             reg [INBITS-1:0]  add_in_store4 = {INBITS{1'b0}};
+            reg [INBITS-1:0]  add_in_store5 = {INBITS{1'b0}};
             always @(posedge clk_i) begin : LG
-	        if (dat_ssr6_ce) begin
-                   add_in_store <= add_in_base;     // one clock delay
-                   add_in_store2 <= add_in_store;   // two clock delay
-                   add_in_store3 <= add_in_store2;  // three clock delay
-                   add_in_store4 <= add_in_store3;  // four clock delay
-		end	       
+	           if (dat_ssr6_ce) begin
+                    add_in_store <= add_in_base;     // one clock delay
+                    add_in_store2 <= add_in_store;   // two clock delay
+                    add_in_store3 <= add_in_store2;  // three clock delay
+                    add_in_store4 <= add_in_store3;  // four clock delay
+                    add_in_store5 <= add_in_store4;  // five clock delay
+                end	       
             end            
 
-            wire [INBITS-1:0] add_in = (i < 3) ? add_in_store4 : add_in_store3;
+            wire [INBITS-1:0] add_in = (i < 3) ? add_in_store5 : add_in_store4;
 
             wire [INBITS-1:0] sys0_in;
             wire [INBITS-1:0] pre0_in;
