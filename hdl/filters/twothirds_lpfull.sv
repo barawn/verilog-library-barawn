@@ -1,15 +1,9 @@
 `timescale 1 ns/1 ps
 // Two-thirds band filter. This works on an SSR4 input only.
 //
-// if SATURATE is set, the output data is compressed to
-// 12-bits only. The filter itself has a gain of basically 0
-// but the phase response allows a properly crafted input
-// signal to reach 13 bit range (the sum of the absolute
-// value of the coefficients divided by 32768 is 1.347).
-//
-// The output is still 13 bits, but in that case the top
-// bit can be dropped. SATURATE also adds an additional
-// clock of delay to the output.
+// If SATURATE is set, the ouput bits are compressed to 12
+// bits - even though they're 13 bits, the top bit is a copy
+// of bit 11.
 //
 // clk_phase_i is needed to transfer samples from
 // 4 samples/clock to 6 samples/clock. This needs
@@ -25,7 +19,7 @@
 // the same samples, allowing the filter to be
 // arranged systolic with a preadd.
 module twothirds_lpfull #(parameter INBITS=12,
-			  parameter  SATURATE="TRUE",
+                          parameter SATURATE = "TRUE",
                           localparam OUTBITS=INBITS+1,
                           localparam NSAMPS=4)(
         input   clk_i,
@@ -231,7 +225,7 @@ module twothirds_lpfull #(parameter INBITS=12,
                                       .ADD_INDEX(0),
                                       .SCALE_ADD(14+COEFF_UPSHIFT))
                 syst0(  .clk_i(clk_i),
-			.ce_i(dat6_ssr6_ce),
+			.ce_i(dat_ssr6_ce),
                         .rst_i(rst_i),
                         .dat_i(sys0_in),
                         .preadd_i(pre0_in),
@@ -249,7 +243,7 @@ module twothirds_lpfull #(parameter INBITS=12,
                                       .ROUND("TRUE"),
                                       .SCALE_OUT(15+COEFF_UPSHIFT))
                 syst1(  .clk_i(clk_i),
-                        .ce_i(dat6_ssr6_ce),
+                        .ce_i(dat_ssr6_ce),
 			.rst_i(rst_i),
                         .dat_i(sys1_dly),
                         .preadd_i(pre1_dly),
@@ -267,7 +261,7 @@ module twothirds_lpfull #(parameter INBITS=12,
             wire saturated = last_out[12] ^ last_out[11];
             reg [11:0] dat_final = {12{1'b0}};
             always @(posedge clk_i) begin : SAT
-	        if (dat6_ssr6_ce) begin
+	        if (dat_ssr6_ce) begin
                    if (saturated) begin
                       dat_final[11] <= last_out[12];
                       dat_final[10:0] <= {11{~last_out[12]}};
@@ -276,12 +270,36 @@ module twothirds_lpfull #(parameter INBITS=12,
             end
             assign out_ssr6[i] = (SATURATE == "TRUE") ? {dat_final[11],dat_final} : last_out[12:0];
         end
+
+        if (SATURATE == "TRUE") begin : SAT
+            wire [NSAMPS-1:0][INBITS-1:0] tmp;
+            lp_six_to_four #(.NBITS(INBITS))
+                u_ssr4(.clk_i(clk_i),
+                       .ce_i(dat_ssr6_ce),
+                       .dat_i( { out_ssr6[5][11:0],
+                                 out_ssr6[4][11:0],
+                                 out_ssr6[3][11:0],
+                                 out_ssr6[2][11:0],
+                                 out_ssr6[1][11:0],
+                                 out_ssr6[0][11:0] } ),
+                       .dat_o(tmp));
+            assign dat_o[0][0 +: INBITS] = tmp[0];
+            assign dat_o[0][12] = tmp[0][11];
+            assign dat_o[1][0 +: INBITS] = tmp[1];
+            assign dat_o[1][12] = tmp[1][11];
+            assign dat_o[2][0 +: INBITS] = tmp[2];
+            assign dat_o[2][12] = tmp[2][11];
+            assign dat_o[3][0 +: INBITS] = tmp[3];
+            assign dat_o[3][12] = tmp[3][11];
+        end else begin : NSAT
+            // and then back to 4 per
+            lp_six_to_four #(.NBITS(OUTBITS))
+               u_ssr4(.clk_i(clk_i),
+                      .ce_i(dat_ssr6_ce),
+                      .dat_i(out_ssr6),
+                      .dat_o(dat_o));    
+        end
     endgenerate
 
-    // and then back to 4 per
-    lp_six_to_four u_ssr4(.clk_i(clk_i),
-			  .ce_i(dat_ssr6_ce),
-			  .dat_i(out_ssr6),
-			  .dat_o(dat_o));    
-   
+       
 endmodule // twothirds_lpfull
