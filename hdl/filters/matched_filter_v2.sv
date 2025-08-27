@@ -8,9 +8,9 @@
 // do compress.
 module matched_filter_v2 #(parameter INBITS=12,
                            parameter NSAMP=8)(
-        input clk_i,
-        input [NSAMP*INBITS-1:0] dat_i,
-        output [NSAMP*INBITS-1:0] dat_o
+        input aclk,
+        input [NSAMP*INBITS-1:0] data_i,
+        output [NSAMP*INBITS-1:0] data_o
     );
     
     // the output is the filter result divided by 16
@@ -24,9 +24,9 @@ module matched_filter_v2 #(parameter INBITS=12,
     wire [7:0][15:0] systB_out;
     wire [7:0][17:0] systC_out;
     // Storage.
-    wire [NSAMP-1:0][INBITS-1:0] adc_indata = dat_i;
+    wire [NSAMP-1:0][INBITS-1:0] adc_indata = data_i;
     reg [NSAMP-1:0][INBITS-1:0] adc_instore ={12*8{1'b0}};
-    always @(posedge clk_i) begin
+    always @(posedge aclk) begin
         adc_instore <= adc_indata;
     end        
 
@@ -44,7 +44,7 @@ module matched_filter_v2 #(parameter INBITS=12,
             // systA0   B: (i-7) A: (i-4)
             systA_matched_filter_v2 #(.SUBTYPE(0),
                                       .INBITS(12))
-                                       uutB(.clk_i(clk_i),
+                                       uutB(.clk_i(aclk),
                 .inA0_i( i < 4 ? adc_instore[i+4] : adc_indata[i-4]  ),
                 .inA1_i( i+1 < 4 ? adc_instore[i+1+4] : adc_indata[i+1-4] ),
                 .inB0_i( i < 7 ? adc_instore[i+1] : adc_indata[i-7]  ),
@@ -54,7 +54,7 @@ module matched_filter_v2 #(parameter INBITS=12,
             // systA1   B: (i-5) A: (i-3)
             systA_matched_filter_v2 #(.SUBTYPE(1),
                                       .INBITS(12))
-                                       uutC(.clk_i(clk_i),
+                                       uutC(.clk_i(aclk),
                 .inA0_i( i < 3 ? adc_instore[i+5] : adc_indata[i-3]  ),
                 .inA1_i( i+1 < 3 ? adc_instore[i+1+5] : adc_indata[i+1-3] ),
                 .inB0_i( i < 5 ? adc_instore[i+3] : adc_indata[i-5]  ),
@@ -63,7 +63,7 @@ module matched_filter_v2 #(parameter INBITS=12,
                 .out1_o( systA1_out[i+1]   ));                    
             // systB    B: (i-6) A: (i-2)
             systB_matched_filter_v2 #(.INBITS(12))
-                                     uutD(.clk_i(clk_i),
+                                     uutD(.clk_i(aclk),
                 .inA0_i( i < 2 ? adc_instore[i+6]   : adc_indata[i-2] ),
                 .inA1_i( i+1<2 ? adc_instore[i+1+6] : adc_indata[i+1-2] ),
                 .inB0_i( i < 6 ? adc_instore[i+2]   : adc_indata[i-6] ),
@@ -88,7 +88,7 @@ module matched_filter_v2 #(parameter INBITS=12,
                                       .OUTBITS(18),
                                       .RND({24'h8,24'h8}),
                                       .USE_RND("TRUE"))
-                                    uutE(.clk_i(clk_i),
+                                    uutE(.clk_i(aclk),
                 .inA0_i( adc_indata[i] ),
                 .inA1_i( adc_indata[i+1] ),
                 .inB0_i( (i<1)   ? adc_instore[i+7] : adc_indata[i-1] ),
@@ -106,7 +106,7 @@ module matched_filter_v2 #(parameter INBITS=12,
             assign lsb_correct[0] = (systC_out[i][3:0] == 4'h0);
             assign lsb_correct[1] = (systC_out[i+1][3:0] == 4'h0);
             // upshift, saturate, and LSB correct for rounding
-            always @(posedge clk_i) begin : SS
+            always @(posedge aclk) begin : SS
                 if (saturation[0]) begin
                     sat_and_store[0][INBITS-1] <= systC_out[i][17];
                     sat_and_store[0][0 +: (INBITS-1)] <= {(INBITS-1){~systC_out[i][17]}};
@@ -125,8 +125,8 @@ module matched_filter_v2 #(parameter INBITS=12,
                     sat_and_store[1][0] <= systC_out[i+1][4] && !lsb_correct[1];
                 end                 
             end
-            assign dat_o[INBITS*i +: INBITS] = sat_and_store[0];
-            assign dat_o[INBITS*(i+1) +: INBITS] = sat_and_store[1];
+            assign data_o[INBITS*i +: INBITS] = sat_and_store[0];
+            assign data_o[INBITS*(i+1) +: INBITS] = sat_and_store[1];
         end
     endgenerate        
         
