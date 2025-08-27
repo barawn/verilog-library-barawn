@@ -44,7 +44,7 @@ module matched_filter_v2 #(parameter INBITS=12,
             // systA0   B: (i-7) A: (i-4)
             systA_matched_filter_v2 #(.SUBTYPE(0),
                                       .INBITS(12))
-                                       uutB(.clk_i(aclk),
+                                       u_systA0(.clk_i(aclk),
                 .inA0_i( i < 4 ? adc_instore[i+4] : adc_indata[i-4]  ),
                 .inA1_i( i+1 < 4 ? adc_instore[i+1+4] : adc_indata[i+1-4] ),
                 .inB0_i( i < 7 ? adc_instore[i+1] : adc_indata[i-7]  ),
@@ -54,7 +54,7 @@ module matched_filter_v2 #(parameter INBITS=12,
             // systA1   B: (i-5) A: (i-3)
             systA_matched_filter_v2 #(.SUBTYPE(1),
                                       .INBITS(12))
-                                       uutC(.clk_i(aclk),
+                                       u_systA1(.clk_i(aclk),
                 .inA0_i( i < 3 ? adc_instore[i+5] : adc_indata[i-3]  ),
                 .inA1_i( i+1 < 3 ? adc_instore[i+1+5] : adc_indata[i+1-3] ),
                 .inB0_i( i < 5 ? adc_instore[i+3] : adc_indata[i-5]  ),
@@ -63,7 +63,7 @@ module matched_filter_v2 #(parameter INBITS=12,
                 .out1_o( systA1_out[i+1]   ));                    
             // systB    B: (i-6) A: (i-2)
             systB_matched_filter_v2 #(.INBITS(12))
-                                     uutD(.clk_i(aclk),
+                                     u_systB(.clk_i(aclk),
                 .inA0_i( i < 2 ? adc_instore[i+6]   : adc_indata[i-2] ),
                 .inA1_i( i+1<2 ? adc_instore[i+1+6] : adc_indata[i+1-2] ),
                 .inB0_i( i < 6 ? adc_instore[i+2]   : adc_indata[i-6] ),
@@ -88,7 +88,7 @@ module matched_filter_v2 #(parameter INBITS=12,
                                       .OUTBITS(18),
                                       .RND({24'h8,24'h8}),
                                       .USE_RND("TRUE"))
-                                    uutE(.clk_i(aclk),
+                                    u_systC(.clk_i(aclk),
                 .inA0_i( adc_indata[i] ),
                 .inA1_i( adc_indata[i+1] ),
                 .inB0_i( (i<1)   ? adc_instore[i+7] : adc_indata[i-1] ),
