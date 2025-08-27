@@ -108,8 +108,8 @@ module systB_matched_filter_v2 #(
         genvar i;
         for (i=0;i<2;i=i+1) begin : T
            // sign extend
-           assign in_X[i] = {B_input[INBITS-1], B_input[i]};
-           assign in_Y[i] = {B_store[INBITS-1], B_store[i]};
+           assign in_X[i] = {B_input[i][INBITS-1], B_input[i]};
+           assign in_Y[i] = {B_store[i][INBITS-1], B_store[i]};
            // shift up
            assign in_Z[i] = {A_store[i], 1'b0};
            ternary_add_sub_prim #(.input_word_size(TERN_IN_BITS),
@@ -131,7 +131,10 @@ module systB_matched_filter_v2 #(
                       .dout(tern_sum_dly[i]));
             // and reregister to pick up 4 clocks + the 1 clock of the ternary + 1 clock of C
             // = 6 clocks delay.
+            // Plus calculate the storage.
             always @(posedge clk_i) begin : TD
+                A_store[i] <= A_input[i];
+                B_store[i] <= B_input[i];
                 tern_sum_store[i] <= tern_sum_dly[i];
             end
         end
@@ -143,7 +146,7 @@ module systB_matched_filter_v2 #(
               .USE_SIMD("TWO24"),
               .AREG(2),.BREG(2),
               .CREG(1),
-              .PREG(dsp0_PREG))
+              .PREG(1))
               u_dsp0( .CLK(clk_i),
                       .A(`DSP_AB_A(dsp0_AB)),
                       .B(`DSP_AB_B(dsp0_AB)),
@@ -190,7 +193,7 @@ module systB_matched_filter_v2 #(
               `CONSTANT_MODE_ATTRS,
               `NO_MULT_ATTRS,
               .USE_SIMD("TWO24"),
-              .AREG(2),.BREG(2),
+              .AREG(1),.BREG(1),
               .CREG(1),
               .PREG(1))
               u_dsp2( .CLK(clk_i),
