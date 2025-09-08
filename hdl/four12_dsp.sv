@@ -8,6 +8,7 @@ module four12_dsp #(
         parameter CREG = 1,
         parameter PREG = 1,
         parameter CASCADE = "FALSE",
+        parameter [47:0] RND = {48{1'b0}},
         parameter [3:0] ALUMODE = `ALUMODE_SUM_ZXYCIN,
         parameter [8:0] OPMODE = { 2'b00, `Z_OPMODE_C, `Y_OPMODE_0, `X_OPMODE_AB }
     )(
@@ -38,6 +39,7 @@ module four12_dsp #(
                       `CONSTANT_MODE_ATTRS,
                       `DE2_UNUSED_ATTRS,
                       .USE_SIMD("FOUR12"),
+                      .RND(RND),
                       .AREG(ABREG),
                       .BREG(ABREG),
                       .CREG(CREG),
@@ -69,6 +71,7 @@ module four12_dsp #(
                       `CONSTANT_MODE_ATTRS,
                       `DE2_UNUSED_ATTRS,
                       .USE_SIMD("FOUR12"),
+                      .RND(RND),                      
                       .AREG(ABREG),
                       .BREG(ABREG),
                       .CREG(CREG),
