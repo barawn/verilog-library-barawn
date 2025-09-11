@@ -1,4 +1,8 @@
 `timescale 1 ns/1 ps
+
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 // V3 version of the lowpass filter.
 // This uses more DSPs but zero logic, and with the
 // systolic rearrangement it fully utilizes the cascade

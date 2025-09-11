@@ -1,5 +1,9 @@
 `timescale 1ns / 1ps
 `include "dsp_macros.vh"
+
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 // FIR portion of a pole-only biquad operating at 8x clock rate.
 // The FIRs are 6 and 7 taps long initially, have an additional
 // DSP where one loop-back is done, and so are functionally 7 and 8 taps long.

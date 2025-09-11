@@ -1,4 +1,8 @@
 `timescale 1ns / 1ps
+
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 // Second version of a Shannon-Whitaker LP filter.
 //
 // This version ensures that all DSPs have at least a preadd or multiplier

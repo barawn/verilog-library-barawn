@@ -1,6 +1,9 @@
 `timescale 1ns /1ps
 `include "interfaces.vh"
 
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 `define ADDR_MATCH( in, val) ( {in[6:2],2'b00} == val )
 `define ADDR_MATCH_MASK( in, val, mask ) ( ({in[6:2],2'b00} & mask) == (val & mask))
 

@@ -1,4 +1,8 @@
 `timescale 1 ns/1 ps
+
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 // Two-thirds band filter. This works on an SSR4 input only.
 //
 // Status: Appears to be working, tested in simulation with

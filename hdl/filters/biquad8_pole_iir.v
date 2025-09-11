@@ -1,5 +1,9 @@
 `timescale 1ns / 1ps
 `include "dsp_macros.vh"
+
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 // The DSPs are arranged in a chain of 4, which means we don't need
 // an address at all, it's just a single write value.
 //

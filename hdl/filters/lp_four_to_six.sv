@@ -1,5 +1,8 @@
 `timescale 1ns/1ps
 
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 module lp_four_to_six #(parameter NBITS=12)(
 					    input		 clk_i,
 					    input		 clk_phase_i,

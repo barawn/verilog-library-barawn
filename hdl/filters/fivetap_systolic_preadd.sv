@@ -2,6 +2,10 @@
 
 //! @title 5 tap systolic filter with preadder, single add, and output round
 //! @author Patrick Allison (dbarawn@gmail.com)
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
+
 
 // yes this module should be parameterized for length, I don't care at the moment
 module fivetap_systolic_preadd #( 

@@ -1,5 +1,9 @@
 `timescale 1ns / 1ps
 `include "dsp_macros.vh"
+
+// (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
+// Please contact me either directly or via GitHub for reuse purposes.
+
 // single channel matched filter for PUEO
 //
 // REMEMBER: OUR INDICES WORK LIKE:
