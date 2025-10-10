@@ -10,6 +10,7 @@ module fourtap_systolic_preadd #(
 				  parameter SCALE_OUT = 0,        //! number of bits to downshift the output
 				  parameter [1:0] ADD_INDEX = 0,  //! index to add the add_i input at 
 				  localparam NBITS = 12,          //! number of bits in input and (output-1)
+				  parameter OUTBITS = NBITS+1,    //! actual number of output bits (sometimes varies)
 				  parameter CLKTYPE = "NONE")     //! clocktype for magic clock crossing
 	  ( input	  clk_i,             //! filter clock
 	    input     rst_i,             //! force DSPs into reset
@@ -21,7 +22,7 @@ module fourtap_systolic_preadd #(
 	    input [17:0]  coeff2_i,      //! coefficient of third DSP
 	    input [17:0]  coeff3_i,      //! coefficient of fourth DSP
 	    input [47:0]  pc_i,          //! cascade input if CASCADE == "TRUE"
-	    output [NBITS:0] dat_o,      //! data output
+	    output [OUTBITS-1:0] dat_o,      //! data output
 	    output [47:0] p_o,           //! output of last DSP
 	    output [47:0]  pc_o          //! cascade output of last DSP
       );
@@ -214,7 +215,7 @@ module fourtap_systolic_preadd #(
 
     // the LSB is normally at 26-NBITS, we scale up by SCALE_OUT
     localparam LSB = 26-NBITS+SCALE_OUT;
-    assign dat_o[NBITS:1] = p_o[LSB+1 +: NBITS];
+    assign dat_o[OUTBITS-1:1] = p_o[LSB+1 +: OUTBITS-1];
     assign dat_o[0] = (ROUND == "TRUE") ? p_o[LSB] && !patdet : p_o[LSB];
 
 endmodule // fourtap_systolic_preadd

@@ -18,7 +18,8 @@
 // bit can be dropped. SATURATE also adds an additional
 // clock of delay to the output.
 module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
-				    parameter SATURATE="TRUE",
+				                    parameter SATURATE="TRUE",
+                                    parameter UPSAMPLE="FALSE",
                                     localparam OUTBITS=INBITS+1,
                                     localparam NSAMPS=8)(
         input   clk_i,
@@ -199,11 +200,9 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
                            .din(pre1_in),
                            .dout(pre1_dly));
             
-            // ADD THE CENTER TAP ADD STUFF LATER
-            
             // ok now we just need the filters
             wire [47:0] cascade;	 
-            fourtap_systolic_preadd #(.USE_ADD("TRUE"),
+            fourtap_systolic_preadd #(.USE_ADD(UPSAMPLE == "TRUE" ? "FALSE" : "TRUE"),
                                       .ADD_INDEX(0),
                                       .SCALE_ADD(14+COEFF_UPSHIFT))
                 syst0(  .clk_i(clk_i),
@@ -217,13 +216,23 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
                         .coeff3_i( coeff_shift(coeffs[0], COEFF_UPSHIFT)    ), //  -23
                         .pc_o(cascade));
             wire [47:0] data_out;
-            // the output data can range from -3161 to +3159: we don't care, so we
-            // again cap off at 12 bits. Note that in order to actually saturate you need
-            // to have a maximal amplitude bandlimited pulse so it's pretty unlikely.
-            wire [12:0] last_out;
+            // If we're upsampling, the absolute max we can get (before
+            // scaling) is -70025216 vs the -103579648 we can get normally.
+            // Scaling by 2^15 converts -103579648 => -3161
+            // Scaling by 2^14 converts -70025216 => -4274
+            // So sadly when upscaling, we have *2* extra bits at the
+            // top to consider for saturation. Note that in the end
+            // this isn't going to matter because the AGC will compress
+            // all of this.
+            
+            // So when not upsampling we need 13 bits, otherwise 14.
+            localparam LAST_SCALE = (UPSAMPLE == "TRUE") ? 14 : 15;
+            localparam OUTBITS = (UPSAMPLE == "TRUE") ? 14 : 13;
+            wire [OUTBITS-1:0] last_out;
             fourtap_systolic_preadd #(.CASCADE("TRUE"),
                                       .ROUND("TRUE"),
-                                      .SCALE_OUT(15+COEFF_UPSHIFT))
+                                      .OUTBITS(OUTBITS),
+                                      .SCALE_OUT(LAST_SCALE+COEFF_UPSHIFT))
                 syst1(  .clk_i(clk_i),
                         .rst_i(rst_i),
                         .dat_i(sys1_dly),
@@ -238,12 +247,15 @@ module shannon_whitaker_lpfull_v3 #(parameter INBITS=12,
 	   
 	    // The saturation logic is always present, but if it's not selected,
 	    // it's not used and will be trimmed away.
-            wire saturated = last_out[12] ^ last_out[11];
+            wire saturated = (UPSAMPLE == "TRUE") ?
+                (last_out[13:11] != 3'b111 && last_out[13:11] != 3'b000)
+                :
+                last_out[12] ^ last_out[11];
             reg [11:0] dat_final = {12{1'b0}};
             always @(posedge clk_i) begin : SAT
                 if (saturated) begin
-                    dat_final[11] <= last_out[12];
-                    dat_final[10:0] <= {11{~last_out[12]}};
+                    dat_final[11] <= last_out[OUTBITS-1];
+                    dat_final[10:0] <= {11{~last_out[OUTBITS-1]}};
                 end else dat_final <= last_out[11:0];
             end
             assign dat_o[i] = (SATURATE == "TRUE") ? {dat_final[11],dat_final} : last_out[12:0];
