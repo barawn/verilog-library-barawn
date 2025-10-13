@@ -29,12 +29,19 @@ module biquad8_incremental #(parameter NBITS=16,
     // Note that this is *** very *** likely totally wrong
     // and we'll actually need a chained set of SRLs to get
     // the delay. dear god need to simulate.
-    localparam BASE_DELAY = 14+15 ; //- 1 ; // 16 from python examination, which now maxes srlvec. So 
-                                        // subtract 1 (now 31) and add a manual clock delay later
-                                        // TODO: ADD ANOTHER SRLVEC with 18 (or 17) CLOCKS IN SERIES
+   
+    // The base delay has to be proportional to number of samples but I don't know if this is actually like
+    // 2x samples + 3 or something? LET'S JUST TRY IT
+   localparam	     BASE_DELAY = NSAMP + 6 + 15;   
+//    localparam BASE_DELAY = 14+15 ; //- 1 ; // 16 from python examination, which now maxes srlvec. So 
+//                                        // subtract 1 (now 31) and add a manual clock delay later
+//                                        // TODO: ADD ANOTHER SRLVEC with 18 (or 17) CLOCKS IN SERIES
     // effing FIGURE THIS OUT TOO
-    localparam REALIGN_DELAY = 10;
-    
+    // The realign delay is related to the number of samples. It's probably actually more like (NSAMP-2)+4 or
+    // something but I don't care. This should work too.
+    // localparam REALIGN_DELAY = 10;
+    localparam  REALIGN_DELAY = NSAMP + 2;
+   
     // the two inputs are Q14.10 (default, maybe different in wrapper)
     parameter NUM_DSPS = NSAMP-2;    
     // these have pointless ones to simplify the HDL
