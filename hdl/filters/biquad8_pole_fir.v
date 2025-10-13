@@ -4,6 +4,10 @@
 // (C) Patrick Allison (allison.122@osu.edu) or the Ohio State University.
 // Please contact me either directly or via GitHub for reuse purposes.
 
+// Updated to handle multiple sample rate options.
+// The F chain is NSAMP-1 samples long.
+// The G chain is NSAMP samples long.
+
 // FIR portion of a pole-only biquad operating at 8x clock rate.
 // The FIRs are 6 and 7 taps long initially, have an additional
 // DSP where one loop-back is done, and so are functionally 7 and 8 taps long.
@@ -50,7 +54,7 @@
 module biquad8_pole_fir #(parameter NBITS=16, 
                           parameter NFRAC=2,
                           parameter CLKTYPE="NONE",
-                          NSAMP=8) (
+                          parameter NSAMP=8) (
         input			clk,
         input [NBITS*NSAMP-1:0]	dat_i,
 
@@ -109,8 +113,8 @@ module biquad8_pole_fir #(parameter NBITS=16,
     // so in[7] needs an SRL delay of 2
     
     
-    localparam FLEN = 7;
-    localparam GLEN = 8;
+    localparam FLEN = NSAMP-1;
+    localparam GLEN = NSAMP;
     
     wire [47:0] fpout[FLEN-1:0];
     wire [17:0] fbcascade[FLEN-1:0];
@@ -174,9 +178,11 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 always @(posedge clk) begin : STORE
                     dat_store <= dat_out;
                 end
+	        // Select the input. Chain is arranged backwards.
+	        wire [NBITS-1:0] data_in = (dat_i[NBITS*(NSAMP-1-fi) +: NBITS]);	       
                 // Here's that extra delay for the F-chain data inputs.
                 srlvec #(.NBITS(NBITS)) u_delay(.clk(clk),.ce(1'b1),.a(fi+2),
-                                                .din(dat_i[NBITS*(7-fi) +: NBITS]),
+                                                .din(data_in),
                                                 .dout(dat_out));
                 // we get inputs in Q14.2 format. (NBITS-NFRAC, NFRAC)
                 // Internally we compute in Q21.27 format, coefficients in Q4.14 format
@@ -242,8 +248,9 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 reg [NBITS-1:0] dat_store = {NBITS{1'b0}};
                 wire [NBITS-1:0] dat_out;
                 if (gi > 0) begin : SRL
+	            wire [NBITS-1:0] data_in = (dat_i[NBITS*(NSAMP-fi) +: NBITS]);
                     srlvec #(.NBITS(NBITS)) u_delay(.clk(clk),.ce(1'b1),.a(gi+1),
-                                                    .din(dat_i[NBITS*(8-gi) +: NBITS]),
+                                                    .din(data_in),
                                                     .dout(dat_out));
                     always @(posedge clk) begin : STORE
                         dat_store <= dat_out;
