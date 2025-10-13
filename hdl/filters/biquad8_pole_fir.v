@@ -178,8 +178,8 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 always @(posedge clk) begin : STORE
                     dat_store <= dat_out;
                 end
-	        // Select the input. Chain is arranged backwards.
-	        wire [NBITS-1:0] data_in = (dat_i[NBITS*(NSAMP-1-fi) +: NBITS]);	       
+	            // Select the input. Chain is arranged backwards.
+	            wire [NBITS-1:0] data_in = (dat_i[NBITS*(NSAMP-1-fi) +: NBITS]);	       
                 // Here's that extra delay for the F-chain data inputs.
                 srlvec #(.NBITS(NBITS)) u_delay(.clk(clk),.ce(1'b1),.a(fi+2),
                                                 .din(data_in),
@@ -248,7 +248,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
                 reg [NBITS-1:0] dat_store = {NBITS{1'b0}};
                 wire [NBITS-1:0] dat_out;
                 if (gi > 0) begin : SRL
-	            wire [NBITS-1:0] data_in = (dat_i[NBITS*(NSAMP-fi) +: NBITS]);
+	                wire [NBITS-1:0] data_in = (dat_i[NBITS*(NSAMP-gi) +: NBITS]);
                     srlvec #(.NBITS(NBITS)) u_delay(.clk(clk),.ce(1'b1),.a(gi+1),
                                                     .din(data_in),
                                                     .dout(dat_out));
