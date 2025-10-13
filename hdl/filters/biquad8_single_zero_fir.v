@@ -20,7 +20,9 @@
 // The FIR for a biquad are just complementary
 // zeros located at the frequency of interest.
 // (offset from the unit circle depending on Q factor).
-
+//
+// NOTE: This module will work for any number of samples,
+// just change NSAMP.
 module biquad8_single_zero_fir #(parameter NBITS=16,
 				 parameter NFRAC=2,
 				 parameter NSAMP=8,
