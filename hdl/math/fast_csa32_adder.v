@@ -3,7 +3,12 @@
 // to feed into DSPs.
 // The outputs are the *same width* as the input,
 // but the carry out has to be added shifted up one.
-module fast_csa32_adder #(parameter NBITS=2)(
+//
+// NOTE NOTE NOTE: The invert parameter only works with
+// 1 selected input at the moment. The logic for this
+// will be added later.
+module fast_csa32_adder #(parameter NBITS=2,
+			  parameter [2:0] INVERT = 3'b000)(
         input CLK,
         input CE,
         input RST,
@@ -27,6 +32,9 @@ module fast_csa32_adder #(parameter NBITS=2)(
     // 0 x x 1 1 0 0
     // 0 x x 1 1 1 1 
     // or 96, repeated. So 96969696.
+    //
+    // If A, B, or C is inverted, we just flop the nybbles.
+    //
     // Carry is:
     // 5 4 3 2 1 0 O5
     // 1 x x 0 0 0 0
@@ -38,7 +46,18 @@ module fast_csa32_adder #(parameter NBITS=2)(
     // 1 x x 1 1 0 1
     // 1 x x 1 1 1 1
     // or E8 repeated. So E8E8E8E8.
-    localparam [63:0] LUT_INIT = 64'hE8E8E8E896969696;
+    //
+    // If A is inverted we have 11010100 = 0xD4
+    // If B is inverted we have 10110010 = 0xB2
+    // If C is inverted we have 10001110 = 0x8E
+
+    localparam [7:0]	   SUM_LUT = (INVERT == 3'b000) ? 8'h96 : 8'h69;
+    localparam [7:0]     CARRY_LUT = INVERT[2] ? 8'h8E :
+			              (INVERT[1] ? 8'hB2 :
+				       (INVERT[0] ? 8'hD4 : 8'hE8));   
+   
+    localparam [63:0]	 LUT_INIT = { {4{CARRY_LUT}}, {4{SUM_LUT}} };
+   
     wire [NBITS-1:0] sum_to_ff;
     wire [NBITS-1:0] carry_to_ff;
     generate
