@@ -4,6 +4,8 @@
 module two24_dsp #(
         parameter USE_CE = 0,
         parameter USE_RST = 0,
+        parameter USE_AB = 1,
+        parameter USE_C = 1,
         parameter ABREG = 1,
         parameter CREG = 1,
         parameter PREG = 1,
@@ -26,14 +28,33 @@ module two24_dsp #(
         input [47:0] pc_i,
         output [47:0] pc_o
     );
-    
-    wire [47:0] dsp_AB = AB_i;
-    wire [47:0] dsp_C = C_i;
+        
+    // If AB or C is unused, the proper lowest power
+    // method is tie everything high, register enabled,
+    // CE disabled, and reset low.    
+    wire [47:0] dsp_AB = (USE_AB != 0) ? AB_i : {48{1'b1}};
+    wire [47:0] dsp_C = (USE_C != 0) ? C_i : {48{1'b1}};
     wire [47:0] dsp_P;
     wire [3:0] dsp_carry;
     assign CARRY_o[0] = dsp_carry[`DUAL_DSP_CARRY0];
     assign CARRY_o[1] = dsp_carry[`DUAL_DSP_CARRY1];
     assign P_o = dsp_P;
+    
+    localparam DSP_AREG = (USE_AB != 0) ? ABREG : 1'b1;
+    localparam DSP_ACASCREG = DSP_AREG;
+    localparam DSP_BREG = (USE_AB != 0) ? ABREG : 1'b1;
+    localparam DSP_BCASCREG = DSP_BREG;
+    localparam DSP_CREG = (USE_C != 0) ? CREG : 1'b1;
+    
+    wire CEA2 = (USE_AB != 0) ? (USE_CE == 1 ? ce_ab_i : 1'b1 ) : 1'b0;
+    wire CEB2 = CEA2;
+    wire CEA1 = (USE_AB != 0) ? (ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0) : 1'b0;
+    wire CEB1 = CEA1;
+    wire RSTA = (USE_AB != 0 && USE_RST == 1) ? rst_ab_i : 1'b0;
+    wire RSTB = RSTA;
+    
+    wire CEC = (USE_C != 0) ? (USE_CE == 1 ? ce_c_i : 1'b1) : 1'b0;
+    wire RSTC = (USE_C != 0 && USE_RST == 1) ? rst_c_i : 1'b0;    
     
     // i should make this definable or something, sigh
     generate
@@ -43,9 +64,11 @@ module two24_dsp #(
                       `DE2_UNUSED_ATTRS,
                       .USE_SIMD("TWO24"),
                       .RND(RND),
-                      .AREG(ABREG),
-                      .BREG(ABREG),
-                      .CREG(CREG),
+                      .AREG(DSP_AREG),
+                      .ACASCREG(DSP_ACASCREG),
+                      .BREG(DSP_BREG),
+                      .BCASCREG(DSP_BCASCREG),
+                      .CREG(DSP_CREG),
                       .PREG(PREG))
                       u_dsp(.CLK(clk_i),
                             .A(`DSP_AB_A(dsp_AB)),
@@ -54,15 +77,15 @@ module two24_dsp #(
                             `D_UNUSED_PORTS,
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
                             .CARRYIN(1'b0),
-                            .CEA2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEA1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
-                            .CEB2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEB1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
-                            .CEC(USE_CE == 1 ? ce_c_i : 1'b1),
+                            .CEA2(CEA2),
+                            .CEA1(CEA1),
+                            .CEB2(CEB2),
+                            .CEB1(CEB1),
+                            .CEC(CEC),
                             .CEP(USE_CE == 1 ? ce_p_i : 1'b1),
-                            .RSTA(USE_RST == 1 ? rst_ab_i : 1'b0),
-                            .RSTB(USE_RST == 1 ? rst_ab_i : 1'b0),
-                            .RSTC(USE_RST == 1 ? rst_c_i : 1'b0),
+                            .RSTA(RSTA),
+                            .RSTB(RSTB),
+                            .RSTC(RSTC),
                             .RSTP(USE_RST == 1 ? rst_p_i : 1'b0),
                             .ALUMODE(ALUMODE),
                             .OPMODE(OPMODE),
@@ -75,9 +98,11 @@ module two24_dsp #(
                       `DE2_UNUSED_ATTRS,
                       .USE_SIMD("TWO24"),
                       .RND(RND),
-                      .AREG(ABREG),
-                      .BREG(ABREG),
-                      .CREG(CREG),
+                      .AREG(DSP_AREG),
+                      .ACASCREG(DSP_ACASCREG),
+                      .BREG(DSP_BREG),
+                      .BCASCREG(DSP_BCASCREG),
+                      .CREG(DSP_CREG),
                       .PREG(PREG))
                       u_dsp(.CLK(clk_i),
                             .A(`DSP_AB_A(dsp_AB)),
@@ -86,15 +111,15 @@ module two24_dsp #(
                             `D_UNUSED_PORTS,
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
                             .CARRYIN(1'b0),
-                            .CEA2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEA1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
-                            .CEB2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEB1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
-                            .CEC(USE_CE == 1 ? ce_c_i : 1'b1),
+                            .CEA2(CEA2),
+                            .CEA1(CEA1),
+                            .CEB2(CEB2),
+                            .CEB1(CEB1),
+                            .CEC(CEC),
                             .CEP(USE_CE == 1 ? ce_p_i : 1'b1),
-                            .RSTA(USE_RST == 1 ? rst_ab_i : 1'b0),
-                            .RSTB(USE_RST == 1 ? rst_ab_i : 1'b0),
-                            .RSTC(USE_RST == 1 ? rst_c_i : 1'b0),
+                            .RSTA(RSTA),
+                            .RSTB(RSTB),
+                            .RSTC(RSTC),
                             .RSTP(USE_RST == 1 ? rst_p_i : 1'b0),
                             .ALUMODE(ALUMODE),
                             .OPMODE(OPMODE),
