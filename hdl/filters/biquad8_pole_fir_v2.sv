@@ -71,7 +71,12 @@
 module biquad8_pole_fir_v2 #(parameter NBITS=16, 
                           parameter NFRAC=2,
                           parameter CLKTYPE="NONE",
-                          parameter NSAMP=8) (
+                          parameter NSAMP=8,
+                          // How many registers we handle in
+                          // fabric rather than the DSP. Using them
+                          // in fabric allows the delay to be
+                          // shared with the incremental computation portion.
+                          parameter FABRIC_DELAY=2) (
         input			clk,
         input [NBITS*NSAMP-1:0]	dat_i,
 
@@ -91,7 +96,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
         // Each input past 2 has (sample-2) clocks of delay.
         output [NBITS*NSAMP-1:0] x_out
     );
-    
+
     // Total length of the F chain = (f length + 1)
     localparam FLEN = NSAMP-1;
     // Total length of the G chain = (g length + 1)
@@ -155,46 +160,54 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
     
     localparam NUM_HEAD_PAD = 17 - (NBITS-NFRAC);
     localparam NUM_TAIL_PAD = 13 - NFRAC;
-    
+
     generate    
         genvar fi,fj, gi,gj, smp;
-        // Generate the delayed inputs.
+        // OK, so the way this works is that for the f dsp0/dsp1 and g dsp1/dsp2,
+        // they both take in the samples we're going to calculate with the incremental
+        // version too. So we want to absorb as many of those delays as possible
+        // in *fabric*. So at first, let's try absorbing them ALL:
+
         // sample 0 :   undelayed
         // sample 1 :   undelayed
-        // sample 2 :   undelayed
-        // sample 3 :   z^-1
-        // sample 4 :   z^-2 
+        // sample 2 :   z^-2
+        // sample 3 :   z^-3
+        // sample 4 :   z^-4
         // etc.
         for (smp=0;smp<NSAMP;smp=smp+1) begin : DLY
-            if (smp < 3) begin : NODLY
+            if (smp < 2) begin : NODLY
                 assign in_delayed[smp] = dat_i[NBITS*smp +: NBITS];                
             end else begin : DLY
+                // This is how much of the delay we're absorbing here.
+                localparam SDLY = ((smp-2)+FABRIC_DELAY);
                 wire [NBITS-1:0] srl_out;
                 reg [NBITS-1:0] dat_store = {NBITS{1'b0}};
-                if (smp < 4) begin : NOSRL
+                if (SDLY < 2) begin : NOSRL
                     assign srl_out = dat_i[NBITS*smp +: NBITS];
                 end else begin : SRL
-                    srlvec #(.WIDTH(NBITS))
-                        u_srl(.clk(clk),.ce(1'b1),.a(smp-4),
+                    srlvec #(.NBITS(NBITS))
+                        u_srl(.clk(clk),.ce(1'b1),.a(SDLY-2),
                               .din(dat_i[NBITS*smp +: NBITS]),
                               .dout(srl_out));
                 end
                 always @(posedge clk) begin : STORE
                     dat_store <= srl_out;
                 end
-                assign in_delayed[smp] = dat_store;
+                assign in_delayed[smp] = (SDLY > 0) ? dat_store : dat_i[NBITS*smp +: NBITS];
             end
             assign x_out[NBITS*smp +: NBITS] = in_delayed[smp];
         end
         // Now run the f chain.        
         for (fi=0;fi<FLEN;fi=fi+1) begin : FLOOP
-            // F chain has AREG=2, ADREG=0, MREG=1
+            // F chain has AREG=2-FABRIC_DELAY, ADREG=0, MREG=1
             wire [29:0] dspA_in = (fi < FLEN-1) ?
                 { {NUM_HEAD_PAD{in_delayed[fi+2][NBITS-1]}}, in_delayed[fi+2], {NUM_TAIL_PAD{1'b0}} } :
                   fpout[fi-1][14 +: 30];
 
             if (fi == 0) begin : HEAD
-                localparam THIS_AREG = 0;
+                localparam THIS_AREG = 2-FABRIC_DELAY;
+                wire CEA1 = (THIS_AREG > 1) ? 1'b1 : 1'b0;
+                wire CEA2 = (THIS_AREG > 0) ? 1'b1 : 1'b0;
                 localparam C_HEAD_PAD = 21 - (NBITS-NFRAC);
                 localparam C_TAIL_PAD = 27 - NFRAC;
                 // Need an extra clock in the C path to line everything up.
@@ -203,20 +216,20 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                     in_store <= in_delayed[0];
                 end                
                 wire [47:0] dspC_in = { {C_HEAD_PAD{in_store[NBITS-1]}}, in_store, {C_TAIL_PAD{1'b0}} };
-                // the f chain will have AREG=2, ADREG=0, MREG=1
+                // the f chain will have AREG=2, ADREG=0, MREG=1                
                 (* CUSTOM_CC_DST = CLKTYPE *)
                 DSP48E2 #(`COMMON_ATTRS,
                           .CREG(1),
-                          .AREG(2),
-                          .ACASCREG(2),
+                          .AREG(THIS_AREG),
+                          .ACASCREG(THIS_AREG),
                           .ADREG(0),
                           .MREG(1))
                     u_head( .CLK(clk),
                             .CEP(1'b1),
                             .CEC(1'b1),
                             .CEM(1'b1),
-                            .CEA1(1'b1),
-                            .CEA2(1'b1),
+                            .CEA1(THIS_CEA1),
+                            .CEA2(THIS_CEA2),
                             .C(dspC_in),   // This is where the 1 in [1,X_1,X_2,...] is added             
                             .A(dspA_in),
                             .B(coeff_dat_i),
@@ -231,8 +244,9 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .P(fpout[fi]),
                             .PCOUT(fpcascade[fi]));
             end else begin : BODY
-                localparam THIS_AREG = (fi < FLEN-1) ? 2 : 0;
-                wire THIS_CEA = (fi < FLEN-1) ? 1 : 0;
+                localparam THIS_AREG = (fi < FLEN-1) ? 2-FABRIC_DELAY : 0;
+                wire THIS_CEA1 = (fi < FLEN-1 && THIS_AREG > 1) ? 1 : 0;
+                wire THIS_CEA2 = (fi < FLEN-1 && THIS_AREG > 0) ? 1 : 0;
                 DSP48E2 #(`COMMON_ATTRS,
                           `C_UNUSED_ATTRS,
                           .B_INPUT("CASCADE"),
@@ -243,8 +257,8 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                     u_body( .CLK(clk),
                             .CEP(1'b1),                            
                             .A(dspA_in),
-                            .CEA2(THIS_CEA),
-                            .CEA1(THIS_CEA),
+                            .CEA2(THIS_CEA2),
+                            .CEA1(THIS_CEA1),
                             .CEM(1'b1),
                             .BCIN(fbcascade[fi-1]),
                             .BCOUT(fbcascade[fi]),
@@ -302,8 +316,9 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .PCOUT(gpcascade[gi]));
             end else begin : BODY
                 // and everywhere else gets AREG=2, MREG=1 except the loopback which gets AREG=0           
-                localparam THIS_AREG = (gi < GLEN-1) ? 2 : 0;
-                wire THIS_CEA = (gi < GLEN-1) ? 1 : 0;
+                localparam THIS_AREG = (gi < GLEN-1) ? 2-FABRIC_DELAY : 0;
+                wire THIS_CEA1 = (gi < GLEN-1 && THIS_AREG > 1) ? 1 : 0;
+                wire THIS_CEA2 = (gi < GLEN-1 && THIS_AREG > 0) ? 1 : 0;
                 DSP48E2 #(`COMMON_ATTRS,
                           .AREG(THIS_AREG),
                           .ACASCREG(THIS_AREG),
@@ -312,8 +327,8 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                           `C_UNUSED_ATTRS)
                     u_body( .CLK(clk),
                             .CEP(1'b1),
-                            .CEA1(THIS_CEA),
-                            .CEA2(THIS_CEA),
+                            .CEA1(THIS_CEA1),
+                            .CEA2(THIS_CEA2),
                             .CEM(1'b1),
                             .A(dspA_in),
                             .BCIN(gbcascade[gi-1]),
