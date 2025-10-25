@@ -173,10 +173,10 @@ module biquad8_wrapper #(parameter NBITS=16, // input number of bits
 
 
     // the address bits here 
-    biquad8_pole_fir #(.NBITS(ZERO_FIR_BITS),
-                       .NFRAC(ZERO_FIR_FRAC),
-                       .NSAMP(NSAMP),
-                        .CLKTYPE(CLKTYPE))
+    biquad8_pole_fir    #(.NBITS(ZERO_FIR_BITS),
+                          .NFRAC(ZERO_FIR_FRAC),
+                          .NSAMP(NSAMP),
+                          .CLKTYPE(CLKTYPE))
         u_pole_fir(.clk(clk_i),
                 .dat_i(zero_fir_out),
                 .coeff_dat_i(coeff_hold),
