@@ -6,6 +6,7 @@ module fourtap_systolic_preadd #(
                   parameter CASCADE = "FALSE",    //! use input cascade for first tap
 				  parameter ROUND = "FALSE",      //! round the final tap to output bits
 				  parameter USE_ADD = "FALSE",    //! use the add_i input to add a value
+				  parameter PREADD_REG = 1,       //! the preadd reg can be disabled if needed				  
 				  parameter SCALE_ADD = 0,        //! number of bits to upshift the add_i input
 				  parameter SCALE_OUT = 0,        //! number of bits to downshift the output
 				  parameter [1:0] ADD_INDEX = 0,  //! index to add the add_i input at 
@@ -50,9 +51,11 @@ module fourtap_systolic_preadd #(
    localparam USE_C1 = (USE_ADD == "TRUE") && ADD_INDEX == 2'd1 ? "TRUE" : "FALSE";
    localparam USE_C2 = (USE_ADD == "TRUE") && ADD_INDEX == 2'd2 ? "TRUE" : "FALSE";
    localparam USE_C3 = (USE_ADD == "TRUE") && ADD_INDEX == 2'd3 ? "TRUE" : "FALSE";
+
+   localparam USE_RND_ANY = (ROUND == "TRUE" || ROUND == "CONSTANT") ? "TRUE" : "FALSE";
    
-   localparam USE_RND_2 = ((USE_ADD == "TRUE") && (ADD_INDEX == 2'd3)) ? ROUND : "FALSE";
-   localparam USE_RND_3 = ((USE_ADD != "TRUE") || (ADD_INDEX != 2'd3)) ? ROUND : "FALSE";
+   localparam USE_RND_2 = ((USE_ADD == "TRUE") && (ADD_INDEX == 2'd3)) ? USE_RND_ANY : "FALSE";
+   localparam USE_RND_3 = ((USE_ADD != "TRUE") || (ADD_INDEX != 2'd3)) ? USE_RND_ANY : "FALSE";
 
 
    // Our output bits have (26-NBITS) useless bits at the bottom.
@@ -121,7 +124,7 @@ module fourtap_systolic_preadd #(
 		  .USE_ACIN("FALSE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
-		  .PREADD_REG(1),
+		  .PREADD_REG(PREADD_REG),
 		  .MULT_REG(1),
 		  .AREG(1),
 		  .ACASCREG(2),
@@ -143,7 +146,7 @@ module fourtap_systolic_preadd #(
 		  .USE_ACIN("TRUE"),
 		  .USE_ACOUT("TRUE"),
 		  .USE_D("TRUE"),
-		  .PREADD_REG(1),
+		  .PREADD_REG(PREADD_REG),
 		  .MULT_REG(1),
 		  .AREG(1),
 		  .ACASCREG(2),
@@ -166,7 +169,7 @@ module fourtap_systolic_preadd #(
 		  .USE_D("TRUE"),
 		  .USE_RND(USE_RND_2),
 		  .RND_VAL(RND_CONST),
-		  .PREADD_REG(1),
+		  .PREADD_REG(PREADD_REG),
 		  .MULT_REG(1),
 		  .AREG(1),
 		  .ACASCREG(2),
@@ -195,7 +198,7 @@ module fourtap_systolic_preadd #(
 		  .PATTERN_VAL(PATTERN_3),
 		  .MASK_VAL(MASK_3),
 		  .USE_CARRYIN("TRUE"),
-		  .PREADD_REG(1),
+		  .PREADD_REG(PREADD_REG),
 		  .MULT_REG(1),
 		  .AREG(1),
 		  .DREG(1),
