@@ -85,8 +85,9 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     reg			       update_wbclk = 0;   
     wire			       update_clk;   
     flag_sync u_updatesync(.in_clkA(update_wbclk),.out_clkB(update_clk),.clkA(wb_clk_i),.clkB(clk_i));
+    reg                update_sync = 0;
+    (* MAX_FANOUT = 1 *)
     reg			       update = 0;
-
     reg			       read_ack = 0;
 
 
@@ -135,7 +136,8 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
 
     always @(posedge clk_i) begin
         ack_clk <= `DLYFF wr_clk;
-        update <= `DLYFF update_clk;
+        update_sync <= `DLYFF update_clk;
+        update <= update_sync;
         coeff_fir_wr <= `DLYFF wr_clk && coeff_fir_wr_hold;      
         coeff_polefir_wr <= `DLYFF wr_clk && coeff_polefir_wr_hold;
         coeff_iir_wr <= `DLYFF wr_clk && coeff_iir_wr_hold;
@@ -152,7 +154,6 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     localparam ZERO_FIR_FRAC = 2;
 
     wire [ZERO_FIR_BITS*NSAMP-1:0] zero_fir_out;
-
     // THIS MAY NEED TO GO AFTER IIR, ACCORDING TO SIM
     biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
                 .NSAMP(NSAMP),.OUTBITS(ZERO_FIR_BITS),
@@ -172,11 +173,18 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     wire [47:0]	y1_out;
 
     wire [NSAMP*ZERO_FIR_BITS-1:0] x_out;
-
+   
+    // The pole FIR can absorb up to 2 clocks in fabric,
+    // but with 2 clocks there are no A registers which is pretty
+    // aggressive for the router. So instead just absorb 1 clock's
+    // delay in fabric and add one more delay to the incremental path.
+    localparam POLE_FIR_FABRIC_DELAY = 1;
+    localparam INCREMENTAL_X_DELAY = NSAMP+7;
     // the address bits here 
     biquad8_pole_fir_v2  #(.NBITS(ZERO_FIR_BITS),
                           .NFRAC(ZERO_FIR_FRAC),
                           .NSAMP(NSAMP),
+                          .FABRIC_DELAY(POLE_FIR_FABRIC_DELAY),
                           .CLKTYPE(CLKTYPE))
         u_pole_fir(.clk(clk_i),
                 .dat_i(zero_fir_out),
@@ -226,6 +234,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
                             .OUTBITS(OUTBITS),
                             .OUTFRAC(OUTFRAC),
                             .NSAMP(NSAMP),
+                            .X_DELAY(INCREMENTAL_X_DELAY),
                             .CLKTYPE(CLKTYPE))
         u_incremental( .clk(clk_i),
             .x_in(x_out),
