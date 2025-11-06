@@ -16,7 +16,11 @@
 // So what we do is do
 // dsp0       dsp1       dsp2       dsp3
 // y0_dspA -> y0_dspB -> y1_dspA -> y1_dspB
-//
+// y0_0 coeff y0_1 coeff y1_1 coeff y1_0 coeff  
+// A          B          D          C
+// Programming is backwards so it's
+// C, D, B, A or by the paper's notation it's
+// C2, C3, C1, C0.
 //
 // WHAT WE HAVE TRIED THAT DOESN'T WORK:
 // 1) Straightforward option: connect dsp1/3->dsp0/2, no Areg, connect dsp3/1->dsp1/2 with Areg.
