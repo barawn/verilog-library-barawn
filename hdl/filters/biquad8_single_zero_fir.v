@@ -72,6 +72,9 @@ module biquad8_single_zero_fir #(parameter NBITS=16,
 	 wire [NBITS-1:0] last_samp = dat_i[NBITS*((i+NSAMP-1)%NSAMP) +: NBITS];
 	 wire [NBITS-1:0] llast_samp = dat_i[NBITS*((i+NSAMP-2)%NSAMP) +: NBITS];
 
+    // sample 0:    D input = sample[0] = z^0 * z^-NSAMP
+    //              A input = sample[NSAMP-2] = z^NSAMP-2 * z^-2*NSAMP
+
 	 // dsp1 handles this_samp and llast_samp
 	 // we add the preadder reg and possibly mreg
 	 // 0 dsp0: AREG=2, DREG=1, MREG=1
@@ -108,7 +111,7 @@ module biquad8_single_zero_fir #(parameter NBITS=16,
 	 wire [29:0]	  dsp0_A = { {A_SIGNEXTEND{llast_samp[NBITS-1]}}, llast_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
 	 wire [26:0]	  dsp0_D = { {D_SIGNEXTEND{this_samp[NBITS-1]}}, this_samp,   {(AD_FRAC_BITS-NFRAC){1'b0}} };	 
 	 wire [29:0]	  dsp1_A = { {A_SIGNEXTEND{last_samp[NBITS-1]}}, last_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
-	 	 
+
 	 fir_dsp_core #(.USE_C("FALSE"),
 			.AREG( i < 2 ? 2 : 1),
 			.DREG(1),
