@@ -174,6 +174,10 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
         // sample 3 :   z^-3
         // sample 4 :   z^-4
         // etc.
+        // NOTE NOTE NOTE NOTE NOTE: this might suck for power bc SRLs will have
+        // all 16 internal FFs flipping constantly whereas if we did it just with
+        // registers it'd be nothing. Except you'd also have the route wires flipping.
+        // SO WHO KNOWS.
         for (smp=0;smp<NSAMP;smp=smp+1) begin : DLY
             if (smp < 2) begin : NODLY
                 assign in_delayed[smp] = dat_i[NBITS*smp +: NBITS];                
@@ -206,8 +210,8 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
 
             if (fi == 0) begin : HEAD
                 localparam THIS_AREG = 2-FABRIC_DELAY;
-                wire CEA1 = (THIS_AREG > 1) ? 1'b1 : 1'b0;
-                wire CEA2 = (THIS_AREG > 0) ? 1'b1 : 1'b0;
+                wire THIS_CEA1 = (THIS_AREG > 1) ? 1'b1 : 1'b0;
+                wire THIS_CEA2 = (THIS_AREG > 0) ? 1'b1 : 1'b0;
                 localparam C_HEAD_PAD = 21 - (NBITS-NFRAC);
                 localparam C_TAIL_PAD = 27 - NFRAC;
                 // Need an extra clock in the C path to line everything up.
