@@ -97,12 +97,15 @@ module biquad8_incremental_v2 #(
     wire [OUTBITS-1:0] y0_srl;
     reg [OUTBITS-1:0] y1_out = {OUTBITS{1'b0}};
     wire [OUTBITS-1:0] y1_srl;
+    // This ends up being TOTAL_REALIGN_DELAY-1 because of the MREG
+    // below: the C inputs take TOTAL_REALIGN_DELAY but when you
+    // take the y inputs directly they're aligned one behind.
     srlvec #(.NBITS(OUTBITS))
-        u_y0_srl(.clk(clk),.ce(1'b1),.a(TOTAL_REALIGN_DELAY-2),
+        u_y0_srl(.clk(clk),.ce(1'b1),.a(TOTAL_REALIGN_DELAY-1),
                  .din(y0_in[(NFRAC2-OUTFRAC) +: OUTBITS]),
                  .dout(y0_srl));
     srlvec #(.NBITS(OUTBITS))
-        u_y1_srl(.clk(clk),.ce(1'b1),.a(TOTAL_REALIGN_DELAY-2),
+        u_y1_srl(.clk(clk),.ce(1'b1),.a(TOTAL_REALIGN_DELAY-1),
                  .din(y1_in[(NFRAC2-OUTFRAC) +: OUTBITS]),
                  .dout(y1_srl));                
     always @(posedge clk) begin
