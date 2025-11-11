@@ -8,57 +8,29 @@
 // v2 rearranges things to reduce power consumption by sharing delays
 // and passing the delayed inputs along for the incremental version.
 //
-// NOTE: we MAY want to test swapping between using the actual AREGs
-// and fabric registers. The fabric registers may be lower power total
-// because there are fewer bits flipping, since the actual AREGs have
-// to sign extend.
+// There are two compensating FIRs, one for each of the samples
+// generated from the IIR. Sample 0's FIR is called the f chain,
+// and sample 1's FIR is called the g chain. These compensating FIRs
+// are then pipelined to generate the F and G outputs. One of those
+// DSPs is at the end of each of the f/g chains, and then the second
+// set of DSPs, which links the two chains, are separate.
 //
-// The compensating FIR consists of 2 separate FIRs, termed the
-// f and g chain, along with an additional pair of DSPs which
-// handle the pipelining (creating the F and G inputs).
+// The total F chain (consisting of the f and the final pipeline DSP)
+// is NSAMP-1 DSPs long.
+// The total G chain (consisting of the g and the final pipeline DSP)
+// is NSAMP DSPs long.
 //
-// The f/g chain looks like:
-// f = u[0] + c[0]u[NSAMP-1]z^-1 + c[1]u[NSAMP-2]z^-1 + ... c[NSAMP-3]u[2]z^-1
-// g = u[1] + d[0]u[0] + d[1]u[NSAMP-1]z^-1 + d[2]u[NSAMP-2]z^-1 + ... d[NSAMP-2]u[2]z^-1
+// Because of the difference in total length, the delays between the
+// inputs of the two chains differ. The f chain wants to take in
+// x[0], x[NSAMP-1]z^-1, x[NSAMP-2]z^-1 ... x[2]z^-1
+// and the g chain wants to take in
+// x[1], x[0], x[NSAMP-1]z^-1, x[NSAMP-2]z^-1 ... x[2]z^-1
 //
-// In order to balance the delays in these inputs, we reorganize the DSPs. Each input
-// picks up an additional clock, but in the incremental version there will be an additional
-// clock delay as well with incrementing delays. So, for instance, sample 3 needs
-// an additional delay after sample 2 to allow for time for it to be generated.
-// Therefore we rearrange this as:
-//
-// f = u[0] + C[0]u[2]z^-1 + C[1]u[3]z^-1 + ...
-// g = u[1] + D[0]u[0] + D[1]u[2]z^-1 + ...
-//
-// Note that because the f and g chains are different lengths, we need to align the
-// f chain so that C[0]u[2]z^-1 and D[1]u[2]z^-1 have the same timing.
-//
-// Consider the output of the first f DSP with AREG=1, ADREG=0, MREG=1
-// dsp_f0 = (u[0]z^-1 + C[0](u[2]z^-1)z^-1)z^-1 = (u[0] + C[0]u[2]z^-1)z^-2 = f0z^-2
-// Following through the first g DSP with AREG=1, MREG=0
-// dsp_g0 = (u[1]z^-1 + D[0]u[0]z^-1)z^-1 = (u[1] + D[0]u[0])z^-2 = g0z^-2
-// and the second g DSP with AREG=2, MREG=1
-// dsp_g1 = (g0z^-2 + (D[1]u[2]z^-2z^-1))z^-1 = (g0z^-2 + g1z^-2)z^-1 = (g0+g1)z^-3
-// Therefore clearly we need to bump up an additional register in the f DSP, so go to AREG=2
-// which requires adjusting the input to u[0]z^-1
-//
-// Therefore the f chain will have AREG=2, ADREG=0, MREG=1
-// The first DSP in the g chain will have AREG=1, MREG=0 and the remainder AREG=2, MREG=1.
-// We now have
-// dsp_f0 = ((u[0]z^-1)z^-1 + C[0](u[2]z^-2)z^-1)z^-1 = (u[0] + C[0]u[2]z^-1)z^-3 = f0z^-3
-// dsp_g0 = g0z^-2
-// dsp_g1 = (g0+g1)z^-3
-// And then dsp_f1 takes in C[1]u[3]z^-1, giving
-// dsp_f1 = (f0z^-3 + C[1]((u[3]z^-1)z^-2)z^-1)z^-1 = (f0 + C[1]u[3]z^-1)z^-4
-// dsp_g2 = ((g0+g1)z^-3 + D[2](u[3]z^-1)z^-2)z^-1)z^-1 = (g0+g1+D[2]u[3]z^-1)z^-4
-// which gives us the alignment we want.
-// Also note that our delayed outputs will have:
-// u[2]
-// u[3]z^-1
-// u[4]z^-2 etc. etc.
-//
-// The DSPs that generate the F and G chain don't change. This means our coefficients
-// programmed in are actually:
+// The first dspA output gives (c*x[0]z^-1 + x[1]z^-1)z^-1 or
+// c*x[0]z^-2 + x[1]z^-2.
+// etc.
+// For the most part this is straightforward, we just need to handle the G chain head
+// differently.
 //
 // F chain:     (-P^M)*U_(M-2)(cos t)
 //              P*U_1(cos t) ..             (coeff for x[M-2])
@@ -72,13 +44,18 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                           parameter NFRAC=2,
                           parameter CLKTYPE="NONE",
                           parameter NSAMP=8,
-                          // How many registers we handle in
-                          // fabric rather than the DSP. Using them
-                          // in fabric allows the delay to be
-                          // shared with the incremental computation portion.
-                          parameter FABRIC_DELAY=2) (
+                          // How many clocks after 'bypass_i' changes
+                          // do we expect bypassed/unbypassed data
+                          // to show up.
+                          parameter BYPASS_DELAY=3) (
         input			clk,
         input [NBITS*NSAMP-1:0]	dat_i,
+
+        // The bypass input forces all of the MREGs to zero sequentially,
+        // converting "y0_out" = sample 0 and "y1_out" = sample 1.
+        
+        input           bypass_i,
+        output          bypass_o,
 
         // the address here selects
         // 00 : F chain
@@ -111,6 +88,17 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
     wire [47:0] gpcascade[GLEN-1:0];
     wire [47:0] gpout[GLEN-1:0];
     
+    // after bypass, there are BYPASS_DELAY clocks before bypassed
+    // data starts showing up.
+    wire [FLEN-1:0] force_f_bypass;
+    wire [GLEN-1:0] force_g_bypass;
+    // g chain delays RSTM by BYPASS_DELAY+1 clocks, f chain delays
+    // by BYPASS_DELAY+2 clocks.
+    reg [BYPASS_DELAY+1:0] bypass_shreg = {(BYPASS_DELAY+2){1'b0}};
+
+    wire f_bypass_in = bypass_shreg[BYPASS_DELAY+1];
+    wire g_bypass_in = bypass_shreg[BYPASS_DELAY];
+
     // Registered control signals.
     (* CUSTOM_CC_DST = CLKTYPE *)
     reg coeff_wr_f = 0;
@@ -125,7 +113,11 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
     reg update = 0;
 
     // Logic for coefficient control.
+    integer b;
     always @(posedge clk) begin
+       for (b=0;b<(BYPASS_DELAY+2);b=b+1) begin
+           bypass_shreg[b] <= (b==0) ? bypass_i : bypass_shreg[b-1];
+       end
        coeff_wr_f <= coeff_wr_i && (coeff_adr_i == 2'b00);       
        coeff_wr_g <= coeff_wr_i && (coeff_adr_i == 2'b01);
 
@@ -137,6 +129,85 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
 
     `define COMMON_ATTRS    `CONSTANT_MODE_ATTRS, `DE2_UNUSED_ATTRS, .BREG(2), .BCASCREG(1), .PREG(1)    
 
+    // Our goal here is to allow as many registers here to be shared as
+    // possible. Looking at NSAMP=4 and assuming AREG=1, MREG=1, CREG=1, that means
+    // the PREG output is delayed 3 clocks.
+    // A -> z^-1 (AREG)    z^-1(MREG)       \
+    // C -> z^-1 (CREG)                     +-- z^-1 (PREG) ==>
+    //
+    // e.g. P output = (B*Az^-2 + Cz^-1)z^-1
+    //
+    // Considering the g chain first because it's longer:
+    // dspA's P output: (BA*x[0]z^-2 + C(x[1]z^-1)z^-1)z^-1 = dspA at z^-3
+    // dspB's P output: (BB*(x[2]z^-1)z^-2 + dspA)z^-1 = dspB at z^-4
+    // dspC's P output: (BC*(x[3]z^-2)z^-2 + dspB)z^-1 = dspC at z^-5
+    //
+    // Now the f chain needs:
+    // dspA's P output: (BA*(x[2]z^-1)z^-2 + C(x[0]z^-2)z^-1)z^-1 = dspA at z^-4
+    // dspB's P output: (BB*(x[3]z^-2)z^-2 + dspA)z^-1 = dspB at z^-5
+    //
+    // This means we need:
+    // x[0] and x[0]z^-2
+    // x[1]z^-1
+    // x[2]z^-1
+    // x[3]z^-2
+    // etc.
+    //
+    // BYPASS_DELAY is the amount of time from bypass_i until
+    // bypassed data shows up at the input. e.g. if BYPASS_DELAY=3,
+    // and bypass turns on at clock 1, it shows up at clock 4.
+    // For the f-chain, we want
+    //
+    // clk  bypass  RSTM    FIR2    A           AREG        MREG            C           CREG        PREG
+    // 0    0       0       FIR2[0] FIR2[-1]    FIR2[-2]    BA*FIR2[-3]     FIR0[-2]    FIR0[-3]    FIR0[-4]+BA*FIR2[-4]
+    // 1    1       0       FIR2[1] FIR2[0]     FIR2[-1]    BA*FIR2[-2]     FIR0[-1]    FIR0[-2]    FIR0[-3]+BA*FIR2[-3]
+    // 2    1       0       FIR2[2] FIR2[1]     FIR2[0]     BA*FIR2[-1]     FIR0[0]     FIR0[-1]    FIR0[-2]+BA*FIR2[-2]
+    // 3    1       0       FIR2[3] FIR2[2]     FIR2[1]     BA*FIR2[0]      FIR0[1]     FIR0[0]     FIR0[-1]+BA*FIR2[-1]
+    // 4    1       0       D[4]    FIR2[3]     FIR2[2]     BA*FIR2[1]      FIR0[2]     FIR0[1]     FIR0[0]+BA*FIR2[0]
+    // 5    1       0       D[5]    D[4]        FIR2[3]     BA*FIR2[2]      FIR0[3]     FIR0[2]     FIR0[1]+BA*FIR2[1]
+    // 6    1       1       D[6]    D[5]        D[4]        BA*FIR2[3]      D[4]        FIR0[3]     FIR0[2]+BA*FIR2[2]
+    // 7    1       1       D[7]    D[6]        D[5]        0               D[5]        D[4]        FIR0[3]+BA*FIR2[3]
+    // 8    1       1       D[8]    D[7]        D[6]        0               D[6]        D[5]        D[4]
+    // which means the F-chain's first RSTM is the output of a 5 clock shift reg
+    // dspA RSTM = bypass_shreg[4]
+    // dspB RSTM = bypass_shreg[5]
+    // dspC RSTM = bypass_shreg[6]
+    //
+    // The g-chain is one shorter:
+    // 
+    // clk  bypass  RSTM    FIR0    A           AREG        MREG            C           CREG        PREG
+    // 0    0       0       FIR0[0] FIR0[0]     FIR0[-1]    BA*FIR0[-2]     FIR1[-1]    FIR1[-2]    FIR1[-3]+BA*FIR0[-3]
+    // 1    1       0       FIR0[1] FIR0[1]     FIR0[0]     BA*FIR0[-1]     FIR0[0]     FIR1[-1]    FIR1[-2]+BA*FIR0[-2]
+    // 2    1       0       FIR0[2] FIR0[2]     FIR0[1]     BA*FIR0[0]      FIR0[1]     FIR1[0]     FIR1[-1]+BA*FIR0[-1]
+    // 3    1       0       FIR0[3] FIR0[3]     FIR0[2]     BA*FIR0[1]      FIR0[2]     FIR1[1]     FIR1[0]+BA*FIR0[0]
+    // 4    1       0       D[4]    D[4]        FIR0[3]     BA*FIR0[2]      FIR0[3]     FIR1[2]     FIR1[1]+BA*FIR0[1]
+    // 5    1       1       D[5]    D[5]        D[4]        BA*FIR0[3]      D[4]        FIR1[3]     FIR1[2]+BA*FIR0[2]
+    // 6    1       1       D[6]    D[6]        D[5]        0               D[5]        D[4]        FIR1[3]+BA*FIR0[3]
+    // 7    1       1       D[7]    D[7]        D[6]        0               D[6]        D[5]        D[4]
+    
+    // so for the g chain
+    // dspA RSTM = bypass_shreg[3]  turns on at clk7 after clk1
+    // dspB RSTM = bypass_shreg[4]  turns on at clk8 after clk1
+    // dspC RSTM = bypass_shreg[5]  turns on at clk9 after clk1
+    // dspD RSTM = bypass_shreg[6]  turns on at clk10 after clk1
+    // 
+        
+    // The g chain is NSAMP clocks long:
+    //
+    // 
+    //
+    // f        dspA ALU in             dspA P      dspB
+    // x[0]     x[0][-3] + B*x[2][-3]
+    // x[2]     
+    // x[3]                             x[0][-4] + B*x[2][-4] + C*x[3][-4]
+
+    // So clearly x[1] needs a delay of 1 clock
+
+    // g        dspA                    dspB                        dspC
+    // x[1]     x[1][-2] + D*x[0][-2]
+    // x[0]
+    // x[2]                             x[1][-3]+Dx[0][-3]+Ex[2][-3]
+    // x[3]                                                         x[1][-4]+Dx[0][-4]+Ex[2][-4]+Fx[3][-4]
     // CHEAP IMPROVEMENT
     // What we were PREVIOUSLY doing was 
     // 7    -> SRL(A=2)->FF ->  F dspA_in[0]
@@ -163,63 +234,44 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
 
     generate    
         genvar fi,fj, gi,gj, smp;
-        // OK, so the way this works is that for the f dsp0/dsp1 and g dsp1/dsp2,
-        // they both take in the samples we're going to calculate with the incremental
-        // version too. So we want to absorb as many of those delays as possible
-        // in *fabric*. So at first, let's try absorbing them ALL:
 
-        // sample 0 :   undelayed
-        // sample 1 :   undelayed
-        // sample 2 :   z^-2
-        // sample 3 :   z^-3
-        // sample 4 :   z^-4
-        // etc.
-        // NOTE NOTE NOTE NOTE NOTE: this might suck for power bc SRLs will have
-        // all 16 internal FFs flipping constantly whereas if we did it just with
-        // registers it'd be nothing. Except you'd also have the route wires flipping.
-        // SO WHO KNOWS.
+        // Generate the delays.
         for (smp=0;smp<NSAMP;smp=smp+1) begin : DLY
-            if (smp < 2) begin : NODLY
-                assign in_delayed[smp] = dat_i[NBITS*smp +: NBITS];                
-            end else begin : DLY
-                // This is how much of the delay we're absorbing here.
-                localparam SDLY = ((smp-2)+FABRIC_DELAY);
-                wire [NBITS-1:0] srl_out;
-                reg [NBITS-1:0] dat_store = {NBITS{1'b0}};
-                if (SDLY < 2) begin : NOSRL
-                    assign srl_out = dat_i[NBITS*smp +: NBITS];
-                end else begin : SRL
-                    srlvec #(.NBITS(NBITS))
-                        u_srl(.clk(clk),.ce(1'b1),.a(SDLY-2),
-                              .din(dat_i[NBITS*smp +: NBITS]),
-                              .dout(srl_out));
+            // sample 0 gets 2 clocks, sample 1 gets 1 clock,
+            // sample 2 gets 2 clocks
+            // sample 3 gets 3 clocks
+            // sample 4 gets 4 clocks, etc.
+            localparam DELAY = (smp < 2) ? ((smp < 1) ? 2 : 1) : (2 + (smp-2));
+            reg [DELAY-1:0][NBITS-1:0] in_store = {NBITS*DELAY{1'b0}};
+            integer s;
+            always @(posedge clk) begin : ST
+                for (s=0;s<DELAY;s=s+1) begin : LP
+                    in_store[s] <= (s==0) ? dat_i[NBITS*smp +: NBITS] : in_store[s-1];
                 end
-                always @(posedge clk) begin : STORE
-                    dat_store <= srl_out;
-                end
-                assign in_delayed[smp] = (SDLY > 0) ? dat_store : dat_i[NBITS*smp +: NBITS];
             end
+            assign in_delayed[smp] = in_store[DELAY-1];
             assign x_out[NBITS*smp +: NBITS] = in_delayed[smp];
         end
         // Now run the f chain.        
         for (fi=0;fi<FLEN;fi=fi+1) begin : FLOOP
+            reg rstm = 0;
+            always @(posedge clk) begin : RB
+                rstm <= (fi == 0) ? f_bypass_in : force_f_bypass[fi-1];
+            end
+            assign force_f_bypass[fi] = rstm;
             // F chain has AREG=2-FABRIC_DELAY, ADREG=0, MREG=1
             wire [29:0] dspA_in = (fi < FLEN-1) ?
                 { {NUM_HEAD_PAD{in_delayed[fi+2][NBITS-1]}}, in_delayed[fi+2], {NUM_TAIL_PAD{1'b0}} } :
                   fpout[fi-1][14 +: 30];
 
             if (fi == 0) begin : HEAD
-                localparam THIS_AREG = 2-FABRIC_DELAY;
+                localparam THIS_AREG = 1;
                 wire THIS_CEA1 = (THIS_AREG > 1) ? 1'b1 : 1'b0;
                 wire THIS_CEA2 = (THIS_AREG > 0) ? 1'b1 : 1'b0;
                 localparam C_HEAD_PAD = 21 - (NBITS-NFRAC);
                 localparam C_TAIL_PAD = 27 - NFRAC;
-                // Need an extra clock in the C path to line everything up.
-                reg [NBITS-1:0] in_store = {NBITS{1'b0}};
-                always @(posedge clk) begin : ST
-                    in_store <= in_delayed[0];
-                end                
-                wire [47:0] dspC_in = { {C_HEAD_PAD{in_store[NBITS-1]}}, in_store, {C_TAIL_PAD{1'b0}} };
+                // in_delayed[0] is delayed by 2 clocks.
+                wire [47:0] dspC_in = { {C_HEAD_PAD{in_delayed[0][NBITS-1]}}, in_delayed[0], {C_TAIL_PAD{1'b0}} };
                 // the f chain will have AREG=2, ADREG=0, MREG=1                
                 (* CUSTOM_CC_DST = CLKTYPE *)
                 DSP48E2 #(`COMMON_ATTRS,
@@ -232,6 +284,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .CEP(1'b1),
                             .CEC(1'b1),
                             .CEM(1'b1),
+                            .RSTM(rstm),
                             .CEA1(THIS_CEA1),
                             .CEA2(THIS_CEA2),
                             .C(dspC_in),   // This is where the 1 in [1,X_1,X_2,...] is added             
@@ -248,8 +301,8 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .P(fpout[fi]),
                             .PCOUT(fpcascade[fi]));
             end else begin : BODY
-                localparam THIS_AREG = (fi < FLEN-1) ? 2-FABRIC_DELAY : 0;
-                wire THIS_CEA1 = (fi < FLEN-1 && THIS_AREG > 1) ? 1 : 0;
+                localparam THIS_AREG = (fi < FLEN-1) ? 1 : 0;
+                wire THIS_CEA1 = 0;
                 wire THIS_CEA2 = (fi < FLEN-1 && THIS_AREG > 0) ? 1 : 0;
                 DSP48E2 #(`COMMON_ATTRS,
                           `C_UNUSED_ATTRS,
@@ -264,6 +317,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .CEA2(THIS_CEA2),
                             .CEA1(THIS_CEA1),
                             .CEM(1'b1),
+                            .RSTM(rstm),
                             .BCIN(fbcascade[fi-1]),
                             .BCOUT(fbcascade[fi]),
                             .CEB1(coeff_wr_f),
@@ -281,16 +335,21 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
         end
         // And the g chain
         for (gi=0;gi<GLEN;gi=gi+1) begin : GLOOP
+            reg rstm = 0;
+            always @(posedge clk) begin : RB
+                rstm <= (gi == 0) ? g_bypass_in : force_g_bypass[gi-1];
+            end
+            assign force_g_bypass[gi] = rstm;
             localparam int IDX = (gi > 0) ? gi+1 : 0;            
-            wire [29:0] dspA_in;
-            assign dspA_in = (gi < GLEN-1) ? 
-                { {NUM_HEAD_PAD{in_delayed[IDX][NBITS-1]}}, in_delayed[IDX], {NUM_TAIL_PAD{1'b0}} } :
-                  gpout[gi-1][14 +: 30];
+            // g chain's head input is different.
 
             // head gets AREG=1, MREG=0
             if (gi == 0) begin : HEAD
                 localparam C_HEAD_PAD = 21 - (NBITS-NFRAC);
                 localparam C_TAIL_PAD = 27 - NFRAC;
+                // Head DSP gets x[0] and x[1]z^-1.
+                wire [NBITS-1:0] head_input = dat_i[0 +: NBITS];
+                wire [29:0] dspA_in = { {NUM_HEAD_PAD{head_input[NBITS-1]}}, head_input, {NUM_TAIL_PAD{1'b0}} };
                 wire [47:0] dspC_in = { {C_HEAD_PAD{in_delayed[1][NBITS-1]}}, in_delayed[1], {C_TAIL_PAD{1'b0}} }; 
                 // HEAD dsp gets its inputs directly
                 (* CUSTOM_CC_DST = CLKTYPE *)
@@ -299,12 +358,13 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                           .AREG(1),
                           .ADREG(0),
                           .ACASCREG(1),
-                          .MREG(0))                          
+                          .MREG(1))                          
                     u_head( .CLK(clk),
                             .CEP(1'b1),
                             .CEA2(1'b1),
                             .CEC(1'b1),
                             .CEM(1'b1),
+                            .RSTM(rstm),
                             .C(dspC_in),                            
                             .A(dspA_in),
                             .B(coeff_dat_i),
@@ -319,9 +379,13 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .P(gpout[gi]),
                             .PCOUT(gpcascade[gi]));
             end else begin : BODY
+                wire [29:0] dspA_in;
+                assign dspA_in = (gi < GLEN-1) ? 
+                    { {NUM_HEAD_PAD{in_delayed[IDX][NBITS-1]}}, in_delayed[IDX], {NUM_TAIL_PAD{1'b0}} } :
+                      gpout[gi-1][14 +: 30];    
                 // and everywhere else gets AREG=2, MREG=1 except the loopback which gets AREG=0           
-                localparam THIS_AREG = (gi < GLEN-1) ? 2-FABRIC_DELAY : 0;
-                wire THIS_CEA1 = (gi < GLEN-1 && THIS_AREG > 1) ? 1 : 0;
+                localparam THIS_AREG = (gi < GLEN-1) ? 1 : 0;
+                wire THIS_CEA1 = 0;
                 wire THIS_CEA2 = (gi < GLEN-1 && THIS_AREG > 0) ? 1 : 0;
                 DSP48E2 #(`COMMON_ATTRS,
                           .AREG(THIS_AREG),
@@ -334,6 +398,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .CEA1(THIS_CEA1),
                             .CEA2(THIS_CEA2),
                             .CEM(1'b1),
+                            .RSTM(rstm),
                             .A(dspA_in),
                             .BCIN(gbcascade[gi-1]),
                             .BCOUT(gbcascade[gi]),
@@ -365,6 +430,15 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
     // A2 contains g[n-2]
     // MREG contains B*g[n-3]
     // and equivalent.
+
+    // Grab the bypass from the g chain. Doesn't matter which one.
+    // The extra AREG doesn't matter - what matters is at the ALU,
+    // since we are computing CREG + MREG. We want to force MREG=0
+    // when CREG becomes bypassed, which is one clock after.
+    wire cross_bypass_in = force_g_bypass[GLEN-1];
+    
+    reg cross_bypass = 0;
+    reg bypass_output = 0;      
     wire ceb1_f = coeff_wr_fcross;
     wire ceb1_g = coeff_wr_gcross;
     (* KEEP = "TRUE" *)
@@ -372,6 +446,8 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
     (* KEEP = "TRUE" *)
     reg ceb2_g = 0;
     always @(posedge clk) begin
+        cross_bypass <= cross_bypass_in;
+        bypass_output <= cross_bypass;
         ceb2_f <= coeff_update_i;
         ceb2_g <= coeff_update_i;
     end
@@ -391,6 +467,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                 .CEA1(1'b1),
                 .CEA2(1'b1),
                 .CEM(1'b1),
+                .RSTM(cross_bypass),
                 .CEB1(ceb1_f),
                 .CEB2(ceb2_f),
                 .B(coeff_dat_i),
@@ -412,6 +489,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                 .CEA1(1'b1),
                 .CEA2(1'b1),
                 .CEM(1'b1),
+                .RSTM(cross_bypass),
                 .CEB1(ceb1_g),
                 .CEB2(ceb2_g),
                 .B(coeff_dat_i),
@@ -422,6 +500,8 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                 .OPMODE( { 2'b00, `Z_OPMODE_C, `XY_OPMODE_M } ),
                 .INMODE(0),
                 .P(y1_out));
+
+    assign bypass_o = bypass_output;
     
     `undef COMMON_ATTRS
 endmodule

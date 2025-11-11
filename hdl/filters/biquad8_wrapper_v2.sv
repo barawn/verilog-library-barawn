@@ -34,6 +34,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     input                      rst_i,
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
+    input                      bypass_i,
     input [NBITS*NSAMP-1:0]    dat_i,
     output [OUTBITS*NSAMP-1:0] dat_o
     );     
@@ -90,6 +91,13 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     reg			       update = 0;
     reg			       read_ack = 0;
 
+    (* CUSTOM_CC_SRC = WBCLKTYPE *)
+    reg                local_bypass = 1;
+
+    (* CUSTOM_CC_DST = CLKTYPE *)
+    reg [1:0]          local_bypass_clk = {2{1'b1}};
+
+    wire bypass = bypass_i || local_bypass_clk[1];
 
     always @(posedge wb_clk_i) begin
         read_ack = `DLYFF (wb_cyc_i && wb_stb_i && !wb_we_i);
@@ -102,6 +110,10 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
         pending_rereg <= `DLYFF pending;      
 
         update_wbclk <= `DLYFF global_update_i || (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[0]);
+        
+        if (wb_cyc_i && wb_stb_i && wb_we_i && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[2]) begin
+            local_bypass <= ~wb_dat_i[16];
+        end
 
         if (wb_cyc_i && wb_stb_i && wb_we_i) begin
             // just always capture it
@@ -131,6 +143,8 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
             end else begin
                 coeff_polefir_wr_hold <= `DLYFF 0;
             end
+
+            
         end	 
     end
 
@@ -147,19 +161,23 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
-    // whatever, there's no readback
-    assign wb_dat_o = {32{1'b0}};
+    assign wb_dat_o = { {15{1'b0}}, local_bypass, {16{1'b0}} };
 
     localparam ZERO_FIR_BITS = 16;
     localparam ZERO_FIR_FRAC = 2;
 
+    // It takes 3 clocks between bypass assertion -> bypassed data
+    // comes out of the zero FIR.
+    localparam FIR_BYPASS_DELAY = 3;
+
     wire [ZERO_FIR_BITS*NSAMP-1:0] zero_fir_out;
     // THIS MAY NEED TO GO AFTER IIR, ACCORDING TO SIM
-    biquad8_single_zero_fir #(.NBITS(NBITS),.NFRAC(NFRAC),
+    biquad8_single_zero_fir_v2 #(.NBITS(NBITS),.NFRAC(NFRAC),
                 .NSAMP(NSAMP),.OUTBITS(ZERO_FIR_BITS),
                 .OUTFRAC(ZERO_FIR_FRAC),
                 .CLKTYPE(CLKTYPE))
         u_fir(.clk(clk_i),
+        .bypass_i(bypass),
         .dat_i(dat_i),
         .coeff_dat_i(coeff_hold),
         .coeff_wr_i(coeff_fir_wr),
@@ -181,13 +199,17 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     localparam POLE_FIR_FABRIC_DELAY = 1;
     localparam INCREMENTAL_X_DELAY = NSAMP+7;
     // the address bits here 
+    wire pole_bypass_out;
     biquad8_pole_fir_v2  #(.NBITS(ZERO_FIR_BITS),
                           .NFRAC(ZERO_FIR_FRAC),
                           .NSAMP(NSAMP),
-                          .FABRIC_DELAY(POLE_FIR_FABRIC_DELAY),
+                          .BYPASS_DELAY(FIR_BYPASS_DELAY),
+//                          .FABRIC_DELAY(POLE_FIR_FABRIC_DELAY),
                           .CLKTYPE(CLKTYPE))
         u_pole_fir(.clk(clk_i),
                 .dat_i(zero_fir_out),
+                .bypass_i(bypass),
+                .bypass_o(pole_bypass_out),
                 .coeff_dat_i(coeff_hold),
                 .coeff_wr_i(coeff_polefir_wr),
                 .coeff_update_i(update),
@@ -199,10 +221,11 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     // parameterize the decimal point here
     localparam IIR_BITS = 48;
     localparam IIR_FRAC = 27;
-    biquad8_pole_iir #(.NBITS(IIR_BITS),
+    biquad8_pole_iir_v2 #(.NBITS(IIR_BITS),
                 .NFRAC(IIR_FRAC),
                 .CLKTYPE(CLKTYPE))
         u_pole_iir(.clk(clk_i),
+            .bypass_i(pole_bypass_out),
             .rst(rst_i),
             .coeff_dat_i(coeff_hold),
             .coeff_wr_i(coeff_iir_wr),
@@ -237,6 +260,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
                             .X_DELAY(INCREMENTAL_X_DELAY),
                             .CLKTYPE(CLKTYPE))
         u_incremental( .clk(clk_i),
+            .bypass_i(pole_bypass_out),
             .x_in(x_out),
             .y0_in(y0_in), //[NBITS2-1:0] (30 bits, 17.13)
             .y1_in(y1_in), //[NBITS2-1:0] (30 bits, 17.13)

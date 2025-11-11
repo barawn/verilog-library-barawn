@@ -56,6 +56,7 @@ module biquad8_incremental_v2 #(
                              parameter X_DELAY = NSAMP+6,
 			                 parameter CLKTYPE = "NONE")(
              input clk,
+             input bypass_i,
              // These are now the delays AS FED THROUGH from the biquad8_pole_fir
              // In order to get them to line up with y0/y1, we need
              // (NSAMP+3)-smp clocks.
@@ -69,6 +70,20 @@ module biquad8_incremental_v2 #(
              
              output [OUTBITS*NSAMP-1:0] dat_o);
 
+    // the bypass input comes from the pole FIR:
+    // there are 5 clocks from it going high
+    // until data becomes bypassed.
+
+    localparam BYPASS_IIR_DELAY = 4;
+    reg [BYPASS_IIR_DELAY:0] bypass_shreg = {(BYPASS_IIR_DELAY+1){1'b0}};
+    
+    always @(posedge clk) begin
+        bypass_shreg <= { bypass_shreg[BYPASS_IIR_DELAY-1:0], bypass_i };
+    end
+    
+    wire [NSAMP-1:2] force_bypass;
+    wire force_bypass_in = bypass_shreg[BYPASS_IIR_DELAY];
+    
     localparam C_FRAC_BITS = 27;
     localparam C_BITS = 48;
     localparam C_HEAD_PAD = (C_BITS-C_FRAC_BITS) - (NBITS-NFRAC);
@@ -118,6 +133,11 @@ module biquad8_incremental_v2 #(
     generate
         genvar i;
         for (i=2;i<NSAMP;i=i+1) begin : INCR
+            reg this_bypass = 0;
+            always @(posedge clk) begin : LG
+                this_bypass <= (i == 2) ? force_bypass_in : force_bypass[i-1];
+            end
+            assign force_bypass[i] = this_bypass;
             // internal cascades
             wire [17:0] b_cascade_internal;
             wire [47:0] p_cascade;
@@ -166,6 +186,7 @@ module biquad8_incremental_v2 #(
                                 .INMODE(0),
                                 .CLK(clk),
                                 .CEM(1'b1),
+                                .RSTM(this_bypass),
                                 .CEB1(ceblow1),
                                 .CEB2(ceblow2),
                                 .CEA2(1'b1),
@@ -188,6 +209,7 @@ module biquad8_incremental_v2 #(
                                 .CLK(clk),
                                 .CEA2(1'b1),
                                 .CEM(1'b1),
+                                .RSTM(this_bypass),
                                 .CEP(1'b1),
                                 .CEB1(cebhigh1),
                                 .CEB2(cebhigh2),
@@ -217,6 +239,7 @@ module biquad8_incremental_v2 #(
                                 .CEA2(1'b1),
                                 .CEA1(1'b1),
                                 .CEM(1'b1),
+                                .RSTM(this_bypass),
                                 .CEB1(ceblow1),
                                 .CEB2(ceblow2),
                                 .CEC(1'b1),
@@ -239,6 +262,7 @@ module biquad8_incremental_v2 #(
                                 .INMODE(0),
                                 .CLK(clk),
                                 .CEA2(1'b1),
+                                .RSTA(this_bypass),
                                 .CEB1(cebhigh1),
                                 .CEB2(cebhigh2),
                                 .CEP(1'b1),
