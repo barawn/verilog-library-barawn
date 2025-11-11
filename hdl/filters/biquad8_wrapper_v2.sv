@@ -94,7 +94,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     (* CUSTOM_CC_SRC = WBCLKTYPE *)
     reg                local_bypass = 1;
 
-    (* CUSTOM_CC_DST = CLKTYPE *)
+    (* CUSTOM_CC_DST = CLKTYPE, ASYNC_REG = "TRUE" *)
     reg [1:0]          local_bypass_clk = {2{1'b1}};
 
     wire bypass = bypass_i || local_bypass_clk[1];
@@ -149,6 +149,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     end
 
     always @(posedge clk_i) begin
+        local_bypass_clk <= { local_bypass_clk[0], local_bypass };
         ack_clk <= `DLYFF wr_clk;
         update_sync <= `DLYFF update_clk;
         update <= update_sync;
