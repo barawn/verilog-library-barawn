@@ -63,12 +63,14 @@ module biquad_working_tb;
         #1.25 pretty_outsample  <= filt1_out_hold[3];
     end
 
+    reg bypass = 0;
 
     biquad8_wrapper_v2 #(.NBITS(12),.NFRAC(0),.NSAMP(4))
         uut( .clk_i(clk),
              .wb_clk_i(wb_clk),
              .wb_rst_i(1'b0),
              `CONNECT_WBS_IFM( wb_, wb_ ),
+             .bypass_i(bypass),
              .dat_i(rf_in),
              .dat_o(rf_out),
              .rst_i(1'b0),
@@ -123,10 +125,25 @@ module biquad_working_tb;
             @(posedge clk);
         end
     endtask
-    
+        
     initial begin
         #100;
+        // we need to write
+        // 3: ZERO_FIR_A
+        //    ZERO_FIR_B
+        // 2: ZERO_FIR_B
+        //    ZERO_FIR_A
+        // 1: ZERO_FIR_B
+        //    ZERO_FIR_A
+        // 0: ZERO_FIR_B
+        //    ZERO_FIR_A
+        wb_write( 7'h4, ZERO_FIR_A ); // 3
         wb_write( 7'h4, ZERO_FIR_B );
+        wb_write( 7'h4, ZERO_FIR_B ); // 2
+        wb_write( 7'h4, ZERO_FIR_A );
+        wb_write( 7'h4, ZERO_FIR_B ); // 1
+        wb_write( 7'h4, ZERO_FIR_A );
+        wb_write( 7'h4, ZERO_FIR_B ); // 0
         wb_write( 7'h4, ZERO_FIR_A );
         // F chain is 10. We program in
         // -> pipeline coeff
@@ -171,9 +188,17 @@ module biquad_working_tb;
         #0.01   rf_in[0] = 12'd0;
         #500;
         @(posedge clk);
-        #0.01   rf_in[2] = 12'd1000;
+        #0.01   rf_in[0] = 12'd1000;
         @(posedge clk);
-        #0.01   rf_in[2] = 12'd0;
+        #0.01 bypass = 1;
+        #100;
+        @(posedge clk);
+        #0.01 bypass = 0;
+        @(posedge clk);
+        #100;
+        @(posedge clk);
+        #0.01   rf_in[0] = 12'd0;
+        @(posedge clk);
     end
     
 endmodule
