@@ -3,6 +3,7 @@
 //! @title 4 tap systolic filter with preadder, single add, and output round
 //! @author Patrick Allison (dbarawn@gmail.com)
 module fourtap_systolic_preadd #( 
+                  parameter SHREG = "YES",       //! chain_store uses srls
                   parameter CASCADE = "FALSE",    //! use input cascade for first tap
 				  parameter ROUND = "FALSE",      //! round the final tap to output bits
 				  parameter USE_ADD = "FALSE",    //! use the add_i input to add a value
@@ -78,8 +79,12 @@ module fourtap_systolic_preadd #(
    // I seriously hope this thing's not an idiot and can remap and merge
    // SRLs as needed. We'll see. If it's dumb we'll push the delay outside
    // and convert everything into like two SRLs or something.
+   
+   (* SHREG_EXTRACT = SHREG *)
    reg [NBITS-1:0]	  chainA_store0 = {NBITS{1'b0}};
+   (* SHREG_EXTRACT = SHREG *)
    reg [NBITS-1:0]	  chainA_store1 = {NBITS{1'b0}};
+   (* SHREG_EXTRACT = SHREG *)
    reg [NBITS-1:0]    chainA_store2 = {NBITS{1'b0}};
    always @(posedge clk_i) begin : CA
       chainA_store0 <= preadd_i;
