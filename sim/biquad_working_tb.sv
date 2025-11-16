@@ -137,8 +137,8 @@ module biquad_working_tb;
         //    ZERO_FIR_A
         // 0: ZERO_FIR_B
         //    ZERO_FIR_A
-        wb_write( 7'h4, ZERO_FIR_A ); // 3
-        wb_write( 7'h4, ZERO_FIR_B );
+        wb_write( 7'h4, ZERO_FIR_B ); // 3
+        wb_write( 7'h4, ZERO_FIR_A );
         wb_write( 7'h4, ZERO_FIR_B ); // 2
         wb_write( 7'h4, ZERO_FIR_A );
         wb_write( 7'h4, ZERO_FIR_B ); // 1
@@ -179,7 +179,7 @@ module biquad_working_tb;
         wb_write( 7'h0C, INCR_ZMINUS1);
         wb_write( 7'h0C, INCR_ZMINUS2);
 
-        wb_write( 7'h0, 32'h1);
+        wb_write( 7'h0, 32'h10001);
 
         #500;
         @(posedge clk);
