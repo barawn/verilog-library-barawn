@@ -401,7 +401,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                 DSP48E2 #(`COMMON_ATTRS,
                           .AREG(THIS_AREG),
                           .ACASCREG(THIS_AREG),
-                          .MREG(1),
+                          .MREG(THIS_MREG),
                           .B_INPUT("CASCADE"),
                           `C_UNUSED_ATTRS)
                     u_body( .CLK(clk),

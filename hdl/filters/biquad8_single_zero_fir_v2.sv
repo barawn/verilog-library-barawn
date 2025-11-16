@@ -255,7 +255,7 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
             wire [29:0] dspA_A = { {A_SIGNEXTEND{last_samp[NBITS-1]}}, last_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
             wire [26:0] dspA_D = { {D_SIGNEXTEND{future_samp[NBITS-1]}}, future_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
             DSP48E2 #( `COMMON_DSPA_ATTRS,
-                       .ACASCREG(0),
+                       .ACASCREG(1),
                        .INMODEREG(0),
                        .PREG(0) )
                 u_dspA( .A(dspA_A),
@@ -287,6 +287,7 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
                 wire [26:0] dspA_D = { {D_SIGNEXTEND{future_samp[NBITS-1]}}, future_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
                 // IS_INMODE_INVERTED = 5'b00100
                 DSP48E2 #( `COMMON_DSPA_ATTRS,
+                           .ACASCREG(1),
                            .INMODEREG(0),
                            .PREG(0) )
                     u_dspA( .ACIN(acascade[i-1]),
