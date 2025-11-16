@@ -167,9 +167,10 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     localparam ZERO_FIR_BITS = 16;
     localparam ZERO_FIR_FRAC = 2;
 
-    // It takes 3 clocks between bypass assertion -> bypassed data
-    // comes out of the zero FIR.
-    localparam FIR_BYPASS_DELAY = 3;
+    // It takes 4 clocks between bypass assertion -> bypassed data
+    // comes out of the zero FIR. The extra clock is in the pipeline
+    // output.
+    localparam FIR_BYPASS_DELAY = 4;
 
     wire [ZERO_FIR_BITS*NSAMP-1:0] zero_fir_out;
     // THIS MAY NEED TO GO AFTER IIR, ACCORDING TO SIM

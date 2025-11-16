@@ -1,76 +1,45 @@
 `timescale 1ns / 1ps
 `include "dsp_macros.vh"
 
-// WE DON'T ACTUALLY NEED TO BYPASS! WE CAN EMBED
-// A "NO-FIR" INTO THE FIR.
-//
-// WE ARE ACCOMPLISHING MASSIVE SLEAZE HERE.
-// Here's the key: the FIR portion of the notch
-// is independent of the IIR. So what we can actually
-// do is ADJUST THE TIME SEQUENCE of the FIR when
-// it's running. Because the ENTIRE SURF gets
-// notched or no-notched, this doesn't cause a problem.
-//
-// In other words, instead of doing:
+// (c) Patrick Allison and the Ohio State University (allison.122@osu.edu)
+// 11/12/25. Contact for reuse.
+
+// The FIR here rotates samples so instead of
 // firred[i] = a*x[i] + b*x[i-1] + a*x[i-2]
 // we do
 // firred[i] = a*x[i+1] + b*x[i] + a*x[i-1].
+// which allows us to bypass the FIR by adjusting
+// b to 1.
+
+// We previously went all wacko and tried to cascade everything to save a couple
+// of registers, but the 8-DSP chain just makes it too tough with everyone
+// having tight timing. So now we just have:
 //
-// Obviously in this case we have to adjust things
-// for sample NSAMP-1 and 0
+// x[0] ->  A(z^-1)
+// x[2] ->  D(z^-1)     ->  MREG(z^-1)--+
+//                                      |
+// x[1] ->  A(z^-1)     ->  MREG(z^-1)--+--- PREG(z^-1)
+// for e.g. sample 1.
+
+// For sample 0, dspA's AREG=2, and for sample NSAMP-1,
+// dspA is cascaded up and dspB's AREG=2, meaning that it's in the future
+// by 1 clock.
+
 //
-// e.g. for sample 1 we have
-// x[0]     ->      A(z^-1)
-// x[2]     ->      D(z^-1)     --> MREG(z^-1)--+
-//                                              |
-// x[1]     ->      A(z^-1)     --> MREG(z^-1> -+---- PREG(z^-1)
-// giving a total delay of z^-3
+// Sample NSAMP-1 is adjusted in the future by 1 clock.
 //
-// sample 0 is easy, we do
-// x[7]     ->      A(z^-2)
-// x[1]     ->      D(z^-1)     --> MREG(z^-1)--+
-//                                              |
-// x[0]     ->      A(z^-1)     --> MREG(z^-1> -+---- PREG(z^-1)
-// still again giving the same z^-3 delay
+// The bypass input does 2 things. It forces dspA's MREG into reset and
+// swaps the inmode on dspB to multiply by D, which is 1.
 //
-// for sample 7 we need effort:
-// x[7]     ->      A(z^-1)     --> MREG(z^-1)-+
-//                                             |
-// x[6]     ->      A(z^-2)-----+--------------+---- PREG (z^-1)
-// x[0]     ->      D(z^-1)-----|
-// This still leaves z^-3 timing but note that the x[0] multiplier has z^-2 timing.
-// e.g. we get
-// (coeff1*x[7]z^-2 + coeff0(x[6]z^-2 + x[0]z^-1))z^-1
-//
-// The bypass input does 2 things. It forces dspA's MREG in reset OR
-// swaps the inmode for the multiplier to zero. It also swaps the inmode
-// on dspB to multiply by D, which is 1.
-// 
-// There are timing variations on this though. Consider resetting dspA's MREG.
+// For RSTM, the bypassed data shows up after 2 clocks:
 // clk  RSTM        MREG    PREG on dspB
 // 0    0           M[-2]   P[-3]
 // 1    1           M[-1]   P[-2]
 // 2    1           0       P[-1]
-// 3    1           0       0
-// 4    0           0       0
-// 5    0           M[3]    0
-// 6    0           M[4]    P[3]
-// now consider sample NSAMP-1, controlled by INMODE swapping with no MREG.
-// clk  bypass      INMODE  INMODEREG   PREG on dspA
-// 0    0           5'd4    5'd4        P[-3]
-// 1    1           5'd2    5'd4        P[-2]
-// 2    1           5'd2    5'd2        P[-1]
-// 3    1           5'd2    5'd2        0
-// 4    0           5'd4    5'd2        0
-// 5    0           5'd4    5'd4        0
-// 6    0           5'd4    5'd4        P[3]
-// These two line up well because both are controlling a register that
-// then controls PREG.
-// NSAMP-1's dspA_inmode is just either 00100 or 00010. We handle this
-// by { 2'b00, bypass_i, bypass_i, 1'b0 }
-// and IS_INMODE_INVERTED = 5'b00100;
-
-// Now consider dspB's bypass input.
+// 3    1           0       0       <-- bypassed data here
+//
+// For the INMODE swap, the bypassed data shows up after 3 clocks.
+//
 // clk  bypass      INMODE  INMODEREG   dspB mult input MREG on dspB    PREG on dspB "bypassed"
 // 0    0           5'd0    5'd0        B*A[-1]         B*A[-2]         B*A[-3]         0
 // 1    1           5'd6    5'd0        B*A[0]          B*A[-1]         B*A[-2]         0
@@ -85,10 +54,6 @@
 // PREG output. So what we need to do is use bypass_i to control dspB's inmode,
 // and everyone else uses a registered version of it.
 
-// n.b. this kinda seems dumb like I should be able to shunt
-// up A instead of routing it, dude. Technically I probably should be able to avoid
-// an A register entirely??
-//
 // This is the zero portion (numerator) of
 // a biquad. It's labelled as "single_zero_fir"
 // because the *dual* biquad might combine
@@ -170,9 +135,11 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
    wire [NSAMP-1:0][29:0] acascade;
    wire [NSAMP-1:0][17:0] bcascade;
       
-   reg bypass_rereg = 0;
+   reg bypass_rereg = 1;
+   reg bypass_redelay = 1;
    always @(posedge clk) begin
         bypass_rereg <= bypass_i;
+        bypass_redelay <= bypass_rereg;
    end        
    
    `define COMMON_ATTRS .BREG(2),.BCASCREG(1),.ALUMODEREG(0),.OPMODEREG(0),.CARRYINSELREG(0),.USE_PATTERN_DETECT("NO_PATDET")
@@ -187,6 +154,8 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
         wire [47:0] internal_pcascade;
         wire [47:0] fir_out;
 
+        reg [OUTBITS-1:0] fir_rereg = {OUTBITS{1'b0}};
+
         wire [NBITS-1:0] future_samp = dat_i[NBITS*((i+1)%NSAMP) +: NBITS];
         wire [NBITS-1:0] this_samp = dat_i[NBITS*i +: NBITS];
         wire [NBITS-1:0] last_samp = dat_i[NBITS*((i+NSAMP-1)%NSAMP) +: NBITS];
@@ -194,17 +163,18 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
         // The FIR DSP core doesn't work for all of our trickery,
         // sadly. The last sample (NSAMP-1) has its DSPs flipped (B comes before A)
         // so it needs to be direct.
-        localparam dspA_A_INPUT = (i == 0 || i == (NSAMP-1)) ? "DIRECT" : "CASCADE";
+        localparam dspA_A_INPUT = (i==NSAMP-1) ? "CASCADE" : "DIRECT";
         localparam dspA_B_INPUT = (i == 0) ? "DIRECT" : "CASCADE";
-        localparam dspA_AREG = (i == 0 || i == (NSAMP-1)) ? 2 : 0;        
-        wire [8:0] dspA_OPMODE = (i != (NSAMP-1)) ?
-            { `W_OPMODE_0, `Z_OPMODE_0, `XY_OPMODE_M } :
-            { `W_OPMODE_0, `Z_OPMODE_PCIN, `XY_OPMODE_M };
 
-        wire [8:0] dspB_OPMODE = (i != (NSAMP-1)) ?
-            { `W_OPMODE_0, `Z_OPMODE_PCIN, `XY_OPMODE_M } :
-            { `W_OPMODE_0, `Z_OPMODE_0, `XY_OPMODE_M };
-                        
+        // the last one picks up an additional register via cascade, because why not
+        localparam dspA_AREG = (i == 0) ? 2 : 1;
+        localparam dspB_AREG = (i==NSAMP-1) ? 2 : 1;
+        localparam dspA_DREG = 1;
+        localparam dspA_ADREG = 0;
+        localparam dspA_MREG = 1;
+        wire [8:0] dspA_OPMODE = { `W_OPMODE_0, `Z_OPMODE_0, `XY_OPMODE_M };
+        wire [8:0] dspB_OPMODE = { `W_OPMODE_0, `Z_OPMODE_PCIN, `XY_OPMODE_M };
+        
         wire [3:0] dspA_ALUMODE = `ALUMODE_SUM_ZXYCIN;        
         wire [3:0] dspB_ALUMODE = `ALUMODE_SUM_ZXYCIN;
 
@@ -213,12 +183,10 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
         // BMULTSEL = AD
         // AMULTSEL = A
         // PREADDINSEL = B
-        wire [4:0] dspB_INMODE = { 2'b00, bypass_i, bypass_i, 1'b0 };
-        // for nsamp-1 it also uses dspB_INMODE but instead flops to zero
-        // using the inversion
-        wire [4:0] dspA_INMODE = (i == (NSAMP-1)) ?
+        wire [4:0] dspB_INMODE = (i==NSAMP-1) ? 
             { 2'b00, bypass_rereg, bypass_rereg, 1'b0 } :
-            5'b00100;
+            { 2'b00, bypass_i, bypass_i, 1'b0 };
+        wire [4:0] dspA_INMODE = 5'b00100;
 
         // D is (1<<14). The INMODE control
         // swaps between 1 and coeff1
@@ -228,8 +196,9 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
         `define COMMON_DSPA_ATTRS   .A_INPUT(dspA_A_INPUT), \
                                     .B_INPUT(dspA_B_INPUT), \
                                     .AREG( dspA_AREG ),     \
-                                    .DREG(1),               \
-                                    .ADREG(0),              \
+                                    .DREG(dspA_DREG),               \
+                                    .ADREG(dspA_ADREG),              \
+                                    .MREG(dspA_MREG),       \
                                     .AMULTSEL("AD"),        \
                                     .BMULTSEL("B"),         \
                                     .PREADDINSEL("A"),      \
@@ -237,7 +206,7 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
 
         `define COMMON_DSPB_ATTRS   .B_INPUT("CASCADE"),    \
                                     .A_INPUT("DIRECT"),     \
-                                    .AREG(1),               \
+                                    .AREG(dspB_AREG),       \
                                     .DREG(0),               \
                                     .ADREG(0),              \
                                     .MREG(1),               \
@@ -253,7 +222,6 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
             (* CUSTOM_CC_DST = CLKTYPE *)
             DSP48E2 #( `COMMON_DSPA_ATTRS,
                        .INMODEREG(0),
-                       .MREG(1),
                        .PREG(0) )
                 u_dspA( .A(dspA_A),
                         .B( coeff_dat_i ),
@@ -284,13 +252,13 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
         end else        
         if (i < (NSAMP-1)) begin : ABODY
             // for most of the chain it gets the A input from the prior dspB
+            wire [29:0] dspA_A = { {A_SIGNEXTEND{last_samp[NBITS-1]}}, last_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
             wire [26:0] dspA_D = { {D_SIGNEXTEND{future_samp[NBITS-1]}}, future_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
             DSP48E2 #( `COMMON_DSPA_ATTRS,
                        .ACASCREG(0),
                        .INMODEREG(0),
-                       .MREG(1),
                        .PREG(0) )
-                u_dspA( .ACIN(acascade[i-1]),
+                u_dspA( .A(dspA_A),
                         .BCIN(bcascade[i-1]),
                         `C_UNUSED_PORTS,
                         .D(dspA_D),
@@ -299,6 +267,7 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
                         .CARRYIN(1'b0),
                         .CARRYINSEL(3'b000),
                         .INMODE( dspA_INMODE ),
+                        .CEA2(1'b1),
                         .CEB1( coeff_wr_i ),
                         .CEB2( coeff_update_i ),
                         .CED( 1'b1 ),
@@ -315,19 +284,13 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
                         .BCOUT(internal_bcascade),
                         .PCOUT(internal_pcascade));
             end else begin : ATAIL
-                // i == NSAMP-1 has reversed ordering - dspA comes last so we can skip MREG. But now we have
-                // PREG and INMODEREG.
-                wire [29:0] dspA_A = { {A_SIGNEXTEND{last_samp[NBITS-1]}}, last_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
                 wire [26:0] dspA_D = { {D_SIGNEXTEND{future_samp[NBITS-1]}}, future_samp, {(AD_FRAC_BITS-NFRAC){1'b0}} };
                 // IS_INMODE_INVERTED = 5'b00100
                 DSP48E2 #( `COMMON_DSPA_ATTRS,
-                           .INMODEREG(1),
-                           // bit 
-                           .IS_INMODE_INVERTED( 5'b00100 ),
-                           .MREG(0),
-                           .PREG(1) )
-                    u_dspA( .A(dspA_A),
-                            .BCIN(internal_bcascade),
+                           .INMODEREG(0),
+                           .PREG(0) )
+                    u_dspA( .ACIN(acascade[i-1]),
+                            .BCIN(bcascade[i-1]),
                             `C_UNUSED_PORTS,
                             .D(dspA_D),
                             .OPMODE( dspA_OPMODE ),
@@ -335,87 +298,62 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
                             .CARRYIN(1'b0),
                             .CARRYINSEL(3'b000),
                             .INMODE( dspA_INMODE ),
-                            .CEA1(  1'b1    ),
                             .CEA2(  1'b1    ),
+                            .CED(   1'b1    ),
                             .CEB1( coeff_wr_i ),
                             .CEB2( coeff_update_i ),
-                            .CEINMODE( 1'b1 ),
-                            .CED( 1'b1 ),
+                            .CEM(1'b1),
+                            .CEAD(1'b0),
                             .CEP( 1'b1 ),
                             .RSTA(1'b0),
                             .RSTB(1'b0),
+                            .RSTM(bypass_redelay),
+                            // just reset the preadd register in bypass
                             .RSTD(1'b0),
-                            .RSTM(1'b0),
                             .RSTCTRL(1'b0),
                             .RSTALLCARRYIN(1'b0),
                             .RSTALUMODE(1'b0),
                             .RSTINMODE(1'b0),
                             .CLK(clk),
-                            .PCIN(internal_pcascade),
-                            .P( fir_out ));
+                            .BCOUT(internal_bcascade),
+                            .PCOUT(internal_pcascade));
             end
-            if (i != (NSAMP-1)) begin : BBODY
-                DSP48E2 #( `COMMON_DSPB_ATTRS,
-                            .PREG(1))
-                    u_dspB( .A(dspB_A),
-                            .BCIN(internal_bcascade),
-                            `C_UNUSED_PORTS,
-                            .D(dspB_D),
-                            .OPMODE( dspB_OPMODE ),
-                            .ALUMODE( dspB_ALUMODE ),
-                            .CARRYIN(1'b0),
-                            .CARRYINSEL(3'b000),
-                            .INMODE( dspB_INMODE ),
-                            .CEB1( coeff_wr_i ),
-                            .CEB2( coeff_update_i ),
-                            .CEA2( 1'b1 ),
-                            .CEM( 1'b1 ),
-                            .CEP( 1'b1 ),
-                            .CEINMODE( 1'b1 ),
-                            .RSTA(1'b0),
-                            .RSTB(1'b0),
-                            .RSTD(1'b0),
-                            .RSTM(1'b0),
-                            .RSTCTRL(1'b0),
-                            .RSTALLCARRYIN(1'b0),
-                            .RSTALUMODE(1'b0),
-                            .RSTINMODE(1'b0),
-                            .CLK(clk),
-                            .BCOUT( bcascade[i] ),
-                            .ACOUT( acascade[i] ),
-                            .PCIN( internal_pcascade ),
-                            .P(fir_out));                            
-            end else begin : BTAIL
-                // For sample NSAMP-1 dspB comes first.
-                DSP48E2 #( `COMMON_DSPB_ATTRS,
-                           .PREG(0))
-                    u_dspB( .A(dspB_A),
-                            .BCIN(bcascade[i-1]),
-                            `C_UNUSED_PORTS,
-                            .D(dspB_D),
-                            .OPMODE( dspB_OPMODE ),
-                            .ALUMODE( dspB_ALUMODE ),
-                            .CARRYIN(1'b0),
-                            .CARRYINSEL(3'b000),
-                            .INMODE( dspB_INMODE ),
-                            .CEB1( coeff_wr_i ),
-                            .CEB2( coeff_update_i ),
-                            .CEA2( 1'b1 ),
-                            .CEM( 1'b1 ),
-                            .CEINMODE( 1'b1 ),
-                            .RSTA(1'b0),
-                            .RSTB(1'b0),
-                            .RSTD(1'b0),
-                            .RSTM(1'b0),
-                            .RSTCTRL(1'b0),
-                            .RSTALLCARRYIN(1'b0),
-                            .RSTALUMODE(1'b0),
-                            .RSTINMODE(1'b0),
-                            .CLK(clk),
-                            .BCOUT( internal_bcascade ),
-                            .PCOUT( internal_pcascade ));
+
+            DSP48E2 #( `COMMON_DSPB_ATTRS,
+                        .PREG(1))
+                u_dspB( .A(dspB_A),
+                        .BCIN(internal_bcascade),
+                        `C_UNUSED_PORTS,
+                        .D(dspB_D),
+                        .OPMODE( dspB_OPMODE ),
+                        .ALUMODE( dspB_ALUMODE ),
+                        .CARRYIN(1'b0),
+                        .CARRYINSEL(3'b000),
+                        .INMODE( dspB_INMODE ),
+                        .CEB1( coeff_wr_i ),
+                        .CEB2( coeff_update_i ),
+                        .CEA2( 1'b1 ),
+                        .CEM( 1'b1 ),
+                        .CEP( 1'b1 ),
+                        .CEINMODE( 1'b1 ),
+                        .RSTA(1'b0),
+                        .RSTB(1'b0),
+                        .RSTD(1'b0),
+                        .RSTM(1'b0),
+                        .RSTCTRL(1'b0),
+                        .RSTALLCARRYIN(1'b0),
+                        .RSTALUMODE(1'b0),
+                        .RSTINMODE(1'b0),
+                        .CLK(clk),
+                        .BCOUT( bcascade[i] ),
+                        .ACOUT( acascade[i] ),
+                        .PCIN( internal_pcascade ),
+                        .P(fir_out));                            
+
+            always @(posedge clk) begin : RR
+                fir_rereg <= fir_out[ (P_FRAC_BITS-OUTFRAC) +: OUTBITS];
             end
-    	    assign dat_o[OUTBITS*i +: OUTBITS] = fir_out[ (P_FRAC_BITS-OUTFRAC) +: OUTBITS]; 
+    	    assign dat_o[OUTBITS*i +: OUTBITS] =  (i==NSAMP-1) ? fir_out[ (P_FRAC_BITS-OUTFRAC) +: OUTBITS] : fir_rereg;
         end
     endgenerate                                          
 endmodule

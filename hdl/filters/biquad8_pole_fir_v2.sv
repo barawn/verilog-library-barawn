@@ -252,7 +252,7 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
             assign in_delayed[smp] = in_store[DELAY-1];
             assign x_out[NBITS*smp +: NBITS] = in_delayed[smp];
         end
-        // Now run the f chain.        
+        // Now run the f chain.
         for (fi=0;fi<FLEN;fi=fi+1) begin : FLOOP
             reg rstm = 0;
             always @(posedge clk) begin : RB
@@ -301,23 +301,29 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .P(fpout[fi]),
                             .PCOUT(fpcascade[fi]));
             end else begin : BODY
-                localparam THIS_AREG = (fi < FLEN-1) ? 1 : 0;
+                // Adjust this - give the most fabric route time we can.
+                localparam THIS_AREG = (fi < FLEN-1) ? 1 : 1;
+                localparam THIS_MREG = (fi < FLEN-1) ? 1 : 0;
+                wire THIS_RSTA = (fi < FLEN-1) ? 0 : rstm;
+                wire THIS_RSTM = (fi < FLEN-1) ? rstm : 0;
+                wire THIS_CEM = (fi < FLEN-1) ? 1 : 0; 
                 wire THIS_CEA1 = 0;
-                wire THIS_CEA2 = (fi < FLEN-1 && THIS_AREG > 0) ? 1 : 0;
+                wire THIS_CEA2 = (fi < FLEN-1 && THIS_AREG > 0) ? 1 : 1;
                 DSP48E2 #(`COMMON_ATTRS,
                           `C_UNUSED_ATTRS,
                           .B_INPUT("CASCADE"),
                           .AREG(THIS_AREG),
                           .ACASCREG(THIS_AREG),
                           .ADREG(0),
-                          .MREG(1))
+                          .MREG(THIS_MREG))
                     u_body( .CLK(clk),
                             .CEP(1'b1),                            
                             .A(dspA_in),
                             .CEA2(THIS_CEA2),
                             .CEA1(THIS_CEA1),
-                            .CEM(1'b1),
-                            .RSTM(rstm),
+                            .CEM(THIS_CEM),
+                            .RSTM(THIS_RSTM),
+                            .RSTA(THIS_RSTA),
                             .BCIN(fbcascade[fi-1]),
                             .BCOUT(fbcascade[fi]),
                             .CEB1(coeff_wr_f),
@@ -383,10 +389,15 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                 assign dspA_in = (gi < GLEN-1) ? 
                     { {NUM_HEAD_PAD{in_delayed[IDX][NBITS-1]}}, in_delayed[IDX], {NUM_TAIL_PAD{1'b0}} } :
                       gpout[gi-1][14 +: 30];    
-                // and everywhere else gets AREG=2, MREG=1 except the loopback which gets AREG=0           
-                localparam THIS_AREG = (gi < GLEN-1) ? 1 : 0;
+                // and everywhere else gets AREG=2, MREG=1 except the loopback which gets AREG=1/MREG=0.
+                localparam THIS_AREG = (gi < GLEN-1) ? 1 : 1;
+                localparam THIS_MREG = (gi < GLEN-1) ? 1 : 0;
                 wire THIS_CEA1 = 0;
-                wire THIS_CEA2 = (gi < GLEN-1 && THIS_AREG > 0) ? 1 : 0;
+//                wire THIS_CEA2 = (gi < GLEN-1 && THIS_AREG > 0) ? 1 : 0;
+                wire THIS_CEA2 = 1;
+                wire THIS_CEM = (gi<GLEN-1) ? 1 : 0;
+                wire THIS_RSTA = (gi<GLEN-1) ? 0 : rstm;
+                wire THIS_RSTM = (gi<GLEN-1) ? rstm : 0;
                 DSP48E2 #(`COMMON_ATTRS,
                           .AREG(THIS_AREG),
                           .ACASCREG(THIS_AREG),
@@ -397,8 +408,9 @@ module biquad8_pole_fir_v2 #(parameter NBITS=16,
                             .CEP(1'b1),
                             .CEA1(THIS_CEA1),
                             .CEA2(THIS_CEA2),
-                            .CEM(1'b1),
-                            .RSTM(rstm),
+                            .CEM(THIS_CEM),
+                            .RSTA(THIS_RSTA),
+                            .RSTM(THIS_RSTM),
                             .A(dspA_in),
                             .BCIN(gbcascade[gi-1]),
                             .BCOUT(gbcascade[gi]),

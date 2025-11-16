@@ -105,13 +105,36 @@ module biquad8_incremental_v2 #(
     // The TOTAL delay through everyone is 1 + (NSAMP-2)*2
     // e.g. for 4 it's 5, for 8 it's 13.
     localparam TOTAL_REALIGN_DELAY = 1 + (NSAMP-2)*2;
+
+//    // Let's try using a distram delay for these. The old
+//    // delay used TOTAL_REALIGN_DELAY+1 clocks. So if we do
+//    // TOTAL_REALIGN_DELAY in a distram delay it'll match up exactly.
+//    Our realign delays are:
+//    y0/y1: 6 clocks
+//    y2   : 4 clocks
+//    y3   : 2 clocks
+    
+//    // Distram delays SHOULD be lower power because only 2 FFs toggle each
+//    // clock. If this works we'll expand the distram to cover the input delays
+//    // which have a big common delay (9 clocks) along with an additional FF
+//    // for each.
+//    wire [13:0] y0_out;
+//    wire [13:0] y1_out;
+    
+//    distram14_delay #(.DELAY(TOTAL_REALIGN_DELAY),.NSAMP(2))
+//        u_y01_delay(.clk_i(clk),
+//                    .rst_i(1'b0),
+//                    .dat_i( { 2'b00, y1_in[(NFRAC2-OUTFRAC) +: OUTBITS],
+//                            2'b00, y0_in[(NFRAC2-OUTFRAC) +: OUTBITS] } ),
+//                    .dat_o({ y1_out, y0_out }));
+        
     // This is what y0/y1 need. Each sample needs TOTAL_REALIGN_DELAY-2*smp;        
     // we need to get the saturation stuff from the actual DSPs I think. The actual IIRs
     // won't saturate internally.
     reg [OUTBITS-1:0] y0_out = {OUTBITS{1'b0}};
     wire [OUTBITS-1:0] y0_srl;
     reg [OUTBITS-1:0] y1_out = {OUTBITS{1'b0}};
-    wire [OUTBITS-1:0] y1_srl;
+    wire [OUTBITS-1:0] y1_srl;    
     // This ends up being TOTAL_REALIGN_DELAY-1 because of the MREG
     // below: the C inputs take TOTAL_REALIGN_DELAY but when you
     // take the y inputs directly they're aligned one behind.
@@ -127,8 +150,8 @@ module biquad8_incremental_v2 #(
         y0_out <= y0_srl;
         y1_out <= y1_srl;
     end
-    assign dat_o[0*OUTBITS +: OUTBITS] = y0_out;
-    assign dat_o[1*OUTBITS +: OUTBITS] = y1_out;
+    assign dat_o[0*OUTBITS +: OUTBITS] = y0_out[0 +: OUTBITS];
+    assign dat_o[1*OUTBITS +: OUTBITS] = y1_out[0 +: OUTBITS];
     `define COMMON_ATTRS .BREG(2),.BCASCREG(1),.ADREG(0),`DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS
     generate
         genvar i;
