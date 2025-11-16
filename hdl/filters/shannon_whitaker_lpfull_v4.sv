@@ -23,6 +23,7 @@
 // clock of delay to the output.
 module shannon_whitaker_lpfull_v4 #(parameter INBITS=12,
 				                    parameter SATURATE="TRUE",
+				                    parameter SHREG="YES",
                                     parameter UPSAMPLE="FALSE",
                                     localparam OUTBITS=INBITS+1,
                                     localparam NSAMPS=8)(
@@ -165,6 +166,7 @@ module shannon_whitaker_lpfull_v4 #(parameter INBITS=12,
             // round=CONSTANT means we just add the rounding constant.
             fourtap_systolic_preadd #(.USE_ADD("FALSE"),
                                       .ROUND("CONSTANT"),
+                                      .SHREG(SHREG),
                                       .PREADD_REG(0))
                 syst0(  .clk_i(clk_i),
                         .rst_i(rst_i),
@@ -176,6 +178,7 @@ module shannon_whitaker_lpfull_v4 #(parameter INBITS=12,
                         .coeff3_i( coeff_shift(coeffs[0], COEFF_UPSHIFT_14)    ), //  -23
                         .p_o(syst0_out));
             fourtap_systolic_preadd #(.USE_ADD(UPSAMPLE == "TRUE" ? "FALSE" : "TRUE"),
+                                      .SHREG(SHREG),
                                       .PREADD_REG(0),
                                       .ADD_INDEX(0),
                                       .SCALE_ADD(14 + COEFF_UPSHIFT_23))
