@@ -34,10 +34,11 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     input                      rst_i,
     // leave this here to allow for updating everyone at the same time
     input		       global_update_i,
-    input                      bypass_i,
+    input              notch_update_i,
+    input [5:0]        notch_byp_i,
     input [NBITS*NSAMP-1:0]    dat_i,
     output [OUTBITS*NSAMP-1:0] dat_o
-    );     
+    );
 
     // ok so 00 = update
     //       04 = fir
@@ -91,13 +92,41 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     reg			       update = 0;
     reg			       read_ack = 0;
 
+    // local_bypass is only updated with
+    // bit [23] set.    
     (* CUSTOM_CC_SRC = WBCLKTYPE *)
     reg                local_bypass = 1;
+    reg                local_bypass_update = 0;
+    wire               lbu_clk;
+    flag_sync u_lbusync(.in_clkA(local_bypass_update),
+                        .out_clkB(lbu_clk),
+                        .clkA(wb_clk_i),
+                        .clkB(clk_i));
+    // notch mask is only updated with bit 31 set.
+    (* CUSTOM_CC_SRC = WBCLKTYPE *)
+    reg [5:0]          bypass_mask_wbclk = {6{1'b0}};
+    (* CUSTOM_CC_DST = CLKTYPE *)
+    reg [5:0]          bypass_mask_clk = {6{1'b0}};
 
-    (* CUSTOM_CC_DST = CLKTYPE, ASYNC_REG = "TRUE" *)
-    reg [1:0]          local_bypass_clk = {2{1'b1}};
+    reg [5:0] masked_bypass = {6{1'b0}};
+    reg bypass_match = 0;
 
-    wire bypass = bypass_i || local_bypass_clk[1];
+    reg notch_update_rereg = 0; // valid when masked_bypass is set
+    reg notch_update_apply = 0; // valid when bypass match is set
+
+    reg                bypass_mask_update = 0;
+    wire               bmu_clk;
+    flag_sync u_bmusync(.in_clkA(bypass_mask_update),
+                        .out_clkB(bmu_clk),
+                        .clkA(wb_clk_i),
+                        .clkB(clk_i));
+
+    // This is the actual notch status. 
+    (* CUSTOM_CC_SRC = CLKTYPE, CUSTOM_CC_DST = CLKTYPE *)
+    reg in_bypass = 1;
+    
+    (* CUSTOM_CC_DST = WBCLKTYPE, ASYNC_REG = "TRUE" *)
+    reg [1:0]          in_bypass_wbclk = {2{1'b1}};
 
     always @(posedge wb_clk_i) begin
         read_ack = `DLYFF (wb_cyc_i && wb_stb_i && !wb_we_i);
@@ -110,9 +139,18 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
         pending_rereg <= `DLYFF pending;      
 
         update_wbclk <= `DLYFF global_update_i || (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[0]);
+
+        local_bypass_update <= `DLYFF (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[23]);
+        bypass_mask_update <= `DLYFF (pending && !pending_rereg && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[0] && wb_dat_i[31]);
+                
+        in_bypass_wbclk <= { in_bypass_wbclk[0], in_bypass };
         
         if (wb_cyc_i && wb_stb_i && wb_we_i && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[2]) begin
             local_bypass <= ~wb_dat_i[16];
+        end
+
+        if (wb_cyc_i && wb_stb_i && wb_we_i && `ADDR_MATCH(wb_adr_i, 7'h00) && wb_sel_i[3]) begin
+            bypass_mask_wbclk <= wb_dat_i[24 +: 6];
         end
 
         if (wb_cyc_i && wb_stb_i && wb_we_i) begin
@@ -148,8 +186,19 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
         end	 
     end
 
+    // notch 
     always @(posedge clk_i) begin
-        local_bypass_clk <= { local_bypass_clk[0], local_bypass };
+        notch_update_rereg <= notch_update_i;
+        notch_update_apply <= notch_update_rereg;
+    
+        masked_bypass <= notch_byp_i & bypass_mask_clk;
+        bypass_match <= |masked_bypass;    
+
+        if (notch_update_apply) in_bypass <= bypass_match;
+        else if (lbu_clk) in_bypass <= local_bypass;
+
+        if (bmu_clk) bypass_mask_clk <= bypass_mask_wbclk;
+    
         ack_clk <= `DLYFF wr_clk;
         update_sync <= `DLYFF update_clk;
         update <= update_sync;
@@ -162,7 +211,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
-    assign wb_dat_o = { {15{1'b0}}, local_bypass, {16{1'b0}} };
+    assign wb_dat_o = { 2'b00, bypass_mask_wbclk,{7{1'b0}}, in_bypass, {16{1'b0}} };
 
     localparam ZERO_FIR_BITS = 16;
     localparam ZERO_FIR_FRAC = 2;
@@ -179,7 +228,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
                 .OUTFRAC(ZERO_FIR_FRAC),
                 .CLKTYPE(CLKTYPE))
         u_fir(.clk(clk_i),
-        .bypass_i(bypass),
+        .bypass_i(in_bypass),
         .dat_i(dat_i),
         .coeff_dat_i(coeff_hold),
         .coeff_wr_i(coeff_fir_wr),
@@ -210,7 +259,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
                           .CLKTYPE(CLKTYPE))
         u_pole_fir(.clk(clk_i),
                 .dat_i(zero_fir_out),
-                .bypass_i(bypass),
+                .bypass_i(in_bypass),
                 .bypass_o(pole_bypass_out),
                 .coeff_dat_i(coeff_hold),
                 .coeff_wr_i(coeff_polefir_wr),
