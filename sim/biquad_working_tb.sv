@@ -63,14 +63,17 @@ module biquad_working_tb;
         #1.25 pretty_outsample  <= filt1_out_hold[3];
     end
 
-    reg bypass = 0;
+    // NOW TEST REMOTE CONTROL!
+    reg       bypass_update = 0;
+    reg [5:0] bypass = 6'h00;
 
     biquad8_wrapper_v2 #(.NBITS(12),.NFRAC(0),.NSAMP(4))
         uut( .clk_i(clk),
              .wb_clk_i(wb_clk),
              .wb_rst_i(1'b0),
              `CONNECT_WBS_IFM( wb_, wb_ ),
-             .bypass_i(bypass),
+             .notch_update_i(bypass_update),
+             .notch_byp_i(bypass),
              .dat_i(rf_in),
              .dat_o(rf_out),
              .rst_i(1'b0),
@@ -259,15 +262,29 @@ module biquad_working_tb;
 //        wb_write( 7'h0C, INCR_ZMINUS1);
 //        wb_write( 7'h0C, INCR_ZMINUS2);
 
-        wb_write( 7'h0, 32'h10001);
-
+        // FOR TESTING, PROGRAM THIS IN AS SURF SECTOR 0 or 6
+        wb_write( 7'h0, 32'h81000000);
+        // AND ENABLE THE NOTCH LOCALLY, AND UPDATE
+        wb_write( 7'h0, 32'h810001);
+        // IF WE JUST WANTED TO UPDATE ALL THE PARAMETERS, YOU COULD JUST DO
+        // wb_write( 7'h0, 32'h81000001 ) and then use TURF remote control
+        // to enable notches.
+        // TURF IS A BYPASS, NOT AN ENABLE. WE ARE AN ENABLE.
         #500;
         #500;
-        #0.01 bypass = 1;
+        @(posedge clk);
+        #0.01 bypass = 6'h01;
+        @(posedge clk);
+        #0.01 bypass_update = 1;
+        @(posedge clk);
+        #0.01 bypass_update = 0;
         #100;
         @(posedge clk);
-        #0.01 bypass = 0;
+        #0.01 bypass = 6'h00;
         @(posedge clk);
+        #0.01 bypass_update = 1;
+        @(posedge clk);
+        #0.01 bypass_update = 0;
         #100;
     end
     
