@@ -80,6 +80,28 @@ module biquad_working_tb;
     // write 18'h3FDAF (-0.0362251)
     // write 18'h0375A (0.86487368)
     // zero FIR is addr 4
+    localparam [17:0] ZFB_2 = 18'h2137;         // 0.51902473 - the middle coeff
+    localparam [17:0] ZFA_2 = 18'h35bf;         // 0.83979965 - the outside coeffs
+
+    localparam [17:0] FC1_2 = 18'h3dec9;    // -0.5190247268916138
+    localparam [17:0] FC2_2 = 18'h3e5c0;    // -0.4102126310996121
+    localparam [17:0] FP_2 = 18'h11d7;      // 0.2787802162181329
+    localparam [17:0] FC_2 = 18'h2433;      // 0.5656393389806839
+
+    localparam [17:0] GC1_2 = FC1_2;
+    localparam [17:0] GC2_2 = FC2_2;
+    localparam [17:0] GC3_2 = 18'h2433;     // 0.5656393389806839
+    localparam [17:0] GP_2 = 18'h3ff0e;     // -0.014800587215469474
+    localparam [17:0] GC_2 = 18'h189a;      // 0.3844080978194578
+    
+    localparam [17:0] IZ1_2 = 18'h2137; // 0.51902473
+    localparam [17:0] IZ2_2 = 18'h2B7E; // 0.6795993
+    
+    localparam [17:0] C0_2 = 18'h3f70f; // -0.13971793
+    localparam [17:0] C1_2 = 18'h98e;   // 0.14931726
+    localparam [17:0] C2_2 = 18'h3f982; // -0.10147590704800001
+    localparam [17:0] C3_2 = 18'h3f21a; // -0.21721728496749743
+    
     localparam [17:0] ZERO_FIR_B = 18'h3FDAF;
     localparam [17:0] ZERO_FIR_A = 18'h0375A;
     
@@ -128,56 +150,90 @@ module biquad_working_tb;
         
     initial begin
         #100;
-        // we need to write
-        // 3: ZERO_FIR_A
-        //    ZERO_FIR_B
-        // 2: ZERO_FIR_B
-        //    ZERO_FIR_A
-        // 1: ZERO_FIR_B
-        //    ZERO_FIR_A
-        // 0: ZERO_FIR_B
-        //    ZERO_FIR_A
-        wb_write( 7'h4, ZERO_FIR_B ); // 3
-        wb_write( 7'h4, ZERO_FIR_A );
-        wb_write( 7'h4, ZERO_FIR_B ); // 2
-        wb_write( 7'h4, ZERO_FIR_A );
-        wb_write( 7'h4, ZERO_FIR_B ); // 1
-        wb_write( 7'h4, ZERO_FIR_A );
-        wb_write( 7'h4, ZERO_FIR_B ); // 0
-        wb_write( 7'h4, ZERO_FIR_A );
-        // F chain is 10. We program in
-        // -> pipeline coeff
-        // -> coeff1    (sample 3)  i=1
-        // -> coeff2    (sample 2)  i=2
-        wb_write( 7'h10, F_PIPELINE);
-        wb_write( 7'h10, F_CHAIN_1);
-        wb_write( 7'h10, F_CHAIN_2);
-        // G chain is 14. We program in
-        // -> pipeline coeff
-        // -> coeff2    (sample 3)  i=2
-        // -> coeff3    (sample 2)  i=3
-        // -> coeff1    (sample 0)  i=1
-        wb_write( 7'h14, G_PIPELINE);
-        wb_write( 7'h14, G_CHAIN_2);
-        wb_write( 7'h14, G_CHAIN_3);
-        wb_write( 7'h14, G_CHAIN_1);  
-    
-        wb_write( 7'h18, F_CROSS );
-        wb_write( 7'h1C, G_CROSS );
+
+        wb_write( 7'h4, ZFB_2 );    // 3
+        wb_write( 7'h4, ZFA_2 );
+        wb_write( 7'h4, ZFB_2 );    // 2
+        wb_write( 7'h4, ZFA_2 );
+        wb_write( 7'h4, ZFB_2 );    // 1
+        wb_write( 7'h4, ZFA_2 );
+        wb_write( 7'h4, ZFB_2 );    // 0
+        wb_write( 7'h4, ZFA_2 );
+
+        wb_write( 7'h10, FP_2);
+        wb_write( 7'h10, FC1_2);
+        wb_write( 7'h10, FC2_2);
+
+        wb_write( 7'h14, GP_2);
+        wb_write( 7'h14, GC2_2);
+        wb_write( 7'h14, GC3_2);
+        wb_write( 7'h14, GC1_2);  
+
+        wb_write( 7'h18, FC_2 );
+        wb_write( 7'h1C, GC_2 );
 
         // C2, C3, C1, C0.    
-        wb_write( 7'h08, C2 );
-        wb_write( 7'h08, C3 );
-        wb_write( 7'h08, C1 );
-        wb_write( 7'h08, C0 );
+        wb_write( 7'h08, C2_2 );
+        wb_write( 7'h08, C3_2 );
+        wb_write( 7'h08, C1_2 );
+        wb_write( 7'h08, C0_2 );
+        
+        wb_write( 7'h0C, IZ1_2);
+        wb_write( 7'h0C, IZ2_2);
+        wb_write( 7'h0C, IZ1_2);
+        wb_write( 7'h0C, IZ2_2);
 
-        // and the incremental goes
-        // z^-22/z^-1 etc. so we have to do it backwards.
-        // (z^-1/z^-2/z^-1/z^-2)
-        wb_write( 7'h0C, INCR_ZMINUS1);
-        wb_write( 7'h0C, INCR_ZMINUS2);
-        wb_write( 7'h0C, INCR_ZMINUS1);
-        wb_write( 7'h0C, INCR_ZMINUS2);
+
+//        // we need to write
+//        // 3: ZERO_FIR_A
+//        //    ZERO_FIR_B
+//        // 2: ZERO_FIR_B
+//        //    ZERO_FIR_A
+//        // 1: ZERO_FIR_B
+//        //    ZERO_FIR_A
+//        // 0: ZERO_FIR_B
+//        //    ZERO_FIR_A
+//        wb_write( 7'h4, ZERO_FIR_B ); // 3
+//        wb_write( 7'h4, ZERO_FIR_A );
+//        wb_write( 7'h4, ZERO_FIR_B ); // 2
+//        wb_write( 7'h4, ZERO_FIR_A );
+//        wb_write( 7'h4, ZERO_FIR_B ); // 1
+//        wb_write( 7'h4, ZERO_FIR_A );
+//        wb_write( 7'h4, ZERO_FIR_B ); // 0
+//        wb_write( 7'h4, ZERO_FIR_A );
+//        // F chain is 10. We program in
+//        // -> pipeline coeff
+//        // -> coeff1    (sample 3)  i=1
+//        // -> coeff2    (sample 2)  i=2
+//        wb_write( 7'h10, F_PIPELINE);
+//        wb_write( 7'h10, F_CHAIN_1);
+//        wb_write( 7'h10, F_CHAIN_2);
+//        // G chain is 14. We program in
+//        // -> pipeline coeff
+//        // -> coeff2    (sample 3)  i=2
+//        // -> coeff3    (sample 2)  i=3
+//        // -> coeff1    (sample 0)  i=1
+//        wb_write( 7'h14, G_PIPELINE);
+//        wb_write( 7'h14, G_CHAIN_2);
+//        wb_write( 7'h14, G_CHAIN_3);
+//        wb_write( 7'h14, G_CHAIN_1);  
+    
+//        wb_write( 7'h18, F_CROSS );
+//        wb_write( 7'h1C, G_CROSS );
+
+//        // C2, C3, C1, C0.    
+//        wb_write( 7'h08, C2 );
+//        wb_write( 7'h08, C3 );
+//        wb_write( 7'h08, C1 );
+//        wb_write( 7'h08, C0 );
+
+//        // and the incremental goes
+//        // z^-22/z^-1 etc. so we have to do it backwards.
+//        // (z^-1/z^-2/z^-1/z^-2)
+//        wb_write( 7'h0C, INCR_ZMINUS1);
+//        wb_write( 7'h0C, INCR_ZMINUS2);
+//        wb_write( 7'h0C, INCR_ZMINUS1);
+//        wb_write( 7'h0C, INCR_ZMINUS2);
 
         wb_write( 7'h0, 32'h10001);
 
