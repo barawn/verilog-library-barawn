@@ -94,8 +94,8 @@ module biquad_working_tb;
     localparam [17:0] GP_2 = 18'h3ff0e;     // -0.014800587215469474
     localparam [17:0] GC_2 = 18'h189a;      // 0.3844080978194578
     
-    localparam [17:0] IZ1_2 = 18'h2137; // 0.51902473
-    localparam [17:0] IZ2_2 = 18'h2B7E; // 0.6795993
+    localparam [17:0] IZ1_2 = 18'h3DEC9; // -0.51902473
+    localparam [17:0] IZ2_2 = 18'h3D482; // -0.6795993
     
     localparam [17:0] C0_2 = 18'h3f70f; // -0.13971793
     localparam [17:0] C1_2 = 18'h98e;   // 0.14931726
