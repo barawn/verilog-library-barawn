@@ -169,6 +169,7 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
         // the last one picks up an additional register via cascade, because why not
         localparam dspA_AREG = (i == 0) ? 2 : 1;
         localparam dspB_AREG = (i==NSAMP-1) ? 2 : 1;
+        wire dspB_CEA1 = (i==NSAMP-1) ? 1'b1 : 1'b0;
         localparam dspA_DREG = 1;
         localparam dspA_ADREG = 0;
         localparam dspA_MREG = 1;
@@ -333,6 +334,7 @@ module biquad8_single_zero_fir_v2 #(parameter NBITS=16,
                         .INMODE( dspB_INMODE ),
                         .CEB1( coeff_wr_i ),
                         .CEB2( coeff_update_i ),
+                        .CEA1( dspB_CEA1 ),
                         .CEA2( 1'b1 ),
                         .CEM( 1'b1 ),
                         .CEP( 1'b1 ),
