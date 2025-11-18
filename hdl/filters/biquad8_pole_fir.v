@@ -165,7 +165,7 @@ module biquad8_pole_fir #(parameter NBITS=16,
     // feeds back, and so obviously it needs a delay. But because
     // ACASCREG (pointlessly) needs to be AREG, we create a new
     // parameter for it.    
-    `define COMMON_ATTRS( NAREG ) `CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS,.AREG( NAREG ),.ACASCREG( NAREG ),.ADREG(0),.BREG(2),.BCASCREG(1),.MREG(0),.PREG(1)
+    `define COMMON_ATTRS( NAREG ) `CONSTANT_MODE_ATTRS,`DE2_UNUSED_ATTRS,.AREG( NAREG ),.ACASCREG( NAREG ),.BREG(2),.BCASCREG(1),.MREG(0),.PREG(1)
 
     generate
         genvar fi,fj, gi,gj;

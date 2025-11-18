@@ -48,13 +48,16 @@ module two24_dsp #(
     
     wire CEA2 = (USE_AB != 0) ? (USE_CE == 1 ? ce_ab_i : 1'b1 ) : 1'b0;
     wire CEB2 = CEA2;
-    wire CEA1 = (USE_AB != 0) ? (ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0) : 1'b0;
+    // only use when ABREG=2, otherwise tie low
+    wire CEA1 = (USE_AB != 0) ? (ABREG == 2 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0) : 1'b0;
     wire CEB1 = CEA1;
     wire RSTA = (USE_AB != 0 && USE_RST == 1) ? rst_ab_i : 1'b0;
     wire RSTB = RSTA;
     
     wire CEC = (USE_C != 0) ? (USE_CE == 1 ? ce_c_i : 1'b1) : 1'b0;
     wire RSTC = (USE_C != 0 && USE_RST == 1) ? rst_c_i : 1'b0;    
+
+    wire CEP = (PREG == 1) ? (USE_CE == 1 ? ce_p_i : 1'b1) : 1'b0;
     
     // i should make this definable or something, sigh
     generate
@@ -82,7 +85,7 @@ module two24_dsp #(
                             .CEB2(CEB2),
                             .CEB1(CEB1),
                             .CEC(CEC),
-                            .CEP(USE_CE == 1 ? ce_p_i : 1'b1),
+                            .CEP(CEP),
                             .RSTA(RSTA),
                             .RSTB(RSTB),
                             .RSTC(RSTC),
@@ -116,7 +119,7 @@ module two24_dsp #(
                             .CEB2(CEB2),
                             .CEB1(CEB1),
                             .CEC(CEC),
-                            .CEP(USE_CE == 1 ? ce_p_i : 1'b1),
+                            .CEP(CEP),
                             .RSTA(RSTA),
                             .RSTB(RSTB),
                             .RSTC(RSTC),

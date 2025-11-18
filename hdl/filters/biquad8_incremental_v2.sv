@@ -152,7 +152,7 @@ module biquad8_incremental_v2 #(
     end
     assign dat_o[0*OUTBITS +: OUTBITS] = y0_out[0 +: OUTBITS];
     assign dat_o[1*OUTBITS +: OUTBITS] = y1_out[0 +: OUTBITS];
-    `define COMMON_ATTRS .BREG(2),.BCASCREG(1),.ADREG(0),`DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS
+    `define COMMON_ATTRS .BREG(2),.BCASCREG(1),`DE2_UNUSED_ATTRS,`CONSTANT_MODE_ATTRS
     generate
         genvar i;
         for (i=2;i<NSAMP;i=i+1) begin : INCR

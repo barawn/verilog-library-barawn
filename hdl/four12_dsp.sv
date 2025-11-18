@@ -52,9 +52,11 @@ module four12_dsp #(
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
                             .CARRYIN(1'b0),
                             .CEA2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEA1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
+                            // only use when ABREG=2
+                            .CEA1(ABREG == 2 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
                             .CEB2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEB1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
+                            // only use when ABREG=2
+                            .CEB1(ABREG == 2 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
                             .CEC(USE_CE == 1 ? ce_c_i : 1'b1),
                             .CEP(USE_CE == 1 ? ce_p_i : 1'b1),
                             .RSTA(USE_RST == 1 ? rst_ab_i : 1'b0),
@@ -84,9 +86,11 @@ module four12_dsp #(
                             .CARRYINSEL(`CARRYINSEL_CARRYIN),
                             .CARRYIN(1'b0),
                             .CEA2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEA1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
+                            // only use when ABREG=2
+                            .CEA1(ABREG == 2 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
                             .CEB2(USE_CE == 1 ? ce_ab_i : 1'b1 ),
-                            .CEB1(ABREG == 1 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
+                            // only use when ABREG=2
+                            .CEB1(ABREG == 2 ? (USE_CE == 1 ? ce_ab_i : 1'b1) : 1'b0 ),
                             .CEC(USE_CE == 1 ? ce_c_i : 1'b1),
                             .CEP(USE_CE == 1 ? ce_p_i : 1'b1),
                             .RSTA(USE_RST == 1 ? rst_ab_i : 1'b0),
