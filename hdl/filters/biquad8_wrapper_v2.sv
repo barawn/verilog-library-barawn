@@ -211,7 +211,7 @@ module biquad8_wrapper_v2 #(parameter NBITS=16, // input number of bits
     assign wb_ack_o = ((ack_wbclk && pending) || read_ack) && wb_cyc_i;
     assign wb_err_o = 1'b0;
     assign wb_rty_o = 1'b0;
-    assign wb_dat_o = { 2'b00, bypass_mask_wbclk,{7{1'b0}}, in_bypass, {16{1'b0}} };
+    assign wb_dat_o = { 2'b00, bypass_mask_wbclk,{7{1'b0}}, in_bypass_wbclk[1], {16{1'b0}} };
 
     localparam ZERO_FIR_BITS = 16;
     localparam ZERO_FIR_FRAC = 2;
