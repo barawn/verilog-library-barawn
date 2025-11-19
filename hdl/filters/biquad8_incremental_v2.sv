@@ -314,7 +314,7 @@ module biquad8_incremental_v2 #(
                 end
                 assign dat_o[OUTBITS*i +: OUTBITS] = dat_store;
             end else begin
-                assign dat_o[OUTBITS*i +: OUTBITS] = pout[i][C_FRAC_BITS-NFRAC +: NBITS];
+				assign dat_o[OUTBITS*i +: OUTBITS] = pout[i][C_FRAC_BITS-OUTFRAC +: NBITS];
             end
         end
     endgenerate
