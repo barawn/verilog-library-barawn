@@ -304,10 +304,10 @@ module biquad8_incremental_v2 #(
                 if (REALIGN_DELAY > 1) begin : SRL
                     srlvec #(.NBITS(OUTBITS))
                         u_dly(.clk(clk),.ce(1'b1),.a(REALIGN_DELAY-2),
-                              .din(pout[i][C_FRAC_BITS-NFRAC +: OUTBITS]),
+							  .din(pout[i][C_FRAC_BITS-OUTFRAC +: OUTBITS]),
                               .dout(srl_out));
                 end else begin : NOSRL
-                    assign srl_out = pout[i][C_FRAC_BITS-NFRAC +: OUTBITS];
+					assign srl_out = pout[i][C_FRAC_BITS-OUTFRAC +: OUTBITS];
                 end
                 always @(posedge clk) begin : ST
                     dat_store <= srl_out;
