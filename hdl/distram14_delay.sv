@@ -1,5 +1,5 @@
 `timescale 1ns / 1ps
-// distributed RAM-based delay, 14 bits.
+// distributed RAM-based delay, 14 bits max.
 // distram-based delays are more power efficient
 // than shift registers, because two elements
 // (input and output) are switching every clock.
@@ -21,17 +21,18 @@
 // 5    6       5       DI[5]   DI[3]
 // 6    7       6       DI[6]   DI[4]
 module distram14_delay #(parameter NSAMP=1,
+                         parameter NBITS=14,
                          parameter [4:0] DELAY=5)(
         input clk_i,
         input rst_i,
-        input [14*NSAMP-1:0] dat_i,
-        output [14*NSAMP-1:0] dat_o
+        input [NBITS*NSAMP-1:0] dat_i,
+        output [NBITS*NSAMP-1:0] dat_o
     );
     
     reg [4:0] wraddr = DELAY;
     reg [4:0] rdaddr = {5{1'b0}};
     
-    reg [14*NSAMP-1:0] dat_reg = {14*NSAMP{1'b0}};
+    reg [NBITS*NSAMP-1:0] dat_reg = {NBITS*NSAMP{1'b0}};
     
     always @(posedge clk_i) begin
         if (rst_i) begin
@@ -46,6 +47,7 @@ module distram14_delay #(parameter NSAMP=1,
     generate
         genvar i;
         for (i=0;i<NSAMP;i=i+1) begin : LP
+            wire [13:0] ram_in = dat_i[NBITS*i +: NBITS];
             wire [13:0] ram_out;
             RAM32M16 
                 u_mem(.WCLK(clk_i),
@@ -58,13 +60,13 @@ module distram14_delay #(parameter NSAMP=1,
                       .ADDRE(rdaddr),
                       .ADDRF(rdaddr),
                       .ADDRG(rdaddr),
-                      .DIA( dat_i[14*i +0  +: 2]),
-                      .DIB( dat_i[14*i +2  +: 2]),
-                      .DIC( dat_i[14*i +4  +: 2]),
-                      .DID( dat_i[14*i +6  +: 2]),
-                      .DIE( dat_i[14*i +8  +: 2]),
-                      .DIF( dat_i[14*i +10 +: 2]),
-                      .DIG( dat_i[14*i +12 +: 2]),
+                      .DIA( ram_in[0  +: 2]),
+                      .DIB( ram_in[2  +: 2]),
+                      .DIC( ram_in[4  +: 2]),
+                      .DID( ram_in[6  +: 2]),
+                      .DIE( ram_in[8  +: 2]),
+                      .DIF( ram_in[10 +: 2]),
+                      .DIG( ram_in[12 +: 2]),
                       .DIH( 2'b00 ),
                       .DOA( ram_out[0 +: 2] ),
                       .DOB( ram_out[2 +: 2] ),
@@ -74,7 +76,7 @@ module distram14_delay #(parameter NSAMP=1,
                       .DOF( ram_out[10 +: 2] ),
                       .DOG( ram_out[12 +: 2] ));
             always @(posedge clk_i) begin : RR
-                dat_reg[14*i +: 14] <= ram_out;
+                dat_reg[NBITS*i +: NBITS] <= ram_out[0 +: NBITS];
             end
         end
     endgenerate
