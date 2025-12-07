@@ -97,8 +97,8 @@ module half_notch4 #(parameter NBITS=12,
                      .carryin_i(1'b1),
                      .pattern_o(patdet),
                      .p_o(completion_out));
-     assign dat_o[11:1] = completion_out[LSB+1 +: 11];
-     assign dat_o[0] = completion_out[LSB];
+     assign dat_o[12*i + 1 +: 11] = completion_out[LSB+1 +: 11];
+     assign dat_o[12*i] = completion_out[LSB];
       end
    endgenerate
    
