@@ -80,9 +80,22 @@ proc save_all {args} {
 # for IPs/block designs...
 # ... apparently they've never actually, y'know,
 # *tried*. It works fine.
-proc check_all {} {
+proc check_all {args} {
+    array set options {-srcpfx {} -cnstrpfx {} -simpfx {} - ippfx {}}
+    while {[llength $args]} {
+	switch -glob -- [lindex $args 0] {
+	    -src* { set args [lassign $args - options(-srcpfx)] }
+	    -cnstr* { set args [lassign $args - options(-cnstrpfx)] }
+	    -sim* { set args [lassign $args - options(-simpfx)] }
+	    -ip* { set args [lassign $args - options(-ippfx)] }
+	    -- { set args [lrange $args 1 end] ; break }
+	    -* { error "unknown option [lindex $args 0]"}
+	    default break
+	}
+    }
+
     # check sources...
-    set sf [open [file join [get_repo_dir] "sources.txt"] r]
+    set sf [open [file join [get_repo_dir] $options(-srcpfx) "sources.txt"] r]
     while {[gets $sf line]>=0} {
 	set fn [file join [get_repo_dir] $line]
 	if { ! [llength [get_files $fn]] } {
@@ -92,7 +105,7 @@ proc check_all {} {
     }
     close $sf
     # check constraints...
-    set cf [open [file join [get_repo_dir] "constraints.txt"] r]
+    set cf [open [file join [get_repo_dir] $options(-cnstrpfx) "constraints.txt"] r]
     while {[gets $cf line] >=0} {
 	set fn [file join [get_repo_dir] $line]
 	if { ! [llength [get_files $fn]] } {
@@ -102,7 +115,7 @@ proc check_all {} {
     }
     close $cf
     # check simulation files...
-    set mf [open [file join [get_repo_dir] "simulation.txt"] r]
+    set mf [open [file join [get_repo_dir] $options(-simpfx) "simulation.txt"] r]
     while {[gets $mf line] >= 0} {
 	set fn [file join [get_repo_dir] $line]
 	if { ! [llength [get_files $fn]] } {
@@ -112,7 +125,7 @@ proc check_all {} {
     }
     close $mf
     # check main IP files...
-    set ipf [open [file join [get_repo_dir] "ips.txt"] r]
+    set ipf [open [file join [get_repo_dir] $options(-ippfx) "ips.txt"] r]
     while {[gets $ipf line] >= 0} {
 	set fn [file join [get_repo_dir] $line]
 	if { ! [llength [get_files $fn]]} {
@@ -121,7 +134,7 @@ proc check_all {} {
 	}
     }
     # and finally check sim IP files
-    set sif [open [file join [get_repo_dir] "simips.txt"] r]
+    set sif [open [file join [get_repo_dir] $options(-ippfx) "simips.txt"] r]
     while {[gets $sif line] >= 0} {
 	set fn [file join [get_repo_dir] $line]
 	if { ! [llength [get_files $fn]]} {
