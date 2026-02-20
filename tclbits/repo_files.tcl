@@ -45,7 +45,20 @@ proc dump_ip_files { impl_filename sim_filename } {
     close $sip
 }
 
-proc save_all {} {
+proc save_all {args} {
+    array set options {-srcpfx {} -cnstrpfx {} -simpfx {} - ippfx {}}
+    while {[llength $args]} {
+	switch -glob -- [lindex $args 0] {
+	    -src* { set args [lassign $args - options(-srcpfx)] }
+	    -cnstr* { set args [lassign $args - options(-cnstrpfx)] }
+	    -sim* { set args [lassign $args - options(-simpfx)] }
+	    -ip* { set args [lassign $args - options(-ippfx)] }
+	    -- { set args [lrange $args 1 end] ; break }
+	    -* { error "unknown option [lindex $args 0]"}
+	    default break
+	}
+    }
+    
     # The IP exclusion here prevents things from being double-included
     # in both sources.txt and ips.txt. The reason why this matters
     # is that when an IP file is created it is present in get_ips
@@ -56,10 +69,10 @@ proc save_all {} {
     # from sources.txt pointlessly.
     # This has no harm on the project but leads to stupidity in
     # the git history.
-    dump_files "sources_1" "sources.txt" "IS_GENERATED==0 && FILE_TYPE != IP"
-    dump_files "constrs_1" "constraints.txt"
-    dump_files "sim_1" "simulation.txt"
-    dump_ip_files "ips.txt" "simips.txt"
+    dump_files "sources_1" [file join $options(-srcpfx) "sources.txt"] "IS_GENERATED==0 && FILE_TYPE != IP"
+    dump_files "constrs_1" [file join $options(-cnstrpfx) "constraints.txt"]
+    dump_files "sim_1" [file join $options(-simpfx) "simulation.txt"]
+    dump_ip_files [file join $options(-ippfx) "ips.txt"] [file join $options(-ippfx) "simips.txt"]
 }
 
 # Read in the file list and restore it if missing
