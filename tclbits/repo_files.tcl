@@ -3,7 +3,7 @@
 # and the last (optional) argument is the filter type.
 # This lets you kill generated files, for instance.
 # e.g. dump_files "sources_1" "sources.txt" "IS_GENERATED==0"
-proc dump_files { fs_name filename args } {
+proc dump_files { fs_name filename args} {
     # Get the length of the project repository path
     set repodir_length [ expr [string length [get_repo_dir]] + 1]
     # get file list
@@ -46,7 +46,7 @@ proc dump_ip_files { impl_filename sim_filename } {
 }
 
 proc save_all {args} {
-    array set options {-srcpfx {} -cnstrpfx {} -simpfx {} - ippfx {}}
+    array set options {-srcpfx {} -cnstrpfx {} -simpfx {} -ippfx {}}
     while {[llength $args]} {
 	switch -glob -- [lindex $args 0] {
 	    -src* { set args [lassign $args - options(-srcpfx)] }
