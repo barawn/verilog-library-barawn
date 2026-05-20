@@ -81,7 +81,7 @@ proc save_all {args} {
 # ... apparently they've never actually, y'know,
 # *tried*. It works fine.
 proc check_all {args} {
-    array set options {-srcpfx {} -cnstrpfx {} -simpfx {} - ippfx {}}
+    array set options {-srcpfx {} -cnstrpfx {} -simpfx {} -ippfx {}}
     while {[llength $args]} {
 	switch -glob -- [lindex $args 0] {
 	    -src* { set args [lassign $args - options(-srcpfx)] }
