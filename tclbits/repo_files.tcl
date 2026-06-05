@@ -14,8 +14,8 @@ proc dump_files { fs_name filename args} {
     }
     # create filename in repo
     set fn [file join [get_repo_dir] $filename]
-    # open file
-    set fp [open $fn w]
+    # open file, create if it doesn't exist
+    set fp [open $fn w+]
     foreach f $fs {
 	puts $fp [ string range $f $repodir_length end ]
     }
@@ -95,51 +95,70 @@ proc check_all {args} {
     }
 
     # check sources...
-    set sf [open [file join [get_repo_dir] $options(-srcpfx) "sources.txt"] r]
-    while {[gets $sf line]>=0} {
-	set fn [file join [get_repo_dir] $line]
-	if { ! [llength [get_files $fn]] } {
-	    puts "Adding missing source file $fn"
-	    add_files -norecurse -fileset [get_filesets sources_1] $fn
+    set srcfn [file join [get_repo_dir] $options(-srcpfx) "sources.txt"]
+    if {[file exists $srcfn]} {
+	set sf [open $srcfn r]
+	while {[gets $sf line]>=0} {
+	    set fn [file join [get_repo_dir] $line]
+	    if { ! [llength [get_files $fn]] } {
+		puts "Adding missing source file $fn"
+		add_files -norecurse -fileset [get_filesets sources_1] $fn
+	    }
 	}
+	close $sf
     }
-    close $sf
     # check constraints...
-    set cf [open [file join [get_repo_dir] $options(-cnstrpfx) "constraints.txt"] r]
-    while {[gets $cf line] >=0} {
-	set fn [file join [get_repo_dir] $line]
-	if { ! [llength [get_files $fn]] } {
-	    puts "Adding missing constraint file $fn"
-	    add_files -norecurse -fileset [get_filesets constrs_1] $fn
+    set cfn [file join [get_repo_dir] $options(-cnstrpfx) "constraints.txt"]
+    if {[file exists $cfn]} {
+	set cf [open $cfn r]
+	while {[gets $cf line] >=0} {
+	    set fn [file join [get_repo_dir] $line]
+	    if { ! [llength [get_files $fn]] } {
+		puts "Adding missing constraint file $fn"
+		add_files -norecurse -fileset [get_filesets constrs_1] $fn
+	    }
 	}
+	close $cf
     }
-    close $cf
+    
     # check simulation files...
-    set mf [open [file join [get_repo_dir] $options(-simpfx) "simulation.txt"] r]
-    while {[gets $mf line] >= 0} {
-	set fn [file join [get_repo_dir] $line]
-	if { ! [llength [get_files $fn]] } {
-	    puts "Adding missing sim file $fn"
-	    add_files -norecurse -fileset [get_filesets sim_1] $fn
+    set mfn [file join [get_repo_dir] $options(-simpfx) "simulation.txt"]
+    if {[file exists $mfn]} {
+	set mf [open $mfn r]
+	while {[gets $mf line] >= 0} {
+	    set fn [file join [get_repo_dir] $line]
+	    if { ! [llength [get_files $fn]] } {
+		puts "Adding missing sim file $fn"
+		add_files -norecurse -fileset [get_filesets sim_1] $fn
+	    }
 	}
+	close $mf
     }
-    close $mf
+
     # check main IP files...
-    set ipf [open [file join [get_repo_dir] $options(-ippfx) "ips.txt"] r]
-    while {[gets $ipf line] >= 0} {
-	set fn [file join [get_repo_dir] $line]
-	if { ! [llength [get_files $fn]]} {
-	    puts "Adding missing IP file $fn"
-	    add_files -norecurse -fileset [get_filesets sources_1] $fn
+    set ipfn [file join [get_repo_dir] $options(-ippfx) "ips.txt"]
+    if {[file exists $ipfn]} {
+	set ipf [open $ipfn r]
+	while {[gets $ipf line] >= 0} {
+	    set fn [file join [get_repo_dir] $line]
+	    if { ! [llength [get_files $fn]]} {
+		puts "Adding missing IP file $fn"
+		add_files -norecurse -fileset [get_filesets sources_1] $fn
+	    }
 	}
+	close $ipf
     }
     # and finally check sim IP files
-    set sif [open [file join [get_repo_dir] $options(-ippfx) "simips.txt"] r]
-    while {[gets $sif line] >= 0} {
-	set fn [file join [get_repo_dir] $line]
-	if { ! [llength [get_files $fn]]} {
-	    puts "Adding missing IP file $fn"
-	    add_files -norecurse -fileset [get_filesets sim_1] $fn
+    set sifn [file join [get_repo_dir] $options(-ippfx) "simips.txt"]
+    if {[file exists $sifn]} {
+	set sif [open $sifn r ]
+	while {[gets $sif line] >= 0} {
+	    set fn [file join [get_repo_dir] $line]
+	    if { ! [llength [get_files $fn]]} {
+		puts "Adding missing IP file $fn"
+		add_files -norecurse -fileset [get_filesets sim_1] $fn
+	    }
 	}
+	close $sif
     }
 }
